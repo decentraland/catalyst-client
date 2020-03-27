@@ -9,7 +9,7 @@ export class DeploymentBuilder {
 
     /**
      * As part of the deployment process, an entity has to be built. In this method, we are building it, based on the data provided.
-     * After the entity is build, the user will have to sign the entity id, to prove they are actually who they say they are.
+     * After the entity is built, the user will have to sign the entity id, to prove they are actually who they say they are.
      */
     static async buildEntity(type: EntityType, pointers: Pointer[], files: Map<string, Buffer> = new Map(), metadata?: EntityMetadata): Promise<DeploymentPreparationData> {
         // Make sure that there is at least one pointer
@@ -47,4 +47,3 @@ export type DeploymentPreparationData = {
 export type DeploymentData = DeploymentPreparationData & {
     authChain: AuthChain,
 }
-
