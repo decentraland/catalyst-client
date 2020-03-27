@@ -69,7 +69,7 @@ export class CatalystClient implements CatalystAPI {
             // Sometimes, the downloaded file is not complete, so the hash turns out to be different.
             // So we will check the hash before considering the download successful.
             if (downloadedHash === fileHash) {
-                return { name: fileHash, content: content }
+                return { name: fileHash, content }
             }
             throw new Error(`Failed to fetch file with hash ${fileHash} from ${this.catalystUrl}`)
         }, attempts, waitTime)
