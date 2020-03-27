@@ -7,7 +7,7 @@ export type EntityId = ContentFileHash
 export type Pointer = string
 export type EntityMetadata = any
 
-export type EntityContent = {
+export type EntityContentItemReference = {
     file: string,
     hash: ContentFileHash,
 }
@@ -22,7 +22,7 @@ export type Entity = {
     type: EntityType,
     pointers: Pointer[],
     timestamp: Timestamp,
-    content?: EntityContent[],
+    content?: EntityContentItemReference[],
     metadata?: EntityMetadata,
 }
 
@@ -57,6 +57,8 @@ export type AuditInfo = {
     },
 }
 
+export type Profile = EntityMetadata
+
 export type DeploymentEvent = {
     /** The server where the user uploaded the entity */
     serverName: ServerName,
@@ -67,3 +69,17 @@ export type DeploymentEvent = {
 }
 
 export type DeploymentHistory = DeploymentEvent[]
+
+export type PartialDeploymentHistory = {
+    events: DeploymentEvent[],
+    filters: {
+        from?: Timestamp,
+        to?: Timestamp,
+        serverName?: ServerName,
+    },
+    pagination: {
+        offset: number,
+        limit: number,
+        moreData: boolean,
+    },
+}
