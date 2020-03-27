@@ -33,11 +33,19 @@ export class CatalystClient implements CatalystAPI {
     }
 
     fetchEntitiesByPointers(type: EntityType, pointers: Pointer[], options?: RequestOptions): Promise<Entity[]> {
+        if (pointers.length === 0) {
+            throw new Error(`You must set at least one pointer.`)
+        }
+
         const filterParam = pointers.map(pointer => `pointer=${pointer}`).join("&")
         return this.fetchJson(`/content/entities/${type}?${filterParam}`, options)
     }
 
     fetchEntitiesByIds(type: EntityType, ids: EntityId[], options?: RequestOptions): Promise<Entity[]> {
+        if (ids.length === 0) {
+            throw new Error(`You must set at least one id.`)
+        }
+
         const filterParam = ids.map(id => `id=${id}`).join("&")
         return this.fetchJson(`/content/entities/${type}?${filterParam}`, options)
     }
@@ -113,6 +121,10 @@ export class CatalystClient implements CatalystAPI {
 
     /** Given an array of file hashes, return a set with those already uploaded on the server */
     private async hashesAlreadyOnServer(hashes: ContentFileHash[]): Promise<Set<ContentFileHash>> {
+        if (hashes.length === 0) {
+            return Promise.resolve(new Set())
+        }
+
         // TODO: Consider splitting into chunks, since if there are too many hashes, the url could get too long
         const withoutDuplicates = Array.from(new Set(hashes).values());
         const queryParam = withoutDuplicates.map(hash => `cid=${hash}`).join('&')
