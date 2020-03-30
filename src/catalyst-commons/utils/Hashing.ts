@@ -5,10 +5,10 @@ import { ContentFileHash, ContentFile } from '../types';
 export class Hashing {
 
     /** Given a set of files, return a map with their hash */
-    static async calculateHashes(files: ContentFile[]): Promise<Map<ContentFileHash, ContentFile>> {
+    static async calculateHashes(files: ContentFile[]): Promise<{ hash: ContentFileHash, file: ContentFile }[]> {
         const entries = Array.from(files)
-            .map<Promise<[ContentFileHash, ContentFile]>>(async file => [await this.calculateHash(file), file])
-        return new Map(await Promise.all(entries));
+            .map<Promise<{hash: ContentFileHash, file: ContentFile}>>(async file => ({ hash: await this.calculateHash(file), file }))
+        return Promise.all(entries);
     }
 
     /** Return the given file's hash */
