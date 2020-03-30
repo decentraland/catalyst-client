@@ -1,4 +1,4 @@
-import { FormData } from "form-data"
+import FormData from "form-data"
 
 export function convertModelToFormData(model: any, form: FormData = new FormData(), namespace = ''): FormData {
     for (let propertyName in model) {

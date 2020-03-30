@@ -19,7 +19,7 @@ export async function retry<T>(
                     if (failedAttemptCallback) {
                         failedAttemptCallback(attempts)
                     }
-                    await delay(ms(waitTime))
+                    await delay(waitTime)
                 } else {
                     if (allFailedCallback) {
                         allFailedCallback()
@@ -32,13 +32,13 @@ export async function retry<T>(
 }
 
 /** Add defaults to missing properties in the partial object */
-export function applyDefaults<T>(defaults: T, partial: Partial<T>): T {
+export function applyDefaults<T>(defaults: T, partial?: Partial<T>): T {
     const complete = Object.assign(defaults, partial)
     return complete
 }
 
 /** Add some defaults to missing properties in the partial object. This means that the object is not yet complete */
-export function applySomeDefaults<T>(defaults: Partial<T>, partial: Partial<T>): Partial<T> {
+export function applySomeDefaults<T>(defaults: Partial<T>, partial?: Partial<T>): Partial<T> {
     const complete = Object.assign(defaults, partial)
     return complete
 }

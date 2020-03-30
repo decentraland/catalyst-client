@@ -1,6 +1,7 @@
 import ms from "ms";
 import fetch from "node-fetch";
 import AbortController from 'abort-controller';
+import FormData from 'form-data';
 import { clearTimeout, setTimeout } from "timers"
 import { retry, applyDefaults } from "./Helper";
 

@@ -1,11 +1,10 @@
 import { AuthChain } from 'dcl-crypto'
-import { EntityMetadata, EntityType, Pointer, EntityContentItemReference, ContentFile, EntityId, ContentFileHash } from "../../../catalyst-commons/src/types";
-import { buildEntityAndFile } from "../../../catalyst-commons/src/utils/EntityFactory";
-import { Hashing } from "../../../catalyst-commons/src/utils/Hashing";
+import { EntityMetadata, EntityType, Pointer, EntityContentItemReference, ContentFile, EntityId, ContentFileHash } from "../catalyst-commons/types";
+import { buildEntityAndFile } from "../catalyst-commons/utils/EntityFactory";
+import { Hashing } from "../catalyst-commons/utils/Hashing";
 
 
 export class DeploymentBuilder {
-
 
     /**
      * As part of the deployment process, an entity has to be built. In this method, we are building it, based on the data provided.

@@ -1,3 +1,4 @@
+import { ENTITY_FILE_NAME } from '../Constants'
 import { EntityType, Pointer, Timestamp, EntityMetadata, Entity, EntityContentItemReference, ContentFile, EntityId } from "../types"
 import { Hashing } from "./Hashing"
 
