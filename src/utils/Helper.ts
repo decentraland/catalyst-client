@@ -11,7 +11,7 @@ export function convertModelToFormData(model: any, form: FormData = new FormData
                 const tempFormKey = `${formKey}[${index}]`
                 convertModelToFormData(element, form, tempFormKey)
             })
-        } else if (typeof model[propertyName] === 'object' && !(model[propertyName] instanceof File)) {
+        } else if (typeof model[propertyName] === 'object') {
             convertModelToFormData(model[propertyName], form, formKey)
         } else {
             form.append(formKey, model[propertyName].toString())
