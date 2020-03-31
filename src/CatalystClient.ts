@@ -1,9 +1,6 @@
 import { EthAddress } from 'dcl-crypto'
 import FormData from "form-data"
-import { Fetcher, RequestOptions } from "./catalyst-commons/utils/Fetcher";
-import { Timestamp, Pointer, EntityType, Entity, EntityId, AuditInfo, ServerStatus, ServerName, ContentFileHash, DeploymentHistory, Profile, PartialDeploymentHistory } from "./catalyst-commons/types";
-import { Hashing } from "./catalyst-commons/utils/Hashing";
-import { retry, applySomeDefaults } from "./catalyst-commons/utils/Helper";
+import { Timestamp, Pointer, EntityType, Entity, EntityId, AuditInfo, ServerStatus, ServerName, ContentFileHash, DeploymentHistory, Profile, PartialDeploymentHistory, applySomeDefaults, retry, Fetcher, RequestOptions, Hashing } from "dcl-catalyst-commons";
 import { CatalystAPI } from "./CatalystAPI";
 import { convertModelToFormData } from './utils/Helper';
 import { DeploymentData } from './utils/DeploymentBuilder';

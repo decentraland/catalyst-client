@@ -1,10 +1,8 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import { mock, instance, when, anything, verify } from 'ts-mockito'
-import { CatalystClient } from '../src/CatalystClient'
-import { Fetcher } from '../src/catalyst-commons/utils/Fetcher'
-import { EntityType, Entity } from '../src/catalyst-commons/types'
-import { Hashing } from '../src/catalyst-commons/utils/Hashing'
+import { CatalystClient } from 'CatalystClient'
+import { EntityType, Entity, Fetcher, Hashing } from 'dcl-catalyst-commons'
 
 chai.use(chaiAsPromised)
 const expect = chai.expect
