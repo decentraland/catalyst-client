@@ -10,7 +10,9 @@ export class CatalystClient implements CatalystAPI {
 
     private readonly catalystUrl: string
 
-    constructor(catalystUrl: string, private readonly fetcher: Fetcher = new Fetcher()) {
+    constructor(catalystUrl: string,
+        private readonly origin: string, // The name or a description of the app that is using the client
+        private readonly fetcher: Fetcher = new Fetcher()) {
         this.catalystUrl = CatalystClient.sanitizeUrl(catalystUrl)
     }
 
@@ -26,7 +28,8 @@ export class CatalystClient implements CatalystAPI {
             }
         }
 
-        return this.fetcher.postForm(`${this.catalystUrl}/content/entities${fix ? '?fix=true' : ''}`, form, options)
+        const headers = { 'x-upload-origin': this.origin }
+        return this.fetcher.postForm(`${this.catalystUrl}/content/entities${fix ? '?fix=true' : ''}`, form, headers, options)
     }
 
     fetchEntitiesByPointers(type: EntityType, pointers: Pointer[], options?: RequestOptions): Promise<Entity[]> {
