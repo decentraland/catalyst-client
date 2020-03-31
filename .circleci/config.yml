@@ -37,8 +37,6 @@ jobs:
   build:
     <<: *base_env
 
-    working_directory: /tmp/dcl-catalyst-client
-
     steps:
       - checkout
       - restore_cache:
@@ -58,9 +56,14 @@ jobs:
           paths:
             - dist
           key: dist-{{ .Branch }}-{{ .Revision }}
+      - persist_to_workspace:
+          root: *workspace_root
+          paths:
+            - .
 
   test:
     <<: *base_env
+
     steps:
       - <<: *attach_root
       - run:
