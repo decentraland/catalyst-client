@@ -1,9 +1,6 @@
 import { EthAddress } from 'dcl-crypto'
-import { FormData } from "form-data"
-import { Fetcher, RequestOptions } from "../../catalyst-commons/src/utils/Fetcher";
-import { Timestamp, ContentFile, Pointer, EntityType, Entity, EntityId, AuditInfo, ServerStatus, ServerName, ContentFileHash, DeploymentHistory, EntityMetadata, Profile, PartialDeploymentHistory } from "../../catalyst-commons/src/types";
-import { Hashing } from "../../catalyst-commons/src/utils/Hashing";
-import { retry, applySomeDefaults } from "../../catalyst-commons/src/utils/Helper";
+import FormData from "form-data"
+import { Timestamp, Pointer, EntityType, Entity, EntityId, AuditInfo, ServerStatus, ServerName, ContentFileHash, DeploymentHistory, Profile, PartialDeploymentHistory, applySomeDefaults, retry, Fetcher, RequestOptions, Hashing } from "dcl-catalyst-commons";
 import { CatalystAPI } from "./CatalystAPI";
 import { convertModelToFormData } from './utils/Helper';
 import { DeploymentData } from './utils/DeploymentBuilder';
@@ -34,7 +31,7 @@ export class CatalystClient implements CatalystAPI {
 
     fetchEntitiesByPointers(type: EntityType, pointers: Pointer[], options?: RequestOptions): Promise<Entity[]> {
         if (pointers.length === 0) {
-            throw new Error(`You must set at least one pointer.`)
+            return Promise.reject(`You must set at least one pointer.`)
         }
 
         const filterParam = pointers.map(pointer => `pointer=${pointer}`).join("&")
@@ -43,7 +40,7 @@ export class CatalystClient implements CatalystAPI {
 
     fetchEntitiesByIds(type: EntityType, ids: EntityId[], options?: RequestOptions): Promise<Entity[]> {
         if (ids.length === 0) {
-            throw new Error(`You must set at least one id.`)
+            return Promise.reject(`You must set at least one id.`)
         }
 
         const filterParam = ids.map(id => `id=${id}`).join("&")
@@ -53,7 +50,7 @@ export class CatalystClient implements CatalystAPI {
     async fetchEntityById(type: EntityType, id: EntityId, options?: RequestOptions): Promise<Entity> {
         const entities: Entity[] = await this.fetchEntitiesByIds(type, [id], options)
         if (entities.length === 0) {
-            throw new Error(`Failed to find an entity with type '${type}' and id '${id}'.`)
+            return Promise.reject(`Failed to find an entity with type '${type}' and id '${id}'.`)
         }
         return entities[0]
     }
@@ -70,7 +67,8 @@ export class CatalystClient implements CatalystAPI {
         let offset = 0
         let keepRetrievingHistory = true
         while (keepRetrievingHistory) {
-            const partialHistory: PartialDeploymentHistory = await this.fetchHistory(query, withSomeDefaults)
+            const currentQuery = { ...query, offset}
+            const partialHistory: PartialDeploymentHistory = await this.fetchHistory(currentQuery, withSomeDefaults)
             events.push(...partialHistory.events)
             offset = partialHistory.pagination.offset + partialHistory.pagination.limit
             keepRetrievingHistory = partialHistory.pagination.moreData
@@ -100,29 +98,29 @@ export class CatalystClient implements CatalystAPI {
         return this.fetchJson('/content/status', options)
     }
 
-    async downloadContent(contentHash: ContentFileHash, options?: RequestOptions): Promise<ContentFile> {
-        const { attempts = 3, waitTime = '0.5s' } = options
+    async downloadContent(contentHash: ContentFileHash, options?: RequestOptions): Promise<Buffer> {
+        const { attempts = 3, waitTime = '0.5s' } = options ?? { }
 
         return retry(async () => {
-            const content = await this.fetcher.fetchBuffer(`${this.catalystUrl}/content/contents/${contentHash}`, { timeout: options.timeout });
+            const content = await this.fetcher.fetchBuffer(`${this.catalystUrl}/content/contents/${contentHash}`, { timeout: options?.timeout });
             const downloadedHash = await Hashing.calculateBufferHash(content)
             // Sometimes, the downloaded file is not complete, so the hash turns out to be different.
             // So we will check the hash before considering the download successful.
             if (downloadedHash === contentHash) {
-                return { name: contentHash, content }
+                return content
             }
             throw new Error(`Failed to fetch file with hash ${contentHash} from ${this.catalystUrl}`)
         }, attempts, waitTime)
     }
 
     fetchProfile(ethAddress: EthAddress, options?: RequestOptions): Promise<Profile> {
-        return this.fetchJson(`lambdas/profile/${ethAddress}`, options)
+        return this.fetchJson(`/lambdas/profile/${ethAddress}`, options)
     }
 
     /** Given an array of file hashes, return a set with those already uploaded on the server */
     private async hashesAlreadyOnServer(hashes: ContentFileHash[]): Promise<Set<ContentFileHash>> {
         if (hashes.length === 0) {
-            return Promise.resolve(new Set())
+            return new Set()
         }
 
         // TODO: Consider splitting into chunks, since if there are too many hashes, the url could get too long
@@ -142,7 +140,7 @@ export class CatalystClient implements CatalystAPI {
         return this.fetcher.fetchJson(`${this.catalystUrl}${path}`, options)
     }
 
-    private static sanitizeUrl(url: string): string {
+    static sanitizeUrl(url: string): string {
         // Remove empty spaces
         url = url.trim()
 

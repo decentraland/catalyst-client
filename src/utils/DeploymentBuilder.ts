@@ -1,11 +1,8 @@
 import { AuthChain } from 'dcl-crypto'
-import { EntityMetadata, EntityType, Pointer, EntityContentItemReference, ContentFile, EntityId, ContentFileHash } from "../../../catalyst-commons/src/types";
-import { buildEntityAndFile } from "../../../catalyst-commons/src/utils/EntityFactory";
-import { Hashing } from "../../../catalyst-commons/src/utils/Hashing";
+import { Hashing, buildEntityAndFile, EntityType, Pointer, ContentFile, EntityContentItemReference, EntityMetadata, ContentFileHash, EntityId } from 'dcl-catalyst-commons';
 
 
 export class DeploymentBuilder {
-
 
     /**
      * As part of the deployment process, an entity has to be built. In this method, we are building it, based on the data provided.
@@ -23,16 +20,18 @@ export class DeploymentBuilder {
 
         // Calculate hashes
         const hashes = await Hashing.calculateHashes(contentFiles)
-        const entityContent: EntityContentItemReference[] = Array.from(hashes.entries())
-            .map(([hash, { name }]) => ({ file: name, hash }))
+        const entityContent: EntityContentItemReference[] = hashes.map(({ hash, file }) => ({ file: file.name, hash }))
 
         // Build entity file
         const { entity, entityFile } = await buildEntityAndFile(type, pointers, Date.now(), entityContent, metadata)
 
         // Add entity file to content files
-        hashes.set(entity.id, entityFile)
+        hashes.push({ hash: entity.id, file: entityFile })
 
-        return { files: hashes, entityId: entity.id }
+        // Group files by hash, to avoid sending the same file twice
+        const filesByHash: Map<ContentFileHash, ContentFile> = new Map(hashes.map(({ hash, file }) =>  [hash, file]))
+
+        return { files: filesByHash, entityId: entity.id }
     }
 
 }
