@@ -28,7 +28,7 @@ describe('CatalystClient', () => {
     it('When fetching by pointers, if none is set, then an error is thrown', () => {
         const { mock: mocked, instance: fetcher } = mockFetcherJson()
 
-        const client = new CatalystClient(URL, fetcher)
+        const client = buildClient(URL, fetcher)
         const result = client.fetchEntitiesByPointers(EntityType.PROFILE, [])
 
         expect(result).to.be.rejectedWith(`You must set at least one pointer.`)
@@ -40,7 +40,7 @@ describe('CatalystClient', () => {
         const pointer = "P"
         const { instance: fetcher } = mockFetcherJson(`/content/entities/profile?pointer=${pointer}`, requestResult)
 
-        const client = new CatalystClient(URL, fetcher)
+        const client = buildClient(URL, fetcher)
         const result = await client.fetchEntitiesByPointers(EntityType.PROFILE, [pointer])
 
         expect(result).to.equal(requestResult)
@@ -49,7 +49,7 @@ describe('CatalystClient', () => {
     it('When fetching by ids, if none is set, then an error is thrown', () => {
         const { mock: mocked, instance: fetcher } = mockFetcherJson()
 
-        const client = new CatalystClient(URL, fetcher)
+        const client = buildClient(URL, fetcher)
         const result = client.fetchEntitiesByIds(EntityType.PROFILE, [])
 
         expect(result).to.be.rejectedWith(`You must set at least one id.`)
@@ -61,7 +61,7 @@ describe('CatalystClient', () => {
         const id = "Id"
         const { instance: fetcher } = mockFetcherJson(`/content/entities/profile?id=${id}`, requestResult)
 
-        const client = new CatalystClient(URL, fetcher)
+        const client = buildClient(URL, fetcher)
         const result = await client.fetchEntitiesByIds(EntityType.PROFILE, [id])
 
         expect(result).to.equal(requestResult)
@@ -71,7 +71,7 @@ describe('CatalystClient', () => {
         const id = "Id"
         const { instance: fetcher } = mockFetcherJson(`/content/entities/profile?id=${id}`, [ ])
 
-        const client = new CatalystClient(URL, fetcher)
+        const client = buildClient(URL, fetcher)
         const result = client.fetchEntityById(EntityType.PROFILE, id)
 
         expect(result).to.be.rejectedWith(`Failed to find an entity with type '${EntityType.PROFILE}' and id '${id}'.`)
@@ -83,7 +83,7 @@ describe('CatalystClient', () => {
         const id = "Id"
         const { instance: fetcher } = mockFetcherJson(`/content/entities/profile?id=${id}`, requestResult)
 
-        const client = new CatalystClient(URL, fetcher)
+        const client = buildClient(URL, fetcher)
         const result = await client.fetchEntityById(EntityType.PROFILE, id)
 
         expect(result).to.equal(entity)
@@ -99,7 +99,7 @@ describe('CatalystClient', () => {
         when(mockedFetcher.fetchBuffer(`${URL}/content/contents/${fileHash}`, anything())).thenReturn(Promise.resolve(failBuffer), Promise.resolve(realBuffer))
         const fetcher = instance(mockedFetcher)
 
-        const client = new CatalystClient(URL, fetcher)
+        const client = buildClient(URL, fetcher)
         const result = await client.downloadContent(fileHash, { waitTime: '20' })
 
         // Assert that the correct buffer is returned, and that there was a retry attempt
@@ -116,7 +116,7 @@ describe('CatalystClient', () => {
         when(mockedFetcher.fetchBuffer(`${URL}/content/contents/${fileHash}`, anything())).thenReturn(Promise.resolve(failBuffer))
         const fetcher = instance(mockedFetcher)
 
-        const client = new CatalystClient(URL, fetcher)
+        const client = buildClient(URL, fetcher)
         const result = client.downloadContent(fileHash, { attempts: 2, waitTime: '20' })
 
         // Assert that the request failed, and that the client tried many times as expected
@@ -145,4 +145,7 @@ describe('CatalystClient', () => {
         return { mock: mockedFetcher, instance: instance(mockedFetcher) }
     }
 
+    function buildClient(URL: string, fetcher: Fetcher) {
+        return new CatalystClient(URL, 'origin', fetcher)
+    }
 })
