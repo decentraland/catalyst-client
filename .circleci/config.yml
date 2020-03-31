@@ -71,7 +71,7 @@ jobs:
     <<: *base_env
 
     steps:
-    - <<: *attach_root
+      - <<: *attach_root
       - run:
           name: Semantic release
           command: npm run semantic-release
