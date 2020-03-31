@@ -80,7 +80,7 @@ jobs:
 workflows:
   version: 2
 
-  build-deploy:
+  build-release:
     jobs:
       - build:
           <<: *all_branches_and_tags
@@ -90,7 +90,7 @@ workflows:
           requires:
             - build
 
-      -release:
+      - release:
           <<: *master_and_tags
           requires:
             - test
