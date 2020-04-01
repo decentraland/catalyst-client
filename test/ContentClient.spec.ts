@@ -24,7 +24,7 @@ describe('ContentClient', () => {
     it('When fetching by pointers, then the result is as expected', async () => {
         const requestResult: Entity[] = [ someEntity() ]
         const pointer = "P"
-        const { instance: fetcher } = mockFetcherJson(`/content/entities/profile?pointer=${pointer}`, requestResult)
+        const { instance: fetcher } = mockFetcherJson(`/entities/profile?pointer=${pointer}`, requestResult)
 
         const client = buildClient(URL, fetcher)
         const result = await client.fetchEntitiesByPointers(EntityType.PROFILE, [pointer])
@@ -45,7 +45,7 @@ describe('ContentClient', () => {
     it('When fetching by ids, then the result is as expected', async () => {
         const requestResult: Entity[] = [ someEntity() ]
         const id = "Id"
-        const { instance: fetcher } = mockFetcherJson(`/content/entities/profile?id=${id}`, requestResult)
+        const { instance: fetcher } = mockFetcherJson(`/entities/profile?id=${id}`, requestResult)
 
         const client = buildClient(URL, fetcher)
         const result = await client.fetchEntitiesByIds(EntityType.PROFILE, [id])
@@ -55,7 +55,7 @@ describe('ContentClient', () => {
 
     it('When fetching by id, if there are no results, then an error is thrown', async () => {
         const id = "Id"
-        const { instance: fetcher } = mockFetcherJson(`/content/entities/profile?id=${id}`, [ ])
+        const { instance: fetcher } = mockFetcherJson(`/entities/profile?id=${id}`, [ ])
 
         const client = buildClient(URL, fetcher)
         const result = client.fetchEntityById(EntityType.PROFILE, id)
@@ -67,7 +67,7 @@ describe('ContentClient', () => {
         const entity = someEntity()
         const requestResult: Entity[] = [ entity ]
         const id = "Id"
-        const { instance: fetcher } = mockFetcherJson(`/content/entities/profile?id=${id}`, requestResult)
+        const { instance: fetcher } = mockFetcherJson(`/entities/profile?id=${id}`, requestResult)
 
         const client = buildClient(URL, fetcher)
         const result = await client.fetchEntityById(EntityType.PROFILE, id)
@@ -82,7 +82,7 @@ describe('ContentClient', () => {
 
         // Create mock, and return the wrong buffer the first time, and the correct one the second time
         let mockedFetcher: Fetcher = mock(Fetcher);
-        when(mockedFetcher.fetchBuffer(`${URL}/content/contents/${fileHash}`, anything())).thenReturn(Promise.resolve(failBuffer), Promise.resolve(realBuffer))
+        when(mockedFetcher.fetchBuffer(`${URL}/contents/${fileHash}`, anything())).thenReturn(Promise.resolve(failBuffer), Promise.resolve(realBuffer))
         const fetcher = instance(mockedFetcher)
 
         const client = buildClient(URL, fetcher)
@@ -90,7 +90,7 @@ describe('ContentClient', () => {
 
         // Assert that the correct buffer is returned, and that there was a retry attempt
         expect(result).to.equal(realBuffer)
-        verify(mockedFetcher.fetchBuffer(`${URL}/content/contents/${fileHash}`, anything())).times(2)
+        verify(mockedFetcher.fetchBuffer(`${URL}/contents/${fileHash}`, anything())).times(2)
     })
 
     it('When a file is downloaded and all attempts failed, then an exception is thrown', async () => {
@@ -99,7 +99,7 @@ describe('ContentClient', () => {
 
         // Create mock, and return the wrong buffer always
         let mockedFetcher: Fetcher = mock(Fetcher);
-        when(mockedFetcher.fetchBuffer(`${URL}/content/contents/${fileHash}`, anything())).thenReturn(Promise.resolve(failBuffer))
+        when(mockedFetcher.fetchBuffer(`${URL}/contents/${fileHash}`, anything())).thenReturn(Promise.resolve(failBuffer))
         const fetcher = instance(mockedFetcher)
 
         const client = buildClient(URL, fetcher)
@@ -107,7 +107,7 @@ describe('ContentClient', () => {
 
         // Assert that the request failed, and that the client tried many times as expected
         await expect(result).to.be.rejectedWith(`Failed to fetch file with hash ${fileHash} from ${URL}`)
-        verify(mockedFetcher.fetchBuffer(`${URL}/content/contents/${fileHash}`, anything())).times(2)
+        verify(mockedFetcher.fetchBuffer(`${URL}/contents/${fileHash}`, anything())).times(2)
     })
 
     function someEntity(): Entity {
