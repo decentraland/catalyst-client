@@ -1,163 +1,62 @@
 import { EthAddress } from 'dcl-crypto'
-import FormData from "form-data"
-import { Timestamp, Pointer, EntityType, Entity, EntityId, AuditInfo, ServerStatus, ServerName, ContentFileHash, DeploymentHistory, Profile, PartialDeploymentHistory, applySomeDefaults, retry, Fetcher, RequestOptions, Hashing } from "dcl-catalyst-commons";
+import { Timestamp, Pointer, EntityType, Entity, EntityId, AuditInfo, ServerStatus, ServerName, ContentFileHash, DeploymentHistory, Profile, PartialDeploymentHistory, Fetcher, RequestOptions } from "dcl-catalyst-commons";
 import { CatalystAPI } from "./CatalystAPI";
-import { convertModelToFormData } from './utils/Helper';
 import { DeploymentData } from './utils/DeploymentBuilder';
-
+import { sanitizeUrl } from './utils/Helper';
+import { ContentClient } from 'ContentClient';
+import { LambdasClient } from 'LambdasClient';
 
 export class CatalystClient implements CatalystAPI {
 
-    private readonly catalystUrl: string
+    private readonly contentClient: ContentClient
+    private readonly lambdasClient: LambdasClient
 
     constructor(catalystUrl: string,
-        private readonly origin: string, // The name or a description of the app that is using the client
-        private readonly fetcher: Fetcher = new Fetcher()) {
-        this.catalystUrl = CatalystClient.sanitizeUrl(catalystUrl)
+        origin: string, // The name or a description of the app that is using the client
+        fetcher: Fetcher = new Fetcher()) {
+        catalystUrl = sanitizeUrl(catalystUrl)
+        this.contentClient = new ContentClient(catalystUrl + '/content', origin, fetcher)
+        this.lambdasClient = new LambdasClient(catalystUrl + '/lambdas', fetcher)
     }
 
-    async deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {
-        const form = new FormData()
-        form.append('entityId', deployData.entityId)
-        convertModelToFormData(deployData.authChain, form, 'authChain')
-
-        const alreadyUploadedHashes = await this.hashesAlreadyOnServer(Array.from(deployData.files.keys()))
-        for (const [fileHash, file] of deployData.files) {
-            if (!alreadyUploadedHashes.has(fileHash)) {
-                form.append(file.name, file.content, { filename: file.name })
-            }
-        }
-
-        const headers = { 'x-upload-origin': this.origin }
-        return this.fetcher.postForm(`${this.catalystUrl}/content/entities${fix ? '?fix=true' : ''}`, form, headers, options)
+    deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {
+       return this.contentClient.deployEntity(deployData, fix, options)
     }
 
     fetchEntitiesByPointers(type: EntityType, pointers: Pointer[], options?: RequestOptions): Promise<Entity[]> {
-        if (pointers.length === 0) {
-            return Promise.reject(`You must set at least one pointer.`)
-        }
-
-        const filterParam = pointers.map(pointer => `pointer=${pointer}`).join("&")
-        return this.fetchJson(`/content/entities/${type}?${filterParam}`, options)
+        return this.contentClient.fetchEntitiesByPointers(type, pointers, options)
     }
 
     fetchEntitiesByIds(type: EntityType, ids: EntityId[], options?: RequestOptions): Promise<Entity[]> {
-        if (ids.length === 0) {
-            return Promise.reject(`You must set at least one id.`)
-        }
-
-        const filterParam = ids.map(id => `id=${id}`).join("&")
-        return this.fetchJson(`/content/entities/${type}?${filterParam}`, options)
+        return this.contentClient.fetchEntitiesByIds(type, ids, options)
     }
 
-    async fetchEntityById(type: EntityType, id: EntityId, options?: RequestOptions): Promise<Entity> {
-        const entities: Entity[] = await this.fetchEntitiesByIds(type, [id], options)
-        if (entities.length === 0) {
-            return Promise.reject(`Failed to find an entity with type '${type}' and id '${id}'.`)
-        }
-        return entities[0]
+    fetchEntityById(type: EntityType, id: EntityId, options?: RequestOptions): Promise<Entity> {
+        return this.contentClient.fetchEntityById(type, id, options)
     }
 
     fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<AuditInfo> {
-        return this.fetchJson(`/content/audit/${type}/${id}`, options)
+        return this.contentClient.fetchAuditInfo(type, id, options)
     }
 
-    async fetchFullHistory(query?: { from?: number; to?: number; serverName?: string }, options?: Partial<{ attempts: number; timeout: string; waitTime: string; }>): Promise<DeploymentHistory> {
-        // We are setting different defaults in this case, because if one of the request fails, then all fail
-        const withSomeDefaults = applySomeDefaults({ attempts: 3, waitTime: '1s' }, options)
-
-        let events: DeploymentHistory = []
-        let offset = 0
-        let keepRetrievingHistory = true
-        while (keepRetrievingHistory) {
-            const currentQuery = { ...query, offset}
-            const partialHistory: PartialDeploymentHistory = await this.fetchHistory(currentQuery, withSomeDefaults)
-            events.push(...partialHistory.events)
-            offset = partialHistory.pagination.offset + partialHistory.pagination.limit
-            keepRetrievingHistory = partialHistory.pagination.moreData
-        }
-
-        return events
+    fetchFullHistory(query?: { from?: number; to?: number; serverName?: string }, options?: RequestOptions): Promise<DeploymentHistory> {
+        return this.contentClient.fetchFullHistory(query, options)
     }
 
     fetchHistory(query?: {from?: Timestamp, to?: Timestamp, serverName?: ServerName, offset?: number, limit?: number}, options?: RequestOptions): Promise<PartialDeploymentHistory> {
-        let path = `/content/history?offset=${query?.offset ?? 0}`
-        if (query?.from) {
-            path += `&from=${query?.from}`
-        }
-        if (query?.to) {
-            path += `&to=${query?.to}`
-        }
-        if (query?.serverName) {
-            path += `&serverName=${query?.serverName}`
-        }
-        if (query?.limit) {
-            path += `&limit=${query?.limit}`
-        }
-        return this.fetchJson(path, options)
+        return this.contentClient.fetchHistory(query, options)
     }
 
     fetchStatus(options?: RequestOptions): Promise<ServerStatus> {
-        return this.fetchJson('/content/status', options)
+        return this.contentClient.fetchStatus(options)
     }
 
-    async downloadContent(contentHash: ContentFileHash, options?: RequestOptions): Promise<Buffer> {
-        const { attempts = 3, waitTime = '0.5s' } = options ?? { }
-
-        return retry(async () => {
-            const content = await this.fetcher.fetchBuffer(`${this.catalystUrl}/content/contents/${contentHash}`, { timeout: options?.timeout });
-            const downloadedHash = await Hashing.calculateBufferHash(content)
-            // Sometimes, the downloaded file is not complete, so the hash turns out to be different.
-            // So we will check the hash before considering the download successful.
-            if (downloadedHash === contentHash) {
-                return content
-            }
-            throw new Error(`Failed to fetch file with hash ${contentHash} from ${this.catalystUrl}`)
-        }, attempts, waitTime)
+    downloadContent(contentHash: ContentFileHash, options?: RequestOptions): Promise<Buffer> {
+        return this.contentClient.downloadContent(contentHash, options)
     }
 
     fetchProfile(ethAddress: EthAddress, options?: RequestOptions): Promise<Profile> {
-        return this.fetchJson(`/lambdas/profile/${ethAddress}`, options)
-    }
-
-    /** Given an array of file hashes, return a set with those already uploaded on the server */
-    private async hashesAlreadyOnServer(hashes: ContentFileHash[]): Promise<Set<ContentFileHash>> {
-        if (hashes.length === 0) {
-            return new Set()
-        }
-
-        // TODO: Consider splitting into chunks, since if there are too many hashes, the url could get too long
-        const withoutDuplicates = Array.from(new Set(hashes).values());
-        const queryParam = withoutDuplicates.map(hash => `cid=${hash}`).join('&')
-        const path = `/content/available-content?${queryParam}`
-
-        const result: { cid: ContentFileHash, available: boolean }[] = await this.fetchJson(path)
-
-        const alreadyUploaded = result.filter(({ available }) => available)
-            .map(({ cid }) => cid)
-
-        return new Set(alreadyUploaded)
-    }
-
-    private fetchJson(path: string, options?: RequestOptions): Promise<any> {
-        return this.fetcher.fetchJson(`${this.catalystUrl}${path}`, options)
-    }
-
-    static sanitizeUrl(url: string): string {
-        // Remove empty spaces
-        url = url.trim()
-
-        // Add protocol if necessary
-        if (!url.startsWith('https://') && !url.startsWith('http://')) {
-            url = 'https://' + url
-        }
-
-        // Remove trailing slash if present
-        if (url.endsWith('/')) {
-            url = url.slice(0, -1)
-        }
-
-        return url
+        return this.lambdasClient.fetchProfile(ethAddress, options)
     }
 
 }

@@ -19,3 +19,21 @@ export function convertModelToFormData(model: any, form: FormData = new FormData
     }
     return form
 }
+
+/** Remove white spaces and add https if no protocol is specified */
+export function sanitizeUrl(url: string): string {
+    // Remove empty spaces
+    url = url.trim()
+
+    // Add protocol if necessary
+    if (!url.startsWith('https://') && !url.startsWith('http://')) {
+        url = 'https://' + url
+    }
+
+    // Remove trailing slash if present
+    if (url.endsWith('/')) {
+        url = url.slice(0, -1)
+    }
+
+    return url
+}

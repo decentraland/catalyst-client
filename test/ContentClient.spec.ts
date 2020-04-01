@@ -1,29 +1,15 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import { mock, instance, when, anything, verify } from 'ts-mockito'
-import { CatalystClient } from 'CatalystClient'
+import { ContentClient } from 'ContentClient'
 import { EntityType, Entity, Fetcher, Hashing } from 'dcl-catalyst-commons'
 
 chai.use(chaiAsPromised)
 const expect = chai.expect
 
-describe('CatalystClient', () => {
+describe('ContentClient', () => {
 
     const URL = 'https://url.com'
-
-    it('When has spaces and trailing slash, they are removed', () => {
-        const url = ' http://url.com/ '
-        const sanitized = CatalystClient.sanitizeUrl(url)
-
-        expect(sanitized).to.equal('http://url.com')
-    })
-
-    it('When there is no protocol set, then https is added', () => {
-        const url = 'url.com'
-        const sanitized = CatalystClient.sanitizeUrl(url)
-
-        expect(sanitized).to.equal('https://url.com')
-    })
 
     it('When fetching by pointers, if none is set, then an error is thrown', () => {
         const { mock: mocked, instance: fetcher } = mockFetcherJson()
@@ -146,6 +132,6 @@ describe('CatalystClient', () => {
     }
 
     function buildClient(URL: string, fetcher: Fetcher) {
-        return new CatalystClient(URL, 'origin', fetcher)
+        return new ContentClient(URL, 'origin', fetcher)
     }
 })
