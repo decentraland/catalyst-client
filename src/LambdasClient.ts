@@ -14,7 +14,7 @@ export class LambdasClient implements LambdasAPI {
     }
 
     fetchProfile(ethAddress: EthAddress, options?: RequestOptions): Promise<Profile> {
-        return this.fetcher.fetchJson(`${this.lambdasUrl}/lambdas/profile/${ethAddress}`, options)
+        return this.fetcher.fetchJson(`${this.lambdasUrl}/profile/${ethAddress}`, options)
     }
 
 }

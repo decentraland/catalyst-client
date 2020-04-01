@@ -28,7 +28,7 @@ export class ContentClient implements ContentAPI {
         }
 
         const headers = { 'x-upload-origin': this.origin }
-        return this.fetcher.postForm(`${this.contentUrl}/content/entities${fix ? '?fix=true' : ''}`, form, headers, options)
+        return this.fetcher.postForm(`${this.contentUrl}/entities${fix ? '?fix=true' : ''}`, form, headers, options)
     }
 
     fetchEntitiesByPointers(type: EntityType, pointers: Pointer[], options?: RequestOptions): Promise<Entity[]> {
@@ -37,7 +37,7 @@ export class ContentClient implements ContentAPI {
         }
 
         const filterParam = pointers.map(pointer => `pointer=${pointer}`).join("&")
-        return this.fetchJson(`/content/entities/${type}?${filterParam}`, options)
+        return this.fetchJson(`/entities/${type}?${filterParam}`, options)
     }
 
     fetchEntitiesByIds(type: EntityType, ids: EntityId[], options?: RequestOptions): Promise<Entity[]> {
@@ -46,7 +46,7 @@ export class ContentClient implements ContentAPI {
         }
 
         const filterParam = ids.map(id => `id=${id}`).join("&")
-        return this.fetchJson(`/content/entities/${type}?${filterParam}`, options)
+        return this.fetchJson(`/entities/${type}?${filterParam}`, options)
     }
 
     async fetchEntityById(type: EntityType, id: EntityId, options?: RequestOptions): Promise<Entity> {
@@ -58,7 +58,7 @@ export class ContentClient implements ContentAPI {
     }
 
     fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<AuditInfo> {
-        return this.fetchJson(`/content/audit/${type}/${id}`, options)
+        return this.fetchJson(`/audit/${type}/${id}`, options)
     }
 
     async fetchFullHistory(query?: { from?: number; to?: number; serverName?: string }, options?: RequestOptions): Promise<DeploymentHistory> {
@@ -80,7 +80,7 @@ export class ContentClient implements ContentAPI {
     }
 
     fetchHistory(query?: {from?: Timestamp, to?: Timestamp, serverName?: ServerName, offset?: number, limit?: number}, options?: RequestOptions): Promise<PartialDeploymentHistory> {
-        let path = `/content/history?offset=${query?.offset ?? 0}`
+        let path = `/history?offset=${query?.offset ?? 0}`
         if (query?.from) {
             path += `&from=${query?.from}`
         }
@@ -97,14 +97,14 @@ export class ContentClient implements ContentAPI {
     }
 
     fetchStatus(options?: RequestOptions): Promise<ServerStatus> {
-        return this.fetchJson('/content/status', options)
+        return this.fetchJson('/status', options)
     }
 
     async downloadContent(contentHash: ContentFileHash, options?: RequestOptions): Promise<Buffer> {
         const { attempts = 3, waitTime = '0.5s' } = options ?? { }
 
         return retry(async () => {
-            const content = await this.fetcher.fetchBuffer(`${this.contentUrl}/content/contents/${contentHash}`, { timeout: options?.timeout });
+            const content = await this.fetcher.fetchBuffer(`${this.contentUrl}/contents/${contentHash}`, { timeout: options?.timeout });
             const downloadedHash = await Hashing.calculateBufferHash(content)
             // Sometimes, the downloaded file is not complete, so the hash turns out to be different.
             // So we will check the hash before considering the download successful.
@@ -124,7 +124,7 @@ export class ContentClient implements ContentAPI {
         // TODO: Consider splitting into chunks, since if there are too many hashes, the url could get too long
         const withoutDuplicates = Array.from(new Set(hashes).values());
         const queryParam = withoutDuplicates.map(hash => `cid=${hash}`).join('&')
-        const path = `/content/available-content?${queryParam}`
+        const path = `/available-content?${queryParam}`
 
         const result: { cid: ContentFileHash, available: boolean }[] = await this.fetchJson(path)
 
