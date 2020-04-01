@@ -81,20 +81,20 @@ export class CatalystClient implements CatalystAPI {
     }
 
     fetchHistory(query?: {from?: Timestamp, to?: Timestamp, serverName?: ServerName, offset?: number, limit?: number}, options?: RequestOptions): Promise<PartialDeploymentHistory> {
-        let url = `${this.catalystUrl}/content/history?offset=${query?.offset ?? 0}`
+        let path = `/content/history?offset=${query?.offset ?? 0}`
         if (query?.from) {
-            url += `&from=${query?.from}`
+            path += `&from=${query?.from}`
         }
         if (query?.to) {
-            url += `&to=${query?.to}`
+            path += `&to=${query?.to}`
         }
         if (query?.serverName) {
-            url += `&serverName=${query?.serverName}`
+            path += `&serverName=${query?.serverName}`
         }
         if (query?.limit) {
-            url += `&limit=${query?.limit}`
+            path += `&limit=${query?.limit}`
         }
-        return this.fetcher.fetchJson(url, options)
+        return this.fetchJson(path, options)
     }
 
     fetchStatus(options?: RequestOptions): Promise<ServerStatus> {
@@ -129,9 +129,9 @@ export class CatalystClient implements CatalystAPI {
         // TODO: Consider splitting into chunks, since if there are too many hashes, the url could get too long
         const withoutDuplicates = Array.from(new Set(hashes).values());
         const queryParam = withoutDuplicates.map(hash => `cid=${hash}`).join('&')
-        const url = `${this.catalystUrl}/content/available-content?${queryParam}`
+        const path = `/content/available-content?${queryParam}`
 
-        const result: { cid: ContentFileHash, available: boolean }[] = await this.fetchJson(url)
+        const result: { cid: ContentFileHash, available: boolean }[] = await this.fetchJson(path)
 
         const alreadyUploaded = result.filter(({ available }) => available)
             .map(({ cid }) => cid)
