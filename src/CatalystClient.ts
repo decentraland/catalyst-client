@@ -3,8 +3,8 @@ import { Timestamp, Pointer, EntityType, Entity, EntityId, AuditInfo, ServerStat
 import { CatalystAPI } from "./CatalystAPI";
 import { DeploymentData } from './utils/DeploymentBuilder';
 import { sanitizeUrl } from './utils/Helper';
-import { ContentClient } from 'ContentClient';
-import { LambdasClient } from 'LambdasClient';
+import { ContentClient } from './ContentClient';
+import { LambdasClient } from './LambdasClient';
 
 export class CatalystClient implements CatalystAPI {
 

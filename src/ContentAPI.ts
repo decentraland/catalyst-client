@@ -1,4 +1,4 @@
-import { Timestamp, ContentFileHash, ServerStatus, AuditInfo, EntityType, Pointer, EntityId, Entity, ServerName, Profile, DeploymentHistory, PartialDeploymentHistory, RequestOptions } from "dcl-catalyst-commons";
+import { Timestamp, ContentFileHash, ServerStatus, AuditInfo, EntityType, Pointer, EntityId, Entity, ServerName, DeploymentHistory, PartialDeploymentHistory, RequestOptions } from "dcl-catalyst-commons";
 import { DeploymentData } from './utils/DeploymentBuilder';
 
 export interface ContentAPI {
