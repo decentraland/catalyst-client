@@ -1,4 +1,3 @@
-import FormData from "form-data"
 import { Timestamp, Pointer, EntityType, Entity, EntityId, AuditInfo, ServerStatus, ServerName, ContentFileHash, DeploymentHistory, PartialDeploymentHistory, applySomeDefaults, retry, Fetcher, RequestOptions, Hashing } from "dcl-catalyst-commons";
 import { ContentAPI } from './ContentAPI';
 import { convertModelToFormData, sanitizeUrl } from './utils/Helper';
@@ -23,7 +22,7 @@ export class ContentClient implements ContentAPI {
         const alreadyUploadedHashes = await this.hashesAlreadyOnServer(Array.from(deployData.files.keys()))
         for (const [fileHash, file] of deployData.files) {
             if (!alreadyUploadedHashes.has(fileHash)) {
-                form.append(file.name, file.content, { filename: file.name })
+                form.append(file.name, new Blob([file.content]), file.name)
             }
         }
 
