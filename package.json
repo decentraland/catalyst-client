@@ -41,18 +41,14 @@
   },
   "homepage": "https://github.com/decentraland/catalyst-client#readme",
   "dependencies": {
-    "@types/form-data": "^2.5.0",
     "@types/ms": "^0.7.31",
-    "@types/node-fetch": "^2.5.5",
     "abort-controller": "^3.0.0",
     "cids": "^0.8.0",
     "dcl-catalyst-commons": "^1.2.4",
     "dcl-crypto": "^2.1.0",
-    "form-data": "^3.0.0",
     "isomorphic-form-data": "^2.0.0",
     "ms": "^2.1.2",
-    "multihashing-async": "^0.8.1",
-    "node-fetch": "^2.6.0"
+    "multihashing-async": "^0.8.1"
   },
   "devDependencies": {
     "@types/chai": "^4.2.8",
