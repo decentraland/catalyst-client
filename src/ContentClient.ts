@@ -1,3 +1,4 @@
+import FormData from 'isomorphic-form-data';
 import { Timestamp, Pointer, EntityType, Entity, EntityId, AuditInfo, ServerStatus, ServerName, ContentFileHash, DeploymentHistory, PartialDeploymentHistory, applySomeDefaults, retry, Fetcher, RequestOptions, Hashing } from "dcl-catalyst-commons";
 import { ContentAPI } from './ContentAPI';
 import { convertModelToFormData, sanitizeUrl } from './utils/Helper';
