@@ -131,22 +131,22 @@ export class ContentClient implements ContentAPI {
     /**
      * This method performs one or more fetches to the content server, splitting into different queries to avoid exceeding the max length of urls
      */
-    private async splitAndFetch<T_Entity, T_Key>(basePath: string,
+    private async splitAndFetch<E, K>(basePath: string,
         queryParamName: string,
         values: string[],
-        extractKey: (object: T_Entity) => T_Key,
-        options?: RequestOptions): Promise<T_Entity[]> {
+        extractKey: (object: E) => K,
+        options?: RequestOptions): Promise<E[]> {
         // Split values into different queries
         const queries = splitValuesIntoManyQueries(this.contentUrl, basePath, queryParamName, values)
 
         // Perform the different queries
-        const results: T_Entity[][] = await Promise.all(queries.map(query => this.fetcher.fetchJson(query, options)))
+        const results: E[][] = await Promise.all(queries.map(query => this.fetcher.fetchJson(query, options)))
 
         // Flatten results
-        const flattenedResult: T_Entity[] = results.reduce((accum, value) => accum.concat(value), [])
+        const flattenedResult: E[] = results.reduce((accum, value) => accum.concat(value), [])
 
         // Group results by key, since there could be duplicates
-        const groupedResults: Map<T_Key, T_Entity> = new Map(flattenedResult.map(result => [extractKey(result), result]))
+        const groupedResults: Map<K, E> = new Map(flattenedResult.map(result => [extractKey(result), result]))
 
         // Return results
         return Array.from(groupedResults.values())
