@@ -1,7 +1,7 @@
 require('isomorphic-form-data');
 import { Timestamp, Pointer, EntityType, Entity, EntityId, AuditInfo, ServerStatus, ServerName, ContentFileHash, DeploymentHistory, PartialDeploymentHistory, applySomeDefaults, retry, Fetcher, RequestOptions, Hashing } from "dcl-catalyst-commons";
 import { ContentAPI } from './ContentAPI';
-import { convertModelToFormData, sanitizeUrl } from './utils/Helper';
+import { convertModelToFormData, sanitizeUrl, splitValuesIntoManyQueries } from './utils/Helper';
 import { DeploymentData } from './utils/DeploymentBuilder';
 
 export class ContentClient implements ContentAPI {
@@ -35,8 +35,7 @@ export class ContentClient implements ContentAPI {
             return Promise.reject(`You must set at least one pointer.`)
         }
 
-        const filterParam = pointers.map(pointer => `pointer=${pointer}`).join("&")
-        return this.fetchJson(`/entities/${type}?${filterParam}`, options)
+        return this.splitAndFetch<Entity, EntityId>(`/entities/${type}`, 'pointer', pointers, ({ id }) => id, options)
     }
 
     fetchEntitiesByIds(type: EntityType, ids: EntityId[], options?: RequestOptions): Promise<Entity[]> {
@@ -44,8 +43,7 @@ export class ContentClient implements ContentAPI {
             return Promise.reject(`You must set at least one id.`)
         }
 
-        const filterParam = ids.map(id => `id=${id}`).join("&")
-        return this.fetchJson(`/entities/${type}?${filterParam}`, options)
+        return this.splitAndFetch<Entity, EntityId>(`/entities/${type}`, 'id', ids, ({ id }) => id, options)
     }
 
     async fetchEntityById(type: EntityType, id: EntityId, options?: RequestOptions): Promise<Entity> {
@@ -120,17 +118,38 @@ export class ContentClient implements ContentAPI {
             return new Set()
         }
 
-        // TODO: Consider splitting into chunks, since if there are too many hashes, the url could get too long
-        const withoutDuplicates = Array.from(new Set(hashes).values());
-        const queryParam = withoutDuplicates.map(hash => `cid=${hash}`).join('&')
-        const path = `/available-content?${queryParam}`
+        type AvailableContentResult = { cid: ContentFileHash, available: boolean }
 
-        const result: { cid: ContentFileHash, available: boolean }[] = await this.fetchJson(path)
+        const result: AvailableContentResult[] = await this.splitAndFetch<AvailableContentResult, ContentFileHash>(`/available-content`, 'cid', hashes, ({ cid }) => cid)
 
         const alreadyUploaded = result.filter(({ available }) => available)
             .map(({ cid }) => cid)
 
         return new Set(alreadyUploaded)
+    }
+
+    /**
+     * This method performs one or more fetches to the content server, splitting into different queries to avoid exceeding the max length of urls
+     */
+    private async splitAndFetch<E, K>(basePath: string,
+        queryParamName: string,
+        values: string[],
+        extractKey: (object: E) => K,
+        options?: RequestOptions): Promise<E[]> {
+        // Split values into different queries
+        const queries = splitValuesIntoManyQueries(this.contentUrl, basePath, queryParamName, values)
+
+        // Perform the different queries
+        const results: E[][] = await Promise.all(queries.map(query => this.fetcher.fetchJson(query, options)))
+
+        // Flatten results
+        const flattenedResult: E[] = results.reduce((accum, value) => accum.concat(value), [])
+
+        // Group results by key, since there could be duplicates
+        const groupedResults: Map<K, E> = new Map(flattenedResult.map(result => [extractKey(result), result]))
+
+        // Return results
+        return Array.from(groupedResults.values())
     }
 
     private fetchJson(path: string, options?: RequestOptions): Promise<any> {

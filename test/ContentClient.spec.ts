@@ -29,7 +29,7 @@ describe('ContentClient', () => {
         const client = buildClient(URL, fetcher)
         const result = await client.fetchEntitiesByPointers(EntityType.PROFILE, [pointer])
 
-        expect(result).to.equal(requestResult)
+        expect(result).to.deep.equal(requestResult)
     })
 
     it('When fetching by ids, if none is set, then an error is thrown', () => {
@@ -50,7 +50,7 @@ describe('ContentClient', () => {
         const client = buildClient(URL, fetcher)
         const result = await client.fetchEntitiesByIds(EntityType.PROFILE, [id])
 
-        expect(result).to.equal(requestResult)
+        expect(result).to.deep.equal(requestResult)
     })
 
     it('When fetching by id, if there are no results, then an error is thrown', async () => {
