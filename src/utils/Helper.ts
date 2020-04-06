@@ -34,6 +34,7 @@ export function splitValuesIntoManyQueries(baseUrl: string, basePath: string, qu
 
     const urls: string[] = []
     let currentUrl = baseUrl + basePath
+    let started = false
     for (const value of withoutDuplicates) {
         // Check url length
         const lengthWithNewValue = currentUrl.length + queryParamName.length + value.length + 2
@@ -41,13 +42,15 @@ export function splitValuesIntoManyQueries(baseUrl: string, basePath: string, qu
             // If maximum was exceeded, then store the current url and start over
             urls.push(currentUrl)
             currentUrl = baseUrl + basePath
+            started = false
         }
 
         // Check if this is the first query param or not
-        if (currentUrl.includes('?')) {
+        if (started) {
             currentUrl += `&${queryParamName}=${value}`
         } else {
             currentUrl += `?${queryParamName}=${value}`
+            started = true
         }
     }
 
