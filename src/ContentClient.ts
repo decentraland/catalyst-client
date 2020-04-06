@@ -4,6 +4,8 @@ import { ContentAPI } from './ContentAPI';
 import { convertModelToFormData, sanitizeUrl, splitValuesIntoManyQueries } from './utils/Helper';
 import { DeploymentData } from './utils/DeploymentBuilder';
 
+const Blob = require("cross-blob");
+
 export class ContentClient implements ContentAPI {
 
     private readonly contentUrl: string
