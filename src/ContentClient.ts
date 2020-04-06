@@ -4,8 +4,6 @@ import { ContentAPI } from './ContentAPI';
 import { convertModelToFormData, sanitizeUrl, splitValuesIntoManyQueries } from './utils/Helper';
 import { DeploymentData } from './utils/DeploymentBuilder';
 
-const Blob = require("cross-blob");
-
 export class ContentClient implements ContentAPI {
 
     private readonly contentUrl: string
@@ -24,7 +22,8 @@ export class ContentClient implements ContentAPI {
         const alreadyUploadedHashes = await this.hashesAlreadyOnServer(Array.from(deployData.files.keys()))
         for (const [fileHash, file] of deployData.files) {
             if (!alreadyUploadedHashes.has(fileHash)) {
-                form.append(file.name, new Blob([file.content]), file.name)
+                // @ts-ignore
+                form.append(file.name, file.content, file.name)
             }
         }
 
