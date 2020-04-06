@@ -145,7 +145,7 @@ export class ContentClient implements ContentAPI {
         // Flatten results
         const flattenedResult: T_Entity[] = results.reduce((accum, value) => accum.concat(value), [])
 
-        // Group results by a key, since there could be duplicates
+        // Group results by key, since there could be duplicates
         const groupedResults: Map<T_Key, T_Entity> = new Map(flattenedResult.map(result => [extractKey(result), result]))
 
         // Return results
