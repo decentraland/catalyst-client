@@ -1,5 +1,5 @@
 require('isomorphic-form-data');
-import { Timestamp, Pointer, EntityType, Entity, EntityId, AuditInfo, ServerStatus, ServerName, ContentFileHash, PartialDeploymentHistory, applySomeDefaults, retry, Fetcher, RequestOptions, Hashing, LegacyPartialDeploymentHistory, DeploymentFilters, Deployment, AvailableContentResult, LegacyDeploymentHistory, DeploymentWithMetadata, DeploymentWithContent, DeploymentWithPointers, DeploymentBase } from "dcl-catalyst-commons";
+import { Timestamp, Pointer, EntityType, Entity, EntityId, AuditInfo, ServerStatus, ServerName, ContentFileHash, PartialDeploymentHistory, applySomeDefaults, retry, Fetcher, RequestOptions, Hashing, LegacyPartialDeploymentHistory, DeploymentFilters, Deployment, AvailableContentResult, LegacyDeploymentHistory, DeploymentWithMetadata, DeploymentWithContent, DeploymentWithPointers, DeploymentBase, DeploymentWithAuditInfo } from "dcl-catalyst-commons";
 import { ContentAPI } from './ContentAPI';
 import { convertModelToFormData, sanitizeUrl, splitManyValuesIntoManyQueries, splitValuesIntoManyQueries } from './utils/Helper';
 import { DeploymentData } from './utils/DeploymentBuilder';
@@ -132,30 +132,31 @@ export class ContentClient implements ContentAPI {
             })
             queryParams = new Map(entries)
         }
+
+        // Add audit info, since we need to sort by local timestamp
         queryParams.set('auditInfo', ['true'])
+        type AddedAudit = T & DeploymentWithAuditInfo
 
         // Split values into different queries
         const reservedChars = `&offset=9999999`.length
         const queries = splitManyValuesIntoManyQueries(this.contentUrl, '/deployments', queryParams, reservedChars)
 
         // Perform the different queries
-        const results: Deployment[] = []
+        const results: AddedAudit[] = []
         for (const query of queries) {
             let offset = 0
             let keepRetrievingHistory = true
             while (keepRetrievingHistory) {
                 const url = query + (queryParams.size === 0 ? '?' : '&') + `offset=${offset}`
-                const partialHistory: PartialDeploymentHistory<Deployment> = await this.fetcher.fetchJson(url, withSomeDefaults)
+                const partialHistory: PartialDeploymentHistory<AddedAudit> = await this.fetcher.fetchJson(url, withSomeDefaults)
                 results.push(...partialHistory.deployments)
                 offset = partialHistory.pagination.offset + partialHistory.pagination.limit
                 keepRetrievingHistory = partialHistory.pagination.moreData
             }
         }
 
-        console.log("RESULTS", results)
-
         // Remove duplicates
-        const withoutDuplicates: Map<EntityId, Deployment> = new Map(results.map(deployment => [deployment.entityId, deployment]))
+        const withoutDuplicates: Map<EntityId, AddedAudit> = new Map(results.map(deployment => [deployment.entityId, deployment]))
 
         // Sort by local timestamp
         let deployments = Array.from(withoutDuplicates.values())
@@ -164,7 +165,7 @@ export class ContentClient implements ContentAPI {
         if (!fields.getFields().includes('auditInfo')) {
             deployments.forEach(deployment => delete deployment.auditInfo)
         }
-        //@ts-ignore
+
         return deployments
     }
 
