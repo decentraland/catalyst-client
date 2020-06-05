@@ -23,7 +23,7 @@ describe('Deployment Builder', () => {
         const fileId = "Id"
         const contentFiles = new Map([[fileId, fileContent]])
 
-        const { entityId, files } = await DeploymentBuilder.buildEntity(EntityType.PROFILE, [pointer], contentFiles, someMetadata)
+        const { entityId, files } = await DeploymentBuilder.buildEntity(EntityType.PROFILE, [pointer], contentFiles, someMetadata, false)
 
         // Assertions
         expect(files.size).to.equal(2)
