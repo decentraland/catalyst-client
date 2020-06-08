@@ -29,33 +29,49 @@ export function removeDuplicates<T>(array: T[]): T[] {
  */
 export const MAX_URL_LENGTH: number = 2048
 export function splitValuesIntoManyQueries(baseUrl: string, basePath: string, queryParamName: string, values: string[]): string[] {
+    return splitManyValuesIntoManyQueries(baseUrl, basePath, new Map([[queryParamName, values]]))
+}
+
+export function splitManyValuesIntoManyQueries(baseUrl: string, basePath: string, queryParams: Map<string, string[]>, reservedChars: number = 0): string[] {
+    // Check that it makes sent to apply the algorithm
+    if (queryParams.size === 0) {
+        return [ baseUrl + basePath ]
+    }
+
     // Remove duplicates
-    const withoutDuplicates: string[] = removeDuplicates(values)
+    const withoutDuplicates: [string, string[]][] = Array.from(queryParams.entries()).map(([name, values]) => [name, removeDuplicates(values)])
 
+    // Sort params by amount of values
+    const sortedByValues: [string, string[]][] = withoutDuplicates.sort(([_, values1], [__, values2]) => values1.length - values2.length)
+
+    // Add all params (except the last one that is the one with the most values) into the url
+    const queryBuilder = new QueryBuilder(baseUrl + basePath, reservedChars)
+    for (let i = 0; i < sortedByValues.length - 1; i++) {
+        const [ paramName, paramValues ] = sortedByValues[i]
+        if (!queryBuilder.canAddParams(paramName, paramValues)) {
+            throw new Error(`This library can split one query param into many HTTP requests, but it can't split more than one. You will need to do that on the client side.`)
+        }
+        queryBuilder.addParams(paramName, paramValues)
+    }
+
+    // Prepare everything
+    queryBuilder.setCurrentAsBase()
+    const [ lastParamName, lastParamValues ] = sortedByValues[sortedByValues.length - 1]
     const urls: string[] = []
-    let currentUrl = baseUrl + basePath
-    let started = false
-    for (const value of withoutDuplicates) {
+
+    for (const value of lastParamValues) {
+
         // Check url length
-        const lengthWithNewValue = currentUrl.length + queryParamName.length + value.length + 2
-        if (lengthWithNewValue >= MAX_URL_LENGTH) {
-            // If maximum was exceeded, then store the current url and start over
-            urls.push(currentUrl)
-            currentUrl = baseUrl + basePath
-            started = false
+        if (!queryBuilder.canAddParam(lastParamName, value)) {
+            urls.push(queryBuilder.toString())
+            queryBuilder.reset()
         }
 
-        // Check if this is the first query param or not
-        if (started) {
-            currentUrl += `&${queryParamName}=${value}`
-        } else {
-            currentUrl += `?${queryParamName}=${value}`
-            started = true
-        }
+        queryBuilder.addParam(lastParamName, value)
     }
 
     // Add current url one last time
-    urls.push(currentUrl)
+    urls.push(queryBuilder.toString())
 
     return urls
 }
@@ -76,4 +92,57 @@ export function sanitizeUrl(url: string): string {
     }
 
     return url
+}
+
+export class QueryBuilder {
+
+    private currentUrl: string
+    private addedParam = false
+    private baseAddedParam = false
+
+    constructor(private baseUrl: string, private readonly reservedChars: number = 0) {
+        this.currentUrl = baseUrl
+    }
+
+    canAddParam(paramName: string, paramValue: string) {
+        return this.currentUrl.length + this.reservedChars+ paramName.length + paramValue.length + 2 < MAX_URL_LENGTH
+    }
+
+    addParam(paramName: string, paramValue: string) {
+        if (!this.canAddParam(paramName, paramValue)) {
+            throw new Error(`You can't add this parameter '${paramName}', since it would exceed the max url length`)
+        }
+        if (this.addedParam) {
+            this.currentUrl += `&${paramName}=${paramValue}`
+        } else {
+            this.currentUrl += `?${paramName}=${paramValue}`
+            this.addedParam = true
+        }
+    }
+
+    canAddParams(paramName: string, paramValues: string[]) {
+        const valuesLength = paramValues.reduce((accum, curr) => accum + curr.length, 0)
+        const addedTotalLength = valuesLength + (paramName.length + 2) * paramValues.length
+        return this.currentUrl.length + this.reservedChars + addedTotalLength < MAX_URL_LENGTH
+    }
+
+    addParams(paramName: string, paramValues: string[]) {
+        for (const value of paramValues) {
+            this.addParam(paramName, value)
+        }
+    }
+
+    setCurrentAsBase() {
+        this.baseUrl = this.currentUrl
+        this.baseAddedParam = this.addedParam
+    }
+
+    reset() {
+        this.currentUrl = this.baseUrl
+        this.addedParam = this.baseAddedParam
+    }
+
+    toString() {
+        return this.currentUrl
+    }
 }
