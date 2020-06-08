@@ -6,6 +6,7 @@ import { DeploymentData } from './utils/DeploymentBuilder';
 
 export class ContentClient implements ContentAPI {
 
+    private static readonly CHARS_LEFT_FOR_OFFSET = 7
     private readonly contentUrl: string
 
     constructor(contentUrl: string,
@@ -137,8 +138,10 @@ export class ContentClient implements ContentAPI {
         queryParams.set('auditInfo', ['true'])
         type AddedAudit = T & DeploymentWithAuditInfo
 
+        // Reserve a few chars to send the offset
+        const reservedChars = `&offset=`.length + ContentClient.CHARS_LEFT_FOR_OFFSET
+
         // Split values into different queries
-        const reservedChars = `&offset=9999999`.length
         const queries = splitManyValuesIntoManyQueries(this.contentUrl, '/deployments', queryParams, reservedChars)
 
         // Perform the different queries
