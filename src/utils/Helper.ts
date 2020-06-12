@@ -1,6 +1,6 @@
 require('isomorphic-form-data');
 
-export function convertModelToFormData(model: any, form: FormData = new FormData(), namespace = ''): FormData {
+export function addModelToFormData(model: any, form: FormData, namespace = ''): FormData {
     for (let propertyName in model) {
         if (!model.hasOwnProperty(propertyName) || !model[propertyName]) continue
         let formKey = namespace ? `${namespace}[${propertyName}]` : propertyName
@@ -9,10 +9,10 @@ export function convertModelToFormData(model: any, form: FormData = new FormData
         } else if (model[propertyName] instanceof Array) {
             model[propertyName].forEach((element: any, index: number) => {
                 const tempFormKey = `${formKey}[${index}]`
-                convertModelToFormData(element, form, tempFormKey)
+                addModelToFormData(element, form, tempFormKey)
             })
         } else if (typeof model[propertyName] === 'object') {
-            convertModelToFormData(model[propertyName], form, formKey)
+            addModelToFormData(model[propertyName], form, formKey)
         } else {
             form.append(formKey, model[propertyName].toString())
         }

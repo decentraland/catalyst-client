@@ -1,7 +1,7 @@
 require('isomorphic-form-data');
 import { Timestamp, Pointer, EntityType, Entity, EntityId, AuditInfo, ServerStatus, ServerName, ContentFileHash, PartialDeploymentHistory, applySomeDefaults, retry, Fetcher, RequestOptions, Hashing, LegacyPartialDeploymentHistory, DeploymentFilters, Deployment, AvailableContentResult, LegacyDeploymentHistory, DeploymentWithMetadata, DeploymentWithContent, DeploymentWithPointers, DeploymentBase, DeploymentWithAuditInfo } from "dcl-catalyst-commons";
 import { ContentAPI } from './ContentAPI';
-import { convertModelToFormData, sanitizeUrl, splitManyValuesIntoManyQueries, splitValuesIntoManyQueries } from './utils/Helper';
+import { addModelToFormData, sanitizeUrl, splitManyValuesIntoManyQueries, splitValuesIntoManyQueries } from './utils/Helper';
 import { DeploymentData } from './utils/DeploymentBuilder';
 
 export class ContentClient implements ContentAPI {
@@ -18,7 +18,7 @@ export class ContentClient implements ContentAPI {
     async deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {
         const form = new FormData()
         form.append('entityId', deployData.entityId)
-        convertModelToFormData(deployData.authChain, form, 'authChain')
+        addModelToFormData(deployData.authChain, form, 'authChain')
 
         const alreadyUploadedHashes = await this.hashesAlreadyOnServer(Array.from(deployData.files.keys()), options)
         for (const [fileHash, file] of deployData.files) {
