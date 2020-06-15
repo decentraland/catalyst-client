@@ -102,9 +102,10 @@ export class ContentClient implements ContentAPI {
 
     async downloadContent(contentHash: ContentFileHash, options?: RequestOptions): Promise<Buffer> {
         const { attempts = 3, waitTime = '0.5s' } = options ?? { }
+        const timeout = options?.timeout ? { timeout: options.timeout } : { }
 
         return retry(async () => {
-            const content = await this.fetcher.fetchBuffer(`${this.contentUrl}/contents/${contentHash}`, { timeout: options?.timeout });
+            const content = await this.fetcher.fetchBuffer(`${this.contentUrl}/contents/${contentHash}`, timeout);
             const downloadedHash = await Hashing.calculateBufferHash(content)
             // Sometimes, the downloaded file is not complete, so the hash turns out to be different.
             // So we will check the hash before considering the download successful.
