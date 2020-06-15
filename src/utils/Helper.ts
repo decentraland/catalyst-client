@@ -2,7 +2,7 @@ require('isomorphic-form-data');
 
 export function addModelToFormData(model: any, form: FormData, namespace = ''): FormData {
     for (let propertyName in model) {
-        if (!model.hasOwnProperty(propertyName) || !model[propertyName]) continue
+        if (!model.hasOwnProperty(propertyName) || model[propertyName] === null || model[propertyName] === undefined) continue
         let formKey = namespace ? `${namespace}[${propertyName}]` : propertyName
         if (model[propertyName] instanceof Date) {
             form.append(formKey, model[propertyName].toISOString())
