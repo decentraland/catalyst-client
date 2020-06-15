@@ -29,7 +29,8 @@ export class ContentClient implements ContentAPI {
         }
 
         const headers = { 'x-upload-origin': this.origin }
-        return this.fetcher.postForm(`${this.contentUrl}/entities${fix ? '?fix=true' : ''}`, form, headers, options)
+        const { creationTimestamp } = await this.fetcher.postForm(`${this.contentUrl}/entities${fix ? '?fix=true' : ''}`, form, headers, options)
+        return creationTimestamp
     }
 
     fetchEntitiesByPointers(type: EntityType, pointers: Pointer[], options?: RequestOptions): Promise<Entity[]> {
