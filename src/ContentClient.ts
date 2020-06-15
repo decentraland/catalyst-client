@@ -136,7 +136,7 @@ export class ContentClient implements ContentAPI {
         }
 
         // Add audit info, since we need to sort by local timestamp
-        queryParams.set('auditInfo', ['true'])
+        queryParams.set('showAudit', ['true'])
         type AddedAudit = T & DeploymentWithAuditInfo
 
         // Reserve a few chars to send the offset
