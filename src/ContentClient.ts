@@ -179,7 +179,7 @@ export class ContentClient implements ContentAPI {
             path += `&limit=${limit}`
         }
         if (fields.getFields().includes('auditInfo')) {
-            path += `&auditInfo=true`
+            path += `&showAudit=true`
         }
         return this.fetchJson(path, options)
     }
