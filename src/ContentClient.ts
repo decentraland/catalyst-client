@@ -22,7 +22,7 @@ export class ContentClient implements ContentAPI {
 
         const alreadyUploadedHashes = await this.hashesAlreadyOnServer(Array.from(deployData.files.keys()), options)
         for (const [fileHash, file] of deployData.files) {
-            if (!alreadyUploadedHashes.has(fileHash)) {
+            if (!alreadyUploadedHashes.has(fileHash) || fileHash === deployData.entityId) {
                 // @ts-ignore
                 form.append(file.name, file.content, file.name)
             }
