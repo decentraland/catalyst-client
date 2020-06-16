@@ -165,7 +165,7 @@ export class ContentClient implements ContentAPI {
 
         // Sort by local timestamp
         let deployments = Array.from(withoutDuplicates.values())
-            .sort((deployment1, deployment2) => deployment1.auditInfo.localTimestamp - deployment2.auditInfo.localTimestamp)
+            .sort((deployment1, deployment2) => deployment2.auditInfo.localTimestamp - deployment1.auditInfo.localTimestamp)
 
         if (!fields.getFields().includes('auditInfo')) {
             deployments.forEach(deployment => delete deployment.auditInfo)
