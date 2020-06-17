@@ -2,7 +2,7 @@ import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import { mock, instance, when, anything, verify } from 'ts-mockito'
 import { ContentClient, DeploymentFields } from 'ContentClient'
-import { EntityType, Entity, Fetcher, Hashing, AvailableContentResult, PartialDeploymentHistory, Deployment } from 'dcl-catalyst-commons'
+import { EntityType, Entity, Fetcher, Hashing, AvailableContentResult, PartialDeploymentHistory, Deployment, EntityVersion } from 'dcl-catalyst-commons'
 
 chai.use(chaiAsPromised)
 const expect = chai.expect
@@ -228,7 +228,7 @@ describe('ContentClient', () => {
             deployedBy: 'deployedBy',
             pointers: [],
             auditInfo: {
-                version: 'version',
+                version: EntityVersion.V2,
                 authChain: [],
                 originServerUrl: 'serverUrl',
                 originTimestamp: 20,
