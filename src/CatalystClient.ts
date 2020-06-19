@@ -1,5 +1,5 @@
 import { EthAddress } from 'dcl-crypto'
-import { Timestamp, Pointer, EntityType, Entity, EntityId, AuditInfo, ServerStatus, ServerName, ContentFileHash, Profile, PartialDeploymentHistory, Fetcher, RequestOptions, LegacyPartialDeploymentHistory, LegacyDeploymentHistory, DeploymentFilters, AvailableContentResult, DeploymentBase, DeploymentWithPointers, DeploymentWithContent, DeploymentWithMetadata, Deployment } from "dcl-catalyst-commons";
+import { Timestamp, Pointer, EntityType, Entity, EntityId, ServerStatus, ServerName, ContentFileHash, Profile, PartialDeploymentHistory, Fetcher, RequestOptions, LegacyPartialDeploymentHistory, LegacyDeploymentHistory, DeploymentFilters, AvailableContentResult, DeploymentBase, DeploymentWithPointers, DeploymentWithContent, DeploymentWithMetadata, Deployment, LegacyAuditInfo } from "dcl-catalyst-commons";
 import { CatalystAPI } from "./CatalystAPI";
 import { DeploymentData } from './utils/DeploymentBuilder';
 import { sanitizeUrl } from './utils/Helper';
@@ -35,7 +35,7 @@ export class CatalystClient implements CatalystAPI {
         return this.contentClient.fetchEntityById(type, id, options)
     }
 
-    fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<AuditInfo> {
+    fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<LegacyAuditInfo> {
         return this.contentClient.fetchAuditInfo(type, id, options)
     }
 

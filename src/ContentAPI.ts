@@ -1,4 +1,4 @@
-import { Timestamp, ContentFileHash, ServerStatus, AuditInfo, EntityType, Pointer, EntityId, Entity, ServerName, LegacyDeploymentHistory, LegacyPartialDeploymentHistory, RequestOptions, DeploymentFilters, PartialDeploymentHistory, AvailableContentResult, DeploymentBase, DeploymentWithMetadata, DeploymentWithContent, DeploymentWithPointers, Deployment } from "dcl-catalyst-commons";
+import { Timestamp, ContentFileHash, ServerStatus, EntityType, Pointer, EntityId, Entity, ServerName, LegacyDeploymentHistory, LegacyPartialDeploymentHistory, RequestOptions, DeploymentFilters, PartialDeploymentHistory, AvailableContentResult, DeploymentBase, DeploymentWithMetadata, DeploymentWithContent, DeploymentWithPointers, Deployment, LegacyAuditInfo } from "dcl-catalyst-commons";
 import { DeploymentData } from './utils/DeploymentBuilder';
 import { DeploymentFields } from "ContentClient";
 
@@ -8,7 +8,7 @@ export interface ContentAPI {
     fetchEntitiesByPointers(type: EntityType, pointers: Pointer[], options?: RequestOptions): Promise<Entity[]>;
     fetchEntitiesByIds(type: EntityType, ids: EntityId[], options?: RequestOptions): Promise<Entity[]>;
     fetchEntityById(type: EntityType, id: EntityId, options?: RequestOptions): Promise<Entity>;
-    fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<AuditInfo>;
+    fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<LegacyAuditInfo>;
     fetchFullHistory(query?: {from?: Timestamp, to?: Timestamp, serverName?: ServerName}, options?: RequestOptions): Promise<LegacyDeploymentHistory>;
     fetchHistory(query?: {from?: Timestamp, to?: Timestamp, serverName?: ServerName, offset?: number, limit?: number}, options?: RequestOptions): Promise<LegacyPartialDeploymentHistory>;
     fetchStatus(options?: RequestOptions): Promise<ServerStatus>;

@@ -1,5 +1,5 @@
 require('isomorphic-form-data');
-import { Timestamp, Pointer, EntityType, Entity, EntityId, AuditInfo, ServerStatus, ServerName, ContentFileHash, PartialDeploymentHistory, applySomeDefaults, retry, Fetcher, RequestOptions, Hashing, LegacyPartialDeploymentHistory, DeploymentFilters, Deployment, AvailableContentResult, LegacyDeploymentHistory, DeploymentWithMetadata, DeploymentWithContent, DeploymentWithPointers, DeploymentBase, DeploymentWithAuditInfo } from "dcl-catalyst-commons";
+import { Timestamp, Pointer, EntityType, Entity, EntityId, ServerStatus, ServerName, ContentFileHash, PartialDeploymentHistory, applySomeDefaults, retry, Fetcher, RequestOptions, Hashing, LegacyPartialDeploymentHistory, DeploymentFilters, Deployment, AvailableContentResult, LegacyDeploymentHistory, DeploymentWithMetadata, DeploymentWithContent, DeploymentWithPointers, DeploymentBase, DeploymentWithAuditInfo, LegacyAuditInfo } from "dcl-catalyst-commons";
 import { ContentAPI } from './ContentAPI';
 import { addModelToFormData, sanitizeUrl, splitManyValuesIntoManyQueries, splitValuesIntoManyQueries } from './utils/Helper';
 import { DeploymentData } from './utils/DeploymentBuilder';
@@ -57,7 +57,7 @@ export class ContentClient implements ContentAPI {
         return entities[0]
     }
 
-    fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<AuditInfo> {
+    fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<LegacyAuditInfo> {
         return this.fetchJson(`/audit/${type}/${id}`, options)
     }
 
