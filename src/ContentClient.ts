@@ -155,10 +155,12 @@ export class ContentClient implements ContentAPI {
 
         // Perform the different queries
         const foundIds: Set<EntityId> = new Set()
-        for (const query of queries) {
+        let exit = false
+        for (let i = 0; i < queries.length && !exit; i++) {
+            const query = queries[i]
             let offset = 0
             let keepRetrievingHistory = true
-            while (keepRetrievingHistory) {
+            while (keepRetrievingHistory && !exit) {
                 const url = query + (queryParams.size === 0 ? '?' : '&') + `offset=${offset}`
                 try {
                     const partialHistory: PartialDeploymentHistory<T> = await this.fetcher.fetchJson(url, withSomeDefaults)
@@ -174,7 +176,7 @@ export class ContentClient implements ContentAPI {
                     if (errorListener) {
                         errorListener(`${error}`)
                     }
-                    keepRetrievingHistory = false
+                    exit = true
                 }
             }
         }
