@@ -126,8 +126,9 @@ export class ContentClient implements ContentAPI {
             const entries = Object.entries(filters).map<[string, string[]]>(([ name, value ]) => {
                 const newName = name.endsWith('s') ? name.slice(0, -1) : name
                 let newValues: string[]
+                // Force coersion of number, boolean, or string into string
                 if (Array.isArray(value)) {
-                    newValues = [ ...value ]
+                    newValues = [ ...value ].map(_ => `${_}`)
                 } else {
                     newValues = [ `${value}` ]
                 }
