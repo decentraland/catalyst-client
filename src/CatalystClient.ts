@@ -1,11 +1,11 @@
 import { EthAddress } from 'dcl-crypto'
 import { Timestamp, Pointer, EntityType, Entity, EntityId, ServerStatus, ServerName, ContentFileHash, Profile, Fetcher, RequestOptions, LegacyPartialDeploymentHistory, LegacyDeploymentHistory, DeploymentFilters, AvailableContentResult, DeploymentBase, DeploymentWithPointers, DeploymentWithContent, DeploymentWithMetadata, LegacyAuditInfo } from "dcl-catalyst-commons";
+import { Readable } from 'stream';
 import { CatalystAPI } from "./CatalystAPI";
 import { DeploymentData } from './utils/DeploymentBuilder';
 import { sanitizeUrl } from './utils/Helper';
 import { ContentClient, DeploymentFields } from './ContentClient';
 import { LambdasClient } from './LambdasClient';
-import { Readable } from 'stream';
 
 export class CatalystClient implements CatalystAPI {
 

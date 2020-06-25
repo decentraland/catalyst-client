@@ -1,7 +1,7 @@
 import { Timestamp, ContentFileHash, ServerStatus, EntityType, Pointer, EntityId, Entity, ServerName, LegacyDeploymentHistory, LegacyPartialDeploymentHistory, RequestOptions, DeploymentFilters, AvailableContentResult, DeploymentBase, DeploymentWithMetadata, DeploymentWithContent, DeploymentWithPointers, LegacyAuditInfo } from "dcl-catalyst-commons";
+import { Readable } from "stream";
 import { DeploymentData } from './utils/DeploymentBuilder';
 import { DeploymentFields } from "ContentClient";
-import { Readable } from "stream";
 
 export interface ContentAPI {
 
