@@ -127,7 +127,7 @@ export class ContentClient implements ContentAPI {
                 const newName = name.endsWith('s') ? name.slice(0, -1) : name
                 let newValues: string[]
                 if (Array.isArray(value)) {
-                    newValues = value.map(element => `${element}`)
+                    newValues = [ ...value ]
                 } else {
                     newValues = [ `${value}` ]
                 }

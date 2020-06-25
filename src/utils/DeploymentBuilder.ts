@@ -1,5 +1,5 @@
-import { AuthChain, Timestamp } from 'dcl-crypto'
-import { Hashing, buildEntityAndFile, EntityType, Pointer, ContentFile, EntityContentItemReference, EntityMetadata, ContentFileHash, EntityId, Fetcher } from 'dcl-catalyst-commons';
+import { AuthChain  } from 'dcl-crypto'
+import { Hashing, Timestamp, buildEntityAndFile, EntityType, Pointer, ContentFile, EntityContentItemReference, EntityMetadata, ContentFileHash, EntityId, Fetcher } from 'dcl-catalyst-commons';
 
 
 export class DeploymentBuilder {
