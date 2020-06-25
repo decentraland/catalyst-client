@@ -1,10 +1,11 @@
 import { EthAddress } from 'dcl-crypto'
-import { Timestamp, Pointer, EntityType, Entity, EntityId, ServerStatus, ServerName, ContentFileHash, Profile, PartialDeploymentHistory, Fetcher, RequestOptions, LegacyPartialDeploymentHistory, LegacyDeploymentHistory, DeploymentFilters, AvailableContentResult, DeploymentBase, DeploymentWithPointers, DeploymentWithContent, DeploymentWithMetadata, Deployment, LegacyAuditInfo } from "dcl-catalyst-commons";
+import { Timestamp, Pointer, EntityType, Entity, EntityId, ServerStatus, ServerName, ContentFileHash, Profile, Fetcher, RequestOptions, LegacyPartialDeploymentHistory, LegacyDeploymentHistory, DeploymentFilters, AvailableContentResult, DeploymentBase, DeploymentWithPointers, DeploymentWithContent, DeploymentWithMetadata, LegacyAuditInfo } from "dcl-catalyst-commons";
 import { CatalystAPI } from "./CatalystAPI";
 import { DeploymentData } from './utils/DeploymentBuilder';
 import { sanitizeUrl } from './utils/Helper';
 import { ContentClient, DeploymentFields } from './ContentClient';
 import { LambdasClient } from './LambdasClient';
+import { Readable } from 'stream';
 
 export class CatalystClient implements CatalystAPI {
 
@@ -51,12 +52,12 @@ export class CatalystClient implements CatalystAPI {
         return this.contentClient.fetchStatus(options)
     }
 
-    fetchAllDeployments<T extends DeploymentBase = Deployment>(filters?: DeploymentFilters, fields?: DeploymentFields<T>, options?: RequestOptions): Promise<T[]> {
+    fetchAllDeployments<T extends DeploymentBase = DeploymentWithPointers & DeploymentWithContent & DeploymentWithMetadata>(filters?: DeploymentFilters, fields?: DeploymentFields<T>, options?: RequestOptions): Promise<T[]> {
         return this.contentClient.fetchAllDeployments(filters, fields, options)
     }
 
-    fetchLastDeployments<T extends DeploymentBase = DeploymentWithPointers & DeploymentWithContent & DeploymentWithMetadata>(offset?: number, limit?: number, fields?: DeploymentFields<T>, options?: RequestOptions): Promise<PartialDeploymentHistory<T>> {
-        return this.contentClient.fetchLastDeployments<T>(offset, limit, fields, options)
+    streamAllDeployments<T extends DeploymentBase = DeploymentWithPointers & DeploymentWithContent & DeploymentWithMetadata>(filters?: DeploymentFilters, fields?: DeploymentFields<T>, errorListener?: (errorMessage: string) => void, options?: RequestOptions): Readable {
+        return this.contentClient.streamAllDeployments(filters, fields, errorListener, options)
     }
 
     isContentAvailable(cids: string[], options?: RequestOptions): Promise<AvailableContentResult> {
