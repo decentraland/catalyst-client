@@ -1,8 +1,8 @@
 require('isomorphic-form-data');
-import { Timestamp, Pointer, EntityType, Entity, EntityId, ServerStatus, ServerName, ContentFileHash, PartialDeploymentHistory, applySomeDefaults, retry, Fetcher, RequestOptions, Hashing, LegacyPartialDeploymentHistory, DeploymentFilters, Deployment, AvailableContentResult, LegacyDeploymentHistory, DeploymentWithMetadata, DeploymentWithContent, DeploymentWithPointers, DeploymentBase, DeploymentWithAuditInfo, LegacyAuditInfo } from "dcl-catalyst-commons";
+import { Timestamp, Pointer, EntityType, Entity, EntityId, ServerStatus, ServerName, ContentFileHash, PartialDeploymentHistory, applySomeDefaults, retry, Fetcher, RequestOptions, Hashing, LegacyPartialDeploymentHistory, DeploymentFilters, Deployment, AvailableContentResult, LegacyDeploymentHistory, DeploymentBase, DeploymentWithAuditInfo, LegacyAuditInfo } from "dcl-catalyst-commons";
 import asyncToArray from 'async-iterator-to-array'
 import { Readable } from 'stream'
-import { ContentAPI } from './ContentAPI';
+import { ContentAPI, DeploymentWithMetadataContentAndPointers } from './ContentAPI';
 import { addModelToFormData, sanitizeUrl, splitManyValuesIntoManyQueries, splitValuesIntoManyQueries } from './utils/Helper';
 import { DeploymentData } from './utils/DeploymentBuilder';
 
@@ -122,15 +122,15 @@ export class ContentClient implements ContentAPI {
      * This method fetches all deployments that match the given filters. It is important to mention, that if there are too many filters, then the
      * URL might get too long. In that case, we will internally make the necessary requests, but then the order of the deployments is not guaranteed.
      */
-    fetchAllDeployments<T extends DeploymentBase = DeploymentWithPointers & DeploymentWithContent & DeploymentWithMetadata>(filters?: DeploymentFilters, fields?: DeploymentFields<T>, options?: RequestOptions): Promise<T[]> {
+    fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, fields?: DeploymentFields<T>, options?: RequestOptions): Promise<T[]> {
         return asyncToArray(this.iterateThroughDeployments(filters, fields, undefined, options))
     }
 
-    streamAllDeployments<T extends DeploymentBase = DeploymentWithPointers & DeploymentWithContent & DeploymentWithMetadata>(filters?: DeploymentFilters, fields?: DeploymentFields<T>, errorListener?: (errorMessage: string) => void, options?: RequestOptions): Readable {
+    streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, fields?: DeploymentFields<T>, errorListener?: (errorMessage: string) => void, options?: RequestOptions): Readable {
         return Readable.from(this.iterateThroughDeployments(filters, fields, errorListener, options))
     }
 
-    private async * iterateThroughDeployments<T extends DeploymentBase = DeploymentWithPointers & DeploymentWithContent & DeploymentWithMetadata>(filters?: DeploymentFilters, fields?: DeploymentFields<T>, errorListener?: (errorMessage: string) => void, options?: RequestOptions): AsyncIterable<T> {
+    private async * iterateThroughDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, fields?: DeploymentFields<T>, errorListener?: (errorMessage: string) => void, options?: RequestOptions): AsyncIterable<T> {
         // We are setting different defaults in this case, because if one of the request fails, then all fail
         const withSomeDefaults = applySomeDefaults({ attempts: 3, waitTime: '1s' }, options)
 
@@ -257,7 +257,7 @@ export class DeploymentFields<T extends Partial<Deployment>> {
 
     static readonly AUDIT_INFO = new DeploymentFields<DeploymentWithAuditInfo>(['auditInfo'])
     static readonly POINTERS_CONTENT_METADATA_AND_AUDIT_INFO = new DeploymentFields<Deployment>(['pointers', 'content', 'metadata' , 'auditInfo'])
-    static readonly POINTERS_CONTENT_AND_METADATA = new DeploymentFields<DeploymentWithPointers & DeploymentWithContent & DeploymentWithMetadata>(['pointers', 'content', 'metadata'])
+    static readonly POINTERS_CONTENT_AND_METADATA = new DeploymentFields<DeploymentWithMetadataContentAndPointers>(['pointers', 'content', 'metadata'])
 
     private constructor(private readonly fields: string[]) { }
 
