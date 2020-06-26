@@ -1,6 +1,8 @@
 require('isomorphic-form-data');
-import { Timestamp, Pointer, EntityType, Entity, EntityId, ServerStatus, ServerName, ContentFileHash, PartialDeploymentHistory, applySomeDefaults, retry, Fetcher, RequestOptions, Hashing, LegacyPartialDeploymentHistory, DeploymentFilters, Deployment, AvailableContentResult, LegacyDeploymentHistory, DeploymentWithMetadata, DeploymentWithContent, DeploymentWithPointers, DeploymentBase, DeploymentWithAuditInfo, LegacyAuditInfo } from "dcl-catalyst-commons";
-import { ContentAPI } from './ContentAPI';
+import { Timestamp, Pointer, EntityType, Entity, EntityId, ServerStatus, ServerName, ContentFileHash, PartialDeploymentHistory, applySomeDefaults, retry, Fetcher, RequestOptions, Hashing, LegacyPartialDeploymentHistory, DeploymentFilters, Deployment, AvailableContentResult, LegacyDeploymentHistory, DeploymentBase, DeploymentWithAuditInfo, LegacyAuditInfo } from "dcl-catalyst-commons";
+import asyncToArray from 'async-iterator-to-array'
+import { Readable } from 'stream'
+import { ContentAPI, DeploymentWithMetadataContentAndPointers } from './ContentAPI';
 import { addModelToFormData, sanitizeUrl, splitManyValuesIntoManyQueries, splitValuesIntoManyQueries } from './utils/Helper';
 import { DeploymentData } from './utils/DeploymentBuilder';
 
@@ -116,30 +118,34 @@ export class ContentClient implements ContentAPI {
         }, attempts, waitTime)
     }
 
-    async fetchAllDeployments<T extends DeploymentBase = Deployment>(filters?: DeploymentFilters, fields: DeploymentFields<T> = DeploymentFields.POINTERS_CONTENT_METADATA_AND_AUDIT_INFO, options?: RequestOptions): Promise<T[]> {
+    /**
+     * This method fetches all deployments that match the given filters. It is important to mention, that if there are too many filters, then the
+     * URL might get too long. In that case, we will internally make the necessary requests, but then the order of the deployments is not guaranteed.
+     */
+    fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, fields?: DeploymentFields<T>, options?: RequestOptions): Promise<T[]> {
+        return asyncToArray(this.iterateThroughDeployments(filters, fields, undefined, options))
+    }
+
+    streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, fields?: DeploymentFields<T>, errorListener?: (errorMessage: string) => void, options?: RequestOptions): Readable {
+        return Readable.from(this.iterateThroughDeployments(filters, fields, errorListener, options))
+    }
+
+    private async * iterateThroughDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, fields?: DeploymentFields<T>, errorListener?: (errorMessage: string) => void, options?: RequestOptions): AsyncIterable<T> {
         // We are setting different defaults in this case, because if one of the request fails, then all fail
         const withSomeDefaults = applySomeDefaults({ attempts: 3, waitTime: '1s' }, options)
 
         // Transform filters object into query params map
-        let queryParams: Map<string, string[]> = new Map()
-        if (filters) {
-            const entries = Object.entries(filters).map<[string, string[]]>(([ name, value ]) => {
-                const newName = name.endsWith('s') ? name.slice(0, -1) : name
-                let newValues: string[]
-                // Force coersion of number, boolean, or string into string
-                if (Array.isArray(value)) {
-                    newValues = [ ...value ].map(_ => `${_}`)
-                } else {
-                    newValues = [ `${value}` ]
-                }
-                return [newName, newValues]
-            })
-            queryParams = new Map(entries)
-        }
+        const queryParams: Map<string, string[]> = this.filtersToQueryParams(filters);
 
-        // Add audit info, since we need to sort by local timestamp
-        queryParams.set('showAudit', ['true'])
-        type AddedAudit = T & DeploymentWithAuditInfo
+        if (fields) {
+            const fieldsValue = fields.getFields()
+            queryParams.set('fields', [fieldsValue])
+
+            // TODO: Remove on next deployment
+            if (fieldsValue.includes('auditInfo')) {
+                queryParams.set('showAudit', ['true'])
+            }
+        }
 
         // Reserve a few chars to send the offset
         const reservedChars = `&offset=`.length + ContentClient.CHARS_LEFT_FOR_OFFSET
@@ -148,42 +154,50 @@ export class ContentClient implements ContentAPI {
         const queries = splitManyValuesIntoManyQueries(this.contentUrl, '/deployments', queryParams, reservedChars)
 
         // Perform the different queries
-        const results: AddedAudit[] = []
-        for (const query of queries) {
+        const foundIds: Set<EntityId> = new Set()
+        let exit = false
+        for (let i = 0; i < queries.length && !exit; i++) {
+            const query = queries[i]
             let offset = 0
             let keepRetrievingHistory = true
-            while (keepRetrievingHistory) {
+            while (keepRetrievingHistory && !exit) {
                 const url = query + (queryParams.size === 0 ? '?' : '&') + `offset=${offset}`
-                const partialHistory: PartialDeploymentHistory<AddedAudit> = await this.fetcher.fetchJson(url, withSomeDefaults)
-                results.push(...partialHistory.deployments)
-                offset = partialHistory.pagination.offset + partialHistory.pagination.limit
-                keepRetrievingHistory = partialHistory.pagination.moreData
+                try {
+                    const partialHistory: PartialDeploymentHistory<T> = await this.fetcher.fetchJson(url, withSomeDefaults)
+                    for (const deployment of partialHistory.deployments) {
+                        if (!foundIds.has(deployment.entityId)) {
+                            foundIds.add(deployment.entityId)
+                            yield deployment
+                        }
+                    }
+                    offset = partialHistory.pagination.offset + partialHistory.pagination.limit
+                    keepRetrievingHistory = partialHistory.pagination.moreData
+                } catch (error) {
+                    if (errorListener) {
+                        errorListener(`${error}`)
+                    }
+                    exit = true
+                }
             }
         }
-
-        // Remove duplicates
-        const withoutDuplicates: Map<EntityId, AddedAudit> = new Map(results.map(deployment => [deployment.entityId, deployment]))
-
-        // Sort by local timestamp
-        let deployments = Array.from(withoutDuplicates.values())
-            .sort((deployment1, deployment2) => deployment2.auditInfo.localTimestamp - deployment1.auditInfo.localTimestamp)
-
-        if (!fields.getFields().includes('auditInfo')) {
-            deployments.forEach(deployment => delete deployment.auditInfo)
-        }
-
-        return deployments
     }
 
-    fetchLastDeployments<T extends DeploymentBase = DeploymentWithPointers & DeploymentWithContent & DeploymentWithMetadata>(offset?: number, limit?: number, fields: DeploymentFields<T> = DeploymentFields.POINTERS_CONTENT_AND_METADATA, options?: RequestOptions): Promise<PartialDeploymentHistory<T>> {
-        let path = `/deployments?offset=${offset ?? 0}`
-        if (limit) {
-            path += `&limit=${limit}`
+    private filtersToQueryParams(filters?: DeploymentFilters): Map<string, string[]> {
+        if (!filters) {
+            return new Map()
         }
-        if (fields.getFields().includes('auditInfo')) {
-            path += `&showAudit=true`
-        }
-        return this.fetchJson(path, options)
+        const entries = Object.entries(filters).map<[string, string[]]>(([name, value]) => {
+            const newName = name.endsWith('s') ? name.slice(0, -1) : name;
+            let newValues: string[];
+            // Force coersion of number, boolean, or string into string
+            if (Array.isArray(value)) {
+                newValues = [ ...value ].map(_ => `${_}`)
+            } else {
+                newValues = [ `${value}` ]
+            }
+            return [newName, newValues];
+        });
+        return new Map(entries);
     }
 
     isContentAvailable(cids: string[], options?: RequestOptions): Promise<AvailableContentResult> {
@@ -241,13 +255,14 @@ export class ContentClient implements ContentAPI {
 //@ts-ignore
 export class DeploymentFields<T extends Partial<Deployment>> {
 
+    static readonly AUDIT_INFO = new DeploymentFields<DeploymentWithAuditInfo>(['auditInfo'])
     static readonly POINTERS_CONTENT_METADATA_AND_AUDIT_INFO = new DeploymentFields<Deployment>(['pointers', 'content', 'metadata' , 'auditInfo'])
-    static readonly POINTERS_CONTENT_AND_METADATA = new DeploymentFields<DeploymentWithPointers & DeploymentWithContent & DeploymentWithMetadata>(['pointers', 'content', 'metadata'])
+    static readonly POINTERS_CONTENT_AND_METADATA = new DeploymentFields<DeploymentWithMetadataContentAndPointers>(['pointers', 'content', 'metadata'])
 
     private constructor(private readonly fields: string[]) { }
 
-    getFields() {
-        return this.fields;
+    getFields(): string {
+        return this.fields.join(',');
     }
 
 }

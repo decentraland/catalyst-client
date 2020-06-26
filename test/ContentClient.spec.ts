@@ -131,28 +131,6 @@ describe('ContentClient', () => {
         verify(mocked.fetchJson(anything())).never()
     })
 
-    it('When fetching last deployments, then the result is as expected', async () => {
-        const [ offset, limit ] = [ 10, 20 ]
-        const requestResult: PartialDeploymentHistory<Deployment> = { filters: { }, deployments: [], pagination: { offset: 10, limit: 10, moreData: true } }
-        const { instance: fetcher } = mockFetcherJson(`/deployments?offset=${offset}&limit=${limit}`, requestResult)
-
-        const client = buildClient(URL, fetcher)
-        const result = await client.fetchLastDeployments(offset, limit)
-
-        expect(result).to.deep.equal(requestResult)
-    })
-
-    it('When fetching last deployments with audit info, then the result is as expected', async () => {
-        const [ offset, limit ] = [ 10, 20 ]
-        const requestResult: PartialDeploymentHistory<Deployment> = { filters: { }, deployments: [], pagination: { offset: 10, limit: 10, moreData: true } }
-        const { instance: fetcher } = mockFetcherJson(`/deployments?offset=${offset}&limit=${limit}&showAudit=true`, requestResult)
-
-        const client = buildClient(URL, fetcher)
-        const result = await client.fetchLastDeployments(offset, limit, DeploymentFields.POINTERS_CONTENT_METADATA_AND_AUDIT_INFO)
-
-        expect(result).to.deep.equal(requestResult)
-    })
-
     it('When fetching all deployments, then the result is as expected', async () => {
         const deployment = someDeployment()
         const filters = {
@@ -165,7 +143,7 @@ describe('ContentClient', () => {
             pointers: ['p1', 'p2'],
         }
         const requestResult: PartialDeploymentHistory<Deployment> = { filters: {  }, deployments: [ deployment ], pagination: { offset: 10, limit: 10, moreData: false } }
-        const { instance: fetcher } = mockFetcherJson(`/deployments?fromLocalTimestamp=20&toLocalTimestamp=30&onlyCurrentlyPointed=true&showAudit=true&deployedBy=eth1&deployedBy=eth2&entityType=profile&entityType=scene&entityId=id1&entityId=id2&pointer=p1&pointer=p2&offset=0`, requestResult)
+        const { instance: fetcher } = mockFetcherJson(`/deployments?fromLocalTimestamp=20&toLocalTimestamp=30&onlyCurrentlyPointed=true&deployedBy=eth1&deployedBy=eth2&entityType=profile&entityType=scene&entityId=id1&entityId=id2&pointer=p1&pointer=p2&offset=0`, requestResult)
 
         const client = buildClient(URL, fetcher)
         const result = await client.fetchAllDeployments(filters)
@@ -175,32 +153,14 @@ describe('ContentClient', () => {
 
     it('When fetching all deployments with no audit, then the result is as expected', async () => {
         const deployment = someDeployment()
+        delete deployment.auditInfo
         const requestResult: PartialDeploymentHistory<Deployment> = { filters: {  }, deployments: [ deployment ], pagination: { offset: 10, limit: 10, moreData: false } }
-        const { instance: fetcher } = mockFetcherJson(`/deployments?showAudit=true&offset=0`, requestResult)
+        const { instance: fetcher } = mockFetcherJson(`/deployments?fields=pointers,content,metadata&offset=0`, requestResult)
 
         const client = buildClient(URL, fetcher)
         const result = await client.fetchAllDeployments(undefined, DeploymentFields.POINTERS_CONTENT_AND_METADATA)
 
-        // Remove the audit info
-        const withoutAudit = { ...deployment }
-        delete withoutAudit.auditInfo
-
-        expect(result).to.deep.equal([ withoutAudit ])
-    })
-
-    it('When fetching all deployments with no audit, then the result is as expected', async () => {
-        const deployment = someDeployment()
-        const requestResult: PartialDeploymentHistory<Deployment> = { filters: {  }, deployments: [ deployment ], pagination: { offset: 10, limit: 10, moreData: false } }
-        const { instance: fetcher } = mockFetcherJson(`/deployments?showAudit=true&offset=0`, requestResult)
-
-        const client = buildClient(URL, fetcher)
-        const result = await client.fetchAllDeployments(undefined, DeploymentFields.POINTERS_CONTENT_AND_METADATA)
-
-        // Remove the audit info
-        const withoutAudit = { ...deployment }
-        delete withoutAudit.auditInfo
-
-        expect(result).to.deep.equal([ withoutAudit ])
+        expect(result).to.deep.equal([ deployment ])
     })
 
     it('When fetching all deployments with pagination, then the result is as expected', async () => {
@@ -209,8 +169,8 @@ describe('ContentClient', () => {
         const requestResult2: PartialDeploymentHistory<Deployment> = { filters: {  }, deployments: [ deployment1, deployment2 ], pagination: { offset: 1, limit: 2, moreData: false } }
 
         let mockedFetcher: Fetcher = mock(Fetcher);
-        when(mockedFetcher.fetchJson(`${URL}/deployments?showAudit=true&offset=0`, anything())).thenReturn(Promise.resolve(requestResult1))
-        when(mockedFetcher.fetchJson(`${URL}/deployments?showAudit=true&offset=1`, anything())).thenReturn(Promise.resolve(requestResult2))
+        when(mockedFetcher.fetchJson(`${URL}/deployments?offset=0`, anything())).thenReturn(Promise.resolve(requestResult1))
+        when(mockedFetcher.fetchJson(`${URL}/deployments?offset=1`, anything())).thenReturn(Promise.resolve(requestResult2))
         const fetcher = instance(mockedFetcher)
 
         const client = buildClient(URL, fetcher)
