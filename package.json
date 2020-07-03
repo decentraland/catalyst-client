@@ -42,7 +42,7 @@
   "homepage": "https://github.com/decentraland/catalyst-client#readme",
   "dependencies": {
     "async-iterator-to-array": "0.0.1",
-    "dcl-catalyst-commons": "^1.4.0",
+    "dcl-catalyst-commons": "^1.4.1",
     "dcl-crypto": "^2.2.0",
     "isomorphic-form-data": "^2.0.0"
   },
