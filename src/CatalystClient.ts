@@ -6,7 +6,7 @@ import { DeploymentData } from './utils/DeploymentBuilder';
 import { sanitizeUrl } from './utils/Helper';
 import { ContentClient, DeploymentFields } from './ContentClient';
 import { LambdasClient } from './LambdasClient';
-import { DeploymentWithMetadataContentAndPointers } from 'ContentAPI';
+import { DeploymentWithMetadataContentAndPointers } from './ContentAPI';
 
 export class CatalystClient implements CatalystAPI {
 
