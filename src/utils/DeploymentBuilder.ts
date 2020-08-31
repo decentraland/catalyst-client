@@ -9,16 +9,33 @@ export class DeploymentBuilder {
      * After the entity is built, the user will have to sign the entity id, to prove they are actually who they say they are.
      */
     static async buildEntity(type: EntityType, pointers: Pointer[], files: Map<string, Buffer> = new Map(), metadata?: EntityMetadata, timestamp?: Timestamp): Promise<DeploymentPreparationData> {
-        // Make sure that there is at least one pointer
-        DeploymentBuilder.assertThereIsAtLeastOnePointer(pointers)
-
         // Reorder input
         const contentFiles: ContentFile[] = Array.from(files.entries())
             .map(([name, content]) => ({ name, content }))
 
         // Calculate hashes
         const hashes = await Hashing.calculateHashes(contentFiles)
-        const entityContent: EntityContentItemReference[] = hashes.map(({ hash, file }) => ({ file: file.name, hash }))
+        const hashesByKey: Map<string, ContentFileHash> = new Map(hashes.map(({ hash, file }) => [file.name, hash]))
+        const filesByHash: Map<ContentFileHash, ContentFile> = new Map(hashes.map(({ hash, file }) => [hash, file]))
+
+        return DeploymentBuilder.buildEntityInternal(type, pointers, hashesByKey, filesByHash, metadata, timestamp)
+    }
+
+    /**
+     * In cases where we don't need to re-upload content files, we can simply generate the new entity
+     */
+    static async buildEntityWithAlreadyUploadedHashes(type: EntityType, pointers: Pointer[], content: Map<string, ContentFileHash>, metadata?: EntityMetadata, timestamp?: Timestamp): Promise<DeploymentPreparationData> {
+        return DeploymentBuilder.buildEntityInternal(type, pointers, content, metadata, timestamp)
+    }
+
+    private static async buildEntityInternal(type: EntityType, pointers: Pointer[], hashesByKey: Map<string, ContentFileHash>, filesByHash: Map<ContentFileHash, ContentFile> = new Map(), metadata?: EntityMetadata, timestamp?: Timestamp): Promise<DeploymentPreparationData> {
+        // Make sure that there is at least one pointer
+        if (pointers.length === 0) {
+            throw new Error(`All entities must have at least one pointer.`)
+        }
+
+        // Re-organize the hashes
+        const entityContent: EntityContentItemReference[] = Array.from(hashesByKey.entries()).map(([key, hash]) => ({ file: key, hash }))
 
         // Calculate timestamp if necessary
         timestamp = timestamp ?? await DeploymentBuilder.calculateTimestamp()
@@ -27,37 +44,9 @@ export class DeploymentBuilder {
         const { entity, entityFile } = await buildEntityAndFile(type, pointers, timestamp, entityContent, metadata)
 
         // Add entity file to content files
-        hashes.push({ hash: entity.id, file: entityFile })
-
-        // Group files by hash, to avoid sending the same file twice
-        const filesByHash: Map<ContentFileHash, ContentFile> = new Map(hashes.map(({ hash, file }) =>  [hash, file]))
+        filesByHash.set(entity.id, entityFile)
 
         return { files: filesByHash, entityId: entity.id }
-    }
-
-    /**
-     * In cases where we don't need to re-upload content files, we can simply generate the generate the new entity
-     */
-    static async buildEntityWithAlreadyUploadedHashes(type: EntityType, pointers: Pointer[], content: Map<string, ContentFileHash>, metadata?: EntityMetadata, timestamp?: Timestamp): Promise<DeploymentPreparationData> {
-        // Make sure that there is at least one pointer
-        DeploymentBuilder.assertThereIsAtLeastOnePointer(pointers)
-
-        // Re-organize the hashes
-        const entityContent: EntityContentItemReference[] = Array.from(content.entries()).map(([file, hash]) => ({ file, hash }))
-
-        // Calculate timestamp if necessary.
-        timestamp = timestamp ?? await DeploymentBuilder.calculateTimestamp()
-
-        // Build entity file
-        const { entity, entityFile } = await buildEntityAndFile(type, pointers, timestamp, entityContent, metadata)
-
-        return { files: new Map([[ entity.id, entityFile ]]), entityId: entity.id }
-    }
-
-    private static assertThereIsAtLeastOnePointer(pointers: Pointer[]): void {
-        if (pointers.length === 0) {
-            throw new Error(`All entities must have at least one pointer.`)
-        }
     }
 
     private static async calculateTimestamp(): Promise<Timestamp> {
