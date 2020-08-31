@@ -22,9 +22,9 @@ export class DeploymentBuilder {
     }
 
     /**
-     * In cases where we don't need to re-upload content files, we can simply generate the new entity
+     * In cases where we don't need upload content files, we can simply generate the new entity. We can still use already uploaded hashes on this new entity.
      */
-    static async buildEntityWithAlreadyUploadedHashes(type: EntityType, pointers: Pointer[], content: Map<string, ContentFileHash>, metadata?: EntityMetadata, timestamp?: Timestamp): Promise<DeploymentPreparationData> {
+    static async buildEntityWithoutNewFiles(type: EntityType, pointers: Pointer[], content: Map<string, ContentFileHash> = new Map(), metadata?: EntityMetadata, timestamp?: Timestamp): Promise<DeploymentPreparationData> {
         return DeploymentBuilder.buildEntityInternal(type, pointers, content, metadata, timestamp)
     }
 
