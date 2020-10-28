@@ -18,32 +18,34 @@ export class DeploymentBuilder {
         const hashesByKey: Map<string, ContentFileHash> = new Map(hashes.map(({ hash, file }) => [file.name, hash]))
         const filesByHash: Map<ContentFileHash, ContentFile> = new Map(hashes.map(({ hash, file }) => [hash, file]))
 
-        return DeploymentBuilder.buildEntityInternal(type, pointers, hashesByKey, filesByHash, metadata, timestamp)
+        return DeploymentBuilder.buildEntityInternal(type, pointers, { hashesByKey, filesByHash, metadata, timestamp })
     }
 
     /**
      * In cases where we don't need upload content files, we can simply generate the new entity. We can still use already uploaded hashes on this new entity.
      */
-    static async buildEntityWithoutNewFiles(type: EntityType, pointers: Pointer[], content: Map<string, ContentFileHash> = new Map(), metadata?: EntityMetadata, timestamp?: Timestamp): Promise<DeploymentPreparationData> {
-        return DeploymentBuilder.buildEntityInternal(type, pointers, content, metadata, timestamp)
+    static async buildEntityWithoutNewFiles(type: EntityType, pointers: Pointer[], hashesByKey?: Map<string, ContentFileHash>, metadata?: EntityMetadata, timestamp?: Timestamp): Promise<DeploymentPreparationData> {
+        return DeploymentBuilder.buildEntityInternal(type, pointers, { hashesByKey, metadata, timestamp })
     }
 
-    private static async buildEntityInternal(type: EntityType, pointers: Pointer[], hashesByKey: Map<string, ContentFileHash>, filesByHash: Map<ContentFileHash, ContentFile> = new Map(), metadata?: EntityMetadata, timestamp?: Timestamp): Promise<DeploymentPreparationData> {
+    private static async buildEntityInternal(type: EntityType, pointers: Pointer[], options?: BuildEntityInternalOptions): Promise<DeploymentPreparationData> {
         // Make sure that there is at least one pointer
         if (pointers.length === 0) {
             throw new Error(`All entities must have at least one pointer.`)
         }
 
         // Re-organize the hashes
+        const hashesByKey: Map<string, ContentFileHash> = options?.hashesByKey ?? new Map()
         const entityContent: EntityContentItemReference[] = Array.from(hashesByKey.entries()).map(([key, hash]) => ({ file: key, hash }))
 
         // Calculate timestamp if necessary
-        timestamp = timestamp ?? await DeploymentBuilder.calculateTimestamp()
+        const timestamp: Timestamp = options?.timestamp ?? await DeploymentBuilder.calculateTimestamp()
 
         // Build entity file
-        const { entity, entityFile } = await buildEntityAndFile(type, pointers, timestamp, entityContent, metadata)
+        const { entity, entityFile } = await buildEntityAndFile(type, pointers, timestamp, entityContent, options?.metadata)
 
         // Add entity file to content files
+        const filesByHash: Map<ContentFileHash, ContentFile> = options?.filesByHash ?? new Map()
         filesByHash.set(entity.id, entityFile)
 
         return { files: filesByHash, entityId: entity.id }
@@ -60,6 +62,13 @@ export class DeploymentBuilder {
         }
     }
 
+}
+
+type BuildEntityInternalOptions = {
+    hashesByKey?: Map<string, ContentFileHash>
+    filesByHash?: Map<ContentFileHash, ContentFile>,
+    metadata?: EntityMetadata,
+    timestamp?: Timestamp
 }
 
 /** This data contains everything necessary for the user to sign, so that then a deployment can be executed */
