@@ -1,4 +1,4 @@
-import { Timestamp, ContentFileHash, ServerStatus, EntityType, Pointer, EntityId, Entity, ServerName, LegacyDeploymentHistory, LegacyPartialDeploymentHistory, RequestOptions, DeploymentFilters, AvailableContentResult, DeploymentBase, DeploymentWithMetadata, DeploymentWithContent, DeploymentWithPointers, LegacyAuditInfo, DeploymentSorting } from "dcl-catalyst-commons";
+import { Timestamp, ContentFileHash, ServerStatus, EntityType, Pointer, EntityId, Entity, ServerName, LegacyDeploymentHistory, LegacyPartialDeploymentHistory, RequestOptions, AvailableContentResult, DeploymentBase, DeploymentWithMetadata, DeploymentWithContent, DeploymentWithPointers, LegacyAuditInfo } from "dcl-catalyst-commons";
 import { Readable } from "stream";
 import { DeploymentData } from './utils/DeploymentBuilder';
 import { DeploymentOptions } from "./ContentClient";

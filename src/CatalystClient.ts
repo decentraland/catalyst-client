@@ -1,5 +1,5 @@
 import { EthAddress } from 'dcl-crypto'
-import { Timestamp, Pointer, EntityType, Entity, EntityId, ServerStatus, ServerName, ContentFileHash, Profile, Fetcher, RequestOptions, LegacyPartialDeploymentHistory, LegacyDeploymentHistory, DeploymentFilters, AvailableContentResult, DeploymentBase, LegacyAuditInfo, DeploymentSorting } from "dcl-catalyst-commons";
+import { Timestamp, Pointer, EntityType, Entity, EntityId, ServerStatus, ServerName, ContentFileHash, Profile, Fetcher, RequestOptions, LegacyPartialDeploymentHistory, LegacyDeploymentHistory, AvailableContentResult, DeploymentBase, LegacyAuditInfo } from "dcl-catalyst-commons";
 import { Readable } from 'stream';
 import { CatalystAPI } from "./CatalystAPI";
 import { DeploymentData } from './utils/DeploymentBuilder';
