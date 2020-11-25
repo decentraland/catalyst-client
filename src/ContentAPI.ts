@@ -1,4 +1,4 @@
-import { Timestamp, ContentFileHash, ServerStatus, EntityType, Pointer, EntityId, Entity, ServerName, LegacyDeploymentHistory, LegacyPartialDeploymentHistory, RequestOptions, DeploymentFilters, AvailableContentResult, DeploymentBase, DeploymentWithMetadata, DeploymentWithContent, DeploymentWithPointers, LegacyAuditInfo } from "dcl-catalyst-commons";
+import { Timestamp, ContentFileHash, ServerStatus, EntityType, Pointer, EntityId, Entity, ServerName, LegacyDeploymentHistory, LegacyPartialDeploymentHistory, RequestOptions, DeploymentFilters, AvailableContentResult, DeploymentBase, DeploymentWithMetadata, DeploymentWithContent, DeploymentWithPointers, LegacyAuditInfo, DeploymentSorting } from "dcl-catalyst-commons";
 import { Readable } from "stream";
 import { DeploymentData } from './utils/DeploymentBuilder';
 import { DeploymentFields } from "./ContentClient";
@@ -13,8 +13,8 @@ export interface ContentAPI {
     fetchFullHistory(query?: {from?: Timestamp, to?: Timestamp, serverName?: ServerName}, options?: RequestOptions): Promise<LegacyDeploymentHistory>;
     fetchHistory(query?: {from?: Timestamp, to?: Timestamp, serverName?: ServerName, offset?: number, limit?: number}, options?: RequestOptions): Promise<LegacyPartialDeploymentHistory>;
     fetchStatus(options?: RequestOptions): Promise<ServerStatus>;
-    fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, fields?: DeploymentFields<T>, options?: RequestOptions): Promise<T[]>;
-    streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, fields?: DeploymentFields<T>, errorListener?: (errorMessage: string) => void, options?: RequestOptions): Readable;
+    fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, sort?: DeploymentSorting, fields?: DeploymentFields<T>, options?: RequestOptions): Promise<T[]>;
+    streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, sort?: DeploymentSorting, fields?: DeploymentFields<T>, errorListener?: (errorMessage: string) => void, options?: RequestOptions): Readable;
     downloadContent(contentHash: ContentFileHash, options?: RequestOptions): Promise<Buffer>;
     isContentAvailable(cids: ContentFileHash[], options?: RequestOptions): Promise<AvailableContentResult>
 

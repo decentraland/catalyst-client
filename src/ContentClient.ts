@@ -1,5 +1,5 @@
 require('isomorphic-form-data');
-import { Timestamp, Pointer, EntityType, Entity, EntityId, ServerStatus, ServerName, ContentFileHash, PartialDeploymentHistory, applySomeDefaults, retry, Fetcher, RequestOptions, Hashing, LegacyPartialDeploymentHistory, DeploymentFilters, Deployment, AvailableContentResult, LegacyDeploymentHistory, DeploymentBase, DeploymentWithAuditInfo, LegacyAuditInfo } from "dcl-catalyst-commons";
+import { Timestamp, Pointer, EntityType, Entity, EntityId, ServerStatus, ServerName, ContentFileHash, PartialDeploymentHistory, applySomeDefaults, retry, Fetcher, RequestOptions, Hashing, LegacyPartialDeploymentHistory, DeploymentFilters, Deployment, AvailableContentResult, LegacyDeploymentHistory, DeploymentBase, DeploymentWithAuditInfo, LegacyAuditInfo, DeploymentSorting } from "dcl-catalyst-commons";
 import asyncToArray from 'async-iterator-to-array'
 import { Readable } from 'stream'
 import { ContentAPI, DeploymentWithMetadataContentAndPointers } from './ContentAPI';
@@ -128,20 +128,29 @@ export class ContentClient implements ContentAPI {
      * This method fetches all deployments that match the given filters. It is important to mention, that if there are too many filters, then the
      * URL might get too long. In that case, we will internally make the necessary requests, but then the order of the deployments is not guaranteed.
      */
-    fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, fields?: DeploymentFields<T>, options?: RequestOptions): Promise<T[]> {
-        return asyncToArray(this.iterateThroughDeployments(filters, fields, undefined, options))
+    fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, sort?: DeploymentSorting, fields?: DeploymentFields<T>, options?: RequestOptions): Promise<T[]> {
+        return asyncToArray(this.iterateThroughDeployments(filters, sort, fields, undefined, options))
     }
 
-    streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, fields?: DeploymentFields<T>, errorListener?: (errorMessage: string) => void, options?: RequestOptions): Readable {
-        return Readable.from(this.iterateThroughDeployments(filters, fields, errorListener, options))
+    streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, sort?: DeploymentSorting, fields?: DeploymentFields<T>, errorListener?: (errorMessage: string) => void, options?: RequestOptions): Readable {
+        return Readable.from(this.iterateThroughDeployments(filters, sort, fields, errorListener, options))
     }
 
-    private async * iterateThroughDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, fields?: DeploymentFields<T>, errorListener?: (errorMessage: string) => void, options?: RequestOptions): AsyncIterable<T> {
+    private async * iterateThroughDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
+        filters?: DeploymentFilters, sort?: DeploymentSorting, fields?: DeploymentFields<T>, 
+        errorListener?: (errorMessage: string) => void, options?: RequestOptions): AsyncIterable<T> {
+
         // We are setting different defaults in this case, because if one of the request fails, then all fail
         const withSomeDefaults = applySomeDefaults({ attempts: 3, waitTime: '1s' }, options)
 
         // Transform filters object into query params map
-        const queryParams: Map<string, string[]> = this.filtersToQueryParams(filters);
+        const filterQueryParams: Map<string, string[]> = this.filtersToQueryParams(filters)
+
+        // Transform sorting object into query params map
+        const sortingQueryParams = this.sortingToQueryParams(sort)
+
+        // Initialize query params with filters and sorting
+        const queryParams =  new Map([...filterQueryParams, ...sortingQueryParams])
 
         if (fields) {
             const fieldsValue = fields.getFields()
@@ -186,6 +195,17 @@ export class ContentClient implements ContentAPI {
                 }
             }
         }
+    }
+
+    private sortingToQueryParams(sort?: DeploymentSorting): Map<string, string[]> {
+        const sortQueryParams: Map<string, string[]> = new Map()
+        if (sort?.field) {
+            sortQueryParams.set("sortingField", [sort.field])
+        }
+        if (sort?.order) {
+            sortQueryParams.set("sortingOrder", [sort.order])
+        }
+        return sortQueryParams
     }
 
     private filtersToQueryParams(filters?: DeploymentFilters): Map<string, string[]> {

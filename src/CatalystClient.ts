@@ -1,5 +1,5 @@
 import { EthAddress } from 'dcl-crypto'
-import { Timestamp, Pointer, EntityType, Entity, EntityId, ServerStatus, ServerName, ContentFileHash, Profile, Fetcher, RequestOptions, LegacyPartialDeploymentHistory, LegacyDeploymentHistory, DeploymentFilters, AvailableContentResult, DeploymentBase, LegacyAuditInfo } from "dcl-catalyst-commons";
+import { Timestamp, Pointer, EntityType, Entity, EntityId, ServerStatus, ServerName, ContentFileHash, Profile, Fetcher, RequestOptions, LegacyPartialDeploymentHistory, LegacyDeploymentHistory, DeploymentFilters, AvailableContentResult, DeploymentBase, LegacyAuditInfo, DeploymentSorting } from "dcl-catalyst-commons";
 import { Readable } from 'stream';
 import { CatalystAPI } from "./CatalystAPI";
 import { DeploymentData } from './utils/DeploymentBuilder';
@@ -53,12 +53,12 @@ export class CatalystClient implements CatalystAPI {
         return this.contentClient.fetchStatus(options)
     }
 
-    fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, fields?: DeploymentFields<T>, options?: RequestOptions): Promise<T[]> {
-        return this.contentClient.fetchAllDeployments(filters, fields, options)
+    fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, sort?: DeploymentSorting, fields?: DeploymentFields<T>, options?: RequestOptions): Promise<T[]> {
+        return this.contentClient.fetchAllDeployments(filters, sort, fields, options)
     }
 
-    streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, fields?: DeploymentFields<T>, errorListener?: (errorMessage: string) => void, options?: RequestOptions): Readable {
-        return this.contentClient.streamAllDeployments(filters, fields, errorListener, options)
+    streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, sort?: DeploymentSorting, fields?: DeploymentFields<T>, errorListener?: (errorMessage: string) => void, options?: RequestOptions): Readable {
+        return this.contentClient.streamAllDeployments(filters, sort, fields, errorListener, options)
     }
 
     isContentAvailable(cids: string[], options?: RequestOptions): Promise<AvailableContentResult> {
