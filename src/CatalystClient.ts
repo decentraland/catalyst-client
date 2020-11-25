@@ -1,10 +1,10 @@
 import { EthAddress } from 'dcl-crypto'
-import { Timestamp, Pointer, EntityType, Entity, EntityId, ServerStatus, ServerName, ContentFileHash, Profile, Fetcher, RequestOptions, LegacyPartialDeploymentHistory, LegacyDeploymentHistory, DeploymentFilters, AvailableContentResult, DeploymentBase, LegacyAuditInfo } from "dcl-catalyst-commons";
+import { Timestamp, Pointer, EntityType, Entity, EntityId, ServerStatus, ServerName, ContentFileHash, Profile, Fetcher, RequestOptions, LegacyPartialDeploymentHistory, LegacyDeploymentHistory, AvailableContentResult, DeploymentBase, LegacyAuditInfo } from "dcl-catalyst-commons";
 import { Readable } from 'stream';
 import { CatalystAPI } from "./CatalystAPI";
 import { DeploymentData } from './utils/DeploymentBuilder';
 import { sanitizeUrl } from './utils/Helper';
-import { ContentClient, DeploymentFields } from './ContentClient';
+import { ContentClient, DeploymentOptions } from './ContentClient';
 import { LambdasClient } from './LambdasClient';
 import { DeploymentWithMetadataContentAndPointers } from './ContentAPI';
 
@@ -53,12 +53,12 @@ export class CatalystClient implements CatalystAPI {
         return this.contentClient.fetchStatus(options)
     }
 
-    fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, fields?: DeploymentFields<T>, options?: RequestOptions): Promise<T[]> {
-        return this.contentClient.fetchAllDeployments(filters, fields, options)
+    fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(deploymentOptions?: DeploymentOptions<T>, options?: RequestOptions): Promise<T[]> {
+        return this.contentClient.fetchAllDeployments(deploymentOptions, options)
     }
 
-    streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, fields?: DeploymentFields<T>, errorListener?: (errorMessage: string) => void, options?: RequestOptions): Readable {
-        return this.contentClient.streamAllDeployments(filters, fields, errorListener, options)
+    streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(deploymentOptions?: DeploymentOptions<T>, options?: RequestOptions): Readable {
+        return this.contentClient.streamAllDeployments(deploymentOptions, options)
     }
 
     isContentAvailable(cids: string[], options?: RequestOptions): Promise<AvailableContentResult> {
