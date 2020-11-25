@@ -4,7 +4,7 @@ import { Readable } from 'stream';
 import { CatalystAPI } from "./CatalystAPI";
 import { DeploymentData } from './utils/DeploymentBuilder';
 import { sanitizeUrl } from './utils/Helper';
-import { ContentClient, DeploymentFields } from './ContentClient';
+import { ContentClient, DeploymentOptions } from './ContentClient';
 import { LambdasClient } from './LambdasClient';
 import { DeploymentWithMetadataContentAndPointers } from './ContentAPI';
 
@@ -53,12 +53,12 @@ export class CatalystClient implements CatalystAPI {
         return this.contentClient.fetchStatus(options)
     }
 
-    fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, sort?: DeploymentSorting, fields?: DeploymentFields<T>, options?: RequestOptions): Promise<T[]> {
-        return this.contentClient.fetchAllDeployments(filters, sort, fields, options)
+    fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(options?: DeploymentOptions<T>): Promise<T[]> {
+        return this.contentClient.fetchAllDeployments(options)
     }
 
-    streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, sort?: DeploymentSorting, fields?: DeploymentFields<T>, errorListener?: (errorMessage: string) => void, options?: RequestOptions): Readable {
-        return this.contentClient.streamAllDeployments(filters, sort, fields, errorListener, options)
+    streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(options?: DeploymentOptions<T>): Readable {
+        return this.contentClient.streamAllDeployments(options)
     }
 
     isContentAvailable(cids: string[], options?: RequestOptions): Promise<AvailableContentResult> {

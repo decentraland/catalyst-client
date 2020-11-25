@@ -2,7 +2,7 @@ import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import { mock, instance, when, anything, verify } from 'ts-mockito'
 import { ContentClient, DeploymentFields } from 'ContentClient'
-import { EntityType, Entity, Fetcher, Hashing, AvailableContentResult, PartialDeploymentHistory, Deployment, EntityVersion } from 'dcl-catalyst-commons'
+import { EntityType, Entity, Fetcher, Hashing, AvailableContentResult, PartialDeploymentHistory, Deployment, EntityVersion, SortingField, SortingOrder } from 'dcl-catalyst-commons'
 
 chai.use(chaiAsPromised)
 const expect = chai.expect
@@ -146,7 +146,7 @@ describe('ContentClient', () => {
         const { instance: fetcher } = mockFetcherJson(`/deployments?fromLocalTimestamp=20&toLocalTimestamp=30&onlyCurrentlyPointed=true&deployedBy=eth1&deployedBy=eth2&entityType=profile&entityType=scene&entityId=id1&entityId=id2&pointer=p1&pointer=p2&offset=0`, requestResult)
 
         const client = buildClient(URL, fetcher)
-        const result = await client.fetchAllDeployments(filters)
+        const result = await client.fetchAllDeployments({filters: filters})
 
         expect(result).to.deep.equal([ deployment ])
     })
@@ -158,7 +158,19 @@ describe('ContentClient', () => {
         const { instance: fetcher } = mockFetcherJson(`/deployments?fields=pointers,content,metadata&offset=0`, requestResult)
 
         const client = buildClient(URL, fetcher)
-        const result = await client.fetchAllDeployments(undefined, DeploymentFields.POINTERS_CONTENT_AND_METADATA)
+        const result = await client.fetchAllDeployments({ fields: DeploymentFields.POINTERS_CONTENT_AND_METADATA })
+
+        expect(result).to.deep.equal([ deployment ])
+    })
+
+
+    it('When fetching all deployments with sort params, then the request has the correct query params', async () => {
+        const deployment = someDeployment()
+        const requestResult: PartialDeploymentHistory<Deployment> = { filters: {  }, deployments: [ deployment ], pagination: { offset: 10, limit: 10, moreData: false } }
+        const { instance: fetcher } = mockFetcherJson(`/deployments?sortingField=entity_timestamp&sortingOrder=ASC&offset=0`, requestResult)
+
+        const client = buildClient(URL, fetcher)
+        const result = await client.fetchAllDeployments({ sortBy: {field: SortingField.ENTITY_TIMESTAMP, order: SortingOrder.ASCENDING} })
 
         expect(result).to.deep.equal([ deployment ])
     })

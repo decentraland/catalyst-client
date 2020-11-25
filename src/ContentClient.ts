@@ -128,32 +128,30 @@ export class ContentClient implements ContentAPI {
      * This method fetches all deployments that match the given filters. It is important to mention, that if there are too many filters, then the
      * URL might get too long. In that case, we will internally make the necessary requests, but then the order of the deployments is not guaranteed.
      */
-    fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, sort?: DeploymentSorting, fields?: DeploymentFields<T>, options?: RequestOptions): Promise<T[]> {
-        return asyncToArray(this.iterateThroughDeployments(filters, sort, fields, undefined, options))
+    fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(options?: DeploymentOptions<T>): Promise<T[]> {
+        return asyncToArray(this.iterateThroughDeployments(options))
     }
 
-    streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(filters?: DeploymentFilters, sort?: DeploymentSorting, fields?: DeploymentFields<T>, errorListener?: (errorMessage: string) => void, options?: RequestOptions): Readable {
-        return Readable.from(this.iterateThroughDeployments(filters, sort, fields, errorListener, options))
+    streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(options?: DeploymentOptions<T>): Readable {
+        return Readable.from(this.iterateThroughDeployments(options))
     }
 
-    private async * iterateThroughDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
-        filters?: DeploymentFilters, sort?: DeploymentSorting, fields?: DeploymentFields<T>, 
-        errorListener?: (errorMessage: string) => void, options?: RequestOptions): AsyncIterable<T> {
+    private async * iterateThroughDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(options?: DeploymentOptions<T>): AsyncIterable<T> {
 
         // We are setting different defaults in this case, because if one of the request fails, then all fail
-        const withSomeDefaults = applySomeDefaults({ attempts: 3, waitTime: '1s' }, options)
+        const withSomeDefaults = applySomeDefaults({ attempts: 3, waitTime: '1s' }, options?.options)
 
         // Transform filters object into query params map
-        const filterQueryParams: Map<string, string[]> = this.filtersToQueryParams(filters)
+        const filterQueryParams: Map<string, string[]> = this.filtersToQueryParams(options?.filters)
 
         // Transform sorting object into query params map
-        const sortingQueryParams = this.sortingToQueryParams(sort)
+        const sortingQueryParams = this.sortingToQueryParams(options?.sortBy)
 
         // Initialize query params with filters and sorting
         const queryParams =  new Map([...filterQueryParams, ...sortingQueryParams])
 
-        if (fields) {
-            const fieldsValue = fields.getFields()
+        if (options?.fields) {
+            const fieldsValue = options?.fields.getFields()
             queryParams.set('fields', [fieldsValue])
 
             // TODO: Remove on next deployment
@@ -188,8 +186,8 @@ export class ContentClient implements ContentAPI {
                     offset = partialHistory.pagination.offset + partialHistory.pagination.limit
                     keepRetrievingHistory = partialHistory.pagination.moreData
                 } catch (error) {
-                    if (errorListener) {
-                        errorListener(`${error}`)
+                    if (options?.errorListener) {
+                        options.errorListener(`${error}`)
                     }
                     exit = true
                 }
@@ -277,6 +275,14 @@ export class ContentClient implements ContentAPI {
     }
 
 }
+
+export type DeploymentOptions<T> = {
+    filters?: DeploymentFilters, 
+    sortBy?: DeploymentSorting, 
+    fields?: DeploymentFields<T>, 
+    errorListener?: (errorMessage: string) => void,
+    options?: RequestOptions
+};
 
 //@ts-ignore
 export class DeploymentFields<T extends Partial<Deployment>> {
