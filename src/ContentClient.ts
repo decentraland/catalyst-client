@@ -128,30 +128,30 @@ export class ContentClient implements ContentAPI {
      * This method fetches all deployments that match the given filters. It is important to mention, that if there are too many filters, then the
      * URL might get too long. In that case, we will internally make the necessary requests, but then the order of the deployments is not guaranteed.
      */
-    fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(options?: DeploymentOptions<T>): Promise<T[]> {
-        return asyncToArray(this.iterateThroughDeployments(options))
+    fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(deploymentOptions?: DeploymentOptions<T>, options?: RequestOptions): Promise<T[]> {
+        return asyncToArray(this.iterateThroughDeployments(deploymentOptions, options))
     }
 
-    streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(options?: DeploymentOptions<T>): Readable {
-        return Readable.from(this.iterateThroughDeployments(options))
+    streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(deploymentOptions?: DeploymentOptions<T>, options?: RequestOptions): Readable {
+        return Readable.from(this.iterateThroughDeployments(deploymentOptions, options))
     }
 
-    private async * iterateThroughDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(options?: DeploymentOptions<T>): AsyncIterable<T> {
+    private async * iterateThroughDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(deploymentOptions?: DeploymentOptions<T>, options?: RequestOptions): AsyncIterable<T> {
 
         // We are setting different defaults in this case, because if one of the request fails, then all fail
-        const withSomeDefaults = applySomeDefaults({ attempts: 3, waitTime: '1s' }, options?.options)
+        const withSomeDefaults = applySomeDefaults({ attempts: 3, waitTime: '1s' }, options)
 
         // Transform filters object into query params map
-        const filterQueryParams: Map<string, string[]> = this.filtersToQueryParams(options?.filters)
+        const filterQueryParams: Map<string, string[]> = this.filtersToQueryParams(deploymentOptions?.filters)
 
         // Transform sorting object into query params map
-        const sortingQueryParams = this.sortingToQueryParams(options?.sortBy)
+        const sortingQueryParams = this.sortingToQueryParams(deploymentOptions?.sortBy)
 
         // Initialize query params with filters and sorting
         const queryParams =  new Map([...filterQueryParams, ...sortingQueryParams])
 
-        if (options?.fields) {
-            const fieldsValue = options?.fields.getFields()
+        if (deploymentOptions?.fields) {
+            const fieldsValue = deploymentOptions?.fields.getFields()
             queryParams.set('fields', [fieldsValue])
 
             // TODO: Remove on next deployment
@@ -186,8 +186,8 @@ export class ContentClient implements ContentAPI {
                     offset = partialHistory.pagination.offset + partialHistory.pagination.limit
                     keepRetrievingHistory = partialHistory.pagination.moreData
                 } catch (error) {
-                    if (options?.errorListener) {
-                        options.errorListener(`${error}`)
+                    if (deploymentOptions?.errorListener) {
+                        deploymentOptions.errorListener(`${error}`)
                     }
                     exit = true
                 }
@@ -280,8 +280,7 @@ export type DeploymentOptions<T> = {
     filters?: DeploymentFilters, 
     sortBy?: DeploymentSorting, 
     fields?: DeploymentFields<T>, 
-    errorListener?: (errorMessage: string) => void,
-    options?: RequestOptions
+    errorListener?: (errorMessage: string) => void
 };
 
 //@ts-ignore
