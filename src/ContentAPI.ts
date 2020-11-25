@@ -13,8 +13,8 @@ export interface ContentAPI {
     fetchFullHistory(query?: {from?: Timestamp, to?: Timestamp, serverName?: ServerName}, options?: RequestOptions): Promise<LegacyDeploymentHistory>;
     fetchHistory(query?: {from?: Timestamp, to?: Timestamp, serverName?: ServerName, offset?: number, limit?: number}, options?: RequestOptions): Promise<LegacyPartialDeploymentHistory>;
     fetchStatus(options?: RequestOptions): Promise<ServerStatus>;
-    fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(options?: DeploymentOptions<T>): Promise<T[]>;
-    streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(options?: DeploymentOptions<T>): Readable;
+    fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(deploymentOptions?: DeploymentOptions<T>, options?: RequestOptions): Promise<T[]>;
+    streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(deploymentOptions?: DeploymentOptions<T>, options?: RequestOptions): Readable;
     downloadContent(contentHash: ContentFileHash, options?: RequestOptions): Promise<Buffer>;
     isContentAvailable(cids: ContentFileHash[], options?: RequestOptions): Promise<AvailableContentResult>
 
