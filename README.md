@@ -20,6 +20,7 @@ This library depends on two other Decentraland libraries:
 
 One of the most important aspects, is the ability to deploy new entities. Here is an example of how to do it:
 
+
 ```
 import { CatalystClient, DeploymentBuilder } from 'dcl-catalyst-client'
 import { EntityType } from 'dcl-catalyst-commons'
