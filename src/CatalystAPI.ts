@@ -1,4 +1,4 @@
-import { ContentAPI } from './ContentAPI';
-import { LambdasAPI } from './LambdasAPI';
+import { ContentAPI } from './ContentAPI'
+import { LambdasAPI } from './LambdasAPI'
 
-export interface CatalystAPI extends ContentAPI, LambdasAPI { }
+export interface CatalystAPI extends ContentAPI, LambdasAPI {}

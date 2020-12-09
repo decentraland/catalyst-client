@@ -11,7 +11,9 @@
     "watch": "tsc --watch --project tsconfig-build.json",
     "test": "nyc mocha -r ts-node/register -r tsconfig-paths/register --exit \"test/**/*.spec.ts\"",
     "semantic-release": "semantic-release",
-    "commit-msg": "validate-commit-msg"
+    "commit-msg": "validate-commit-msg",
+    "lint:fix": "yarn eslint '**/*.{js,ts,tsx}' --quiet --fix",
+    "lint:check": "yarn eslint '**/*.{js,ts,tsx}' --quiet"
   },
   "nyc": {
     "all": true,
@@ -49,13 +51,18 @@
   "devDependencies": {
     "@types/chai": "^4.2.11",
     "@types/chai-as-promised": "^7.1.2",
+    "@typescript-eslint/eslint-plugin": "^4.9.0",
+    "@typescript-eslint/parser": "^4.9.0",
     "@types/mocha": "^7.0.2",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
+    "eslint": "^7.14.0",
+    "eslint-config-prettier": "^6.15.0",
+    "eslint-plugin-prettier": "^3.2.0",
     "dcl-tslint-config-standard": "^2.0.0",
     "mocha": "^8.0.1",
     "nyc": "^15.1.0",
-    "prettier": "^2.0.5",
+    "prettier": "^2.2.1",
     "semantic-release": "^17.1.0",
     "ts-mockito": "^2.6.1",
     "ts-node": "^8.10.2",
@@ -68,8 +75,9 @@
     "validate-commit-msg": "^2.14.0"
   },
   "prettier": {
-    "printWidth": 80,
+    "semi": false,
     "singleQuote": true,
-    "semi": false
+    "printWidth": 120,
+    "trailingComma": "none"
   }
 }
