@@ -10,7 +10,6 @@ import {
   ContentFileHash,
   Profile,
   Fetcher,
-  RequestOptions,
   LegacyPartialDeploymentHistory,
   LegacyDeploymentHistory,
   AvailableContentResult,
@@ -24,6 +23,7 @@ import { sanitizeUrl } from './utils/Helper'
 import { ContentClient, DeploymentOptions } from './ContentClient'
 import { LambdasClient } from './LambdasClient'
 import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
+import { RequestOptions } from 'dcl-catalyst-commons/dist/utils/FetcherConfiguration'
 
 export class CatalystClient implements CatalystAPI {
   private readonly contentClient: ContentClient

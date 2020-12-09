@@ -12,7 +12,6 @@ import {
   applySomeDefaults,
   retry,
   Fetcher,
-  RequestOptions,
   Hashing,
   LegacyPartialDeploymentHistory,
   DeploymentFilters,
@@ -26,6 +25,7 @@ import {
 } from 'dcl-catalyst-commons'
 import asyncToArray from 'async-iterator-to-array'
 import { Readable } from 'stream'
+import merge from 'deepmerge'
 import { ContentAPI, DeploymentWithMetadataContentAndPointers } from './ContentAPI'
 import {
   addModelToFormData,
@@ -34,6 +34,7 @@ import {
   splitValuesIntoManyQueries
 } from './utils/Helper'
 import { DeploymentData } from './utils/DeploymentBuilder'
+import { RequestOptions } from 'dcl-catalyst-commons/dist/utils/FetcherConfiguration'
 
 export class ContentClient implements ContentAPI {
   private static readonly CHARS_LEFT_FOR_OFFSET = 7
@@ -42,7 +43,7 @@ export class ContentClient implements ContentAPI {
   constructor(
     contentUrl: string,
     private readonly origin: string, // The name or a description of the app that is using the client
-    private readonly fetcher: Fetcher = new Fetcher()
+    private readonly fetcher: Fetcher = new Fetcher({ headers: { 'user-agent': 'ContentServer/v2' } })
   ) {
     this.contentUrl = sanitizeUrl(contentUrl)
   }
@@ -57,6 +58,7 @@ export class ContentClient implements ContentAPI {
       if (!alreadyUploadedHashes.has(fileHash) || fileHash === deployData.entityId) {
         if (typeof window === 'undefined') {
           // Node
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore
           form.append(file.name, file.content, file.name)
         } else {
@@ -66,13 +68,13 @@ export class ContentClient implements ContentAPI {
       }
     }
 
-    const headers = { 'x-upload-origin': this.origin }
-    const { creationTimestamp } = await this.fetcher.postForm(
-      `${this.contentUrl}/entities${fix ? '?fix=true' : ''}`,
-      form,
-      headers,
-      options
-    )
+    const requestOptions = merge(options ?? {}, {
+      url: `${this.contentUrl}/entities${fix ? '?fix=true' : ''}`,
+      body: form,
+      headers: { 'x-upload-origin': this.origin }
+    })
+
+    const { creationTimestamp } = await this.fetcher.postForm(requestOptions)
     return creationTimestamp
   }
 
@@ -109,7 +111,7 @@ export class ContentClient implements ContentAPI {
     options?: RequestOptions
   ): Promise<LegacyDeploymentHistory> {
     // We are setting different defaults in this case, because if one of the request fails, then all fail
-    const withSomeDefaults = applySomeDefaults({ attempts: 3, waitTime: '1s' }, options)
+    const withSomeDefaults = merge({ attempts: 3, waitTime: '1s' }, options ?? {})
 
     const events: LegacyDeploymentHistory = []
     let offset = 0
@@ -127,7 +129,7 @@ export class ContentClient implements ContentAPI {
 
   fetchHistory(
     query?: { from?: Timestamp; to?: Timestamp; serverName?: ServerName; offset?: number; limit?: number },
-    options?: RequestOptions
+    options?: Partial<RequestOptions>
   ): Promise<LegacyPartialDeploymentHistory> {
     let path = `/history?offset=${query?.offset ?? 0}`
     if (query?.from) {
@@ -149,13 +151,16 @@ export class ContentClient implements ContentAPI {
     return this.fetchJson('/status', options)
   }
 
-  async downloadContent(contentHash: ContentFileHash, options?: RequestOptions): Promise<Buffer> {
+  async downloadContent(contentHash: ContentFileHash, options?: Partial<RequestOptions>): Promise<Buffer> {
     const { attempts = 3, waitTime = '0.5s' } = options ?? {}
     const timeout = options?.timeout ? { timeout: options.timeout } : {}
 
     return retry(
       async () => {
-        const content = await this.fetcher.fetchBuffer(`${this.contentUrl}/contents/${contentHash}`, timeout)
+        const content = await this.fetcher.fetchBuffer({
+          ...timeout,
+          url: `${this.contentUrl}/contents/${contentHash}`
+        })
         const downloadedHash = await Hashing.calculateBufferHash(content)
         // Sometimes, the downloaded file is not complete, so the hash turns out to be different.
         // So we will check the hash before considering the download successful.
@@ -229,7 +234,9 @@ export class ContentClient implements ContentAPI {
       while (keepRetrievingHistory && !exit) {
         const url = query + (queryParams.size === 0 ? '?' : '&') + `offset=${offset}`
         try {
-          const partialHistory: PartialDeploymentHistory<T> = await this.fetcher.fetchJson(url, withSomeDefaults)
+          const partialHistory: PartialDeploymentHistory<T> = await this.fetcher.fetchJson(
+            merge(withSomeDefaults, { url: url })
+          )
           for (const deployment of partialHistory.deployments) {
             if (!foundIds.has(deployment.entityId)) {
               foundIds.add(deployment.entityId)
@@ -319,7 +326,7 @@ export class ContentClient implements ContentAPI {
     // Perform the different queries
     const results: E[][] = []
     for (const query of queries) {
-      const result = await this.fetcher.fetchJson(query, options)
+      const result = await this.fetcher.fetchJson(merge(options ?? {}, { url: query }))
       results.push(result)
     }
 
@@ -333,8 +340,8 @@ export class ContentClient implements ContentAPI {
     return Array.from(groupedResults.values())
   }
 
-  private fetchJson(path: string, options?: RequestOptions): Promise<any> {
-    return this.fetcher.fetchJson(`${this.contentUrl}${path}`, options)
+  private fetchJson(path: string, options?: Partial<RequestOptions>): Promise<any> {
+    return this.fetcher.fetchJson(merge(options ?? {}, { url: `${this.contentUrl}${path}` }))
   }
 }
 
@@ -345,6 +352,7 @@ export type DeploymentOptions<T> = {
   errorListener?: (errorMessage: string) => void
 }
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 //@ts-ignore
 export class DeploymentFields<T extends Partial<Deployment>> {
   static readonly AUDIT_INFO = new DeploymentFields<DeploymentWithAuditInfo>(['auditInfo'])

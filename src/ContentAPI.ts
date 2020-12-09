@@ -9,7 +9,6 @@ import {
   ServerName,
   LegacyDeploymentHistory,
   LegacyPartialDeploymentHistory,
-  RequestOptions,
   AvailableContentResult,
   DeploymentBase,
   DeploymentWithMetadata,
@@ -20,6 +19,7 @@ import {
 import { Readable } from 'stream'
 import { DeploymentData } from './utils/DeploymentBuilder'
 import { DeploymentOptions } from './ContentClient'
+import { RequestOptions } from 'dcl-catalyst-commons/dist/utils/FetcherConfiguration'
 
 export interface ContentAPI {
   /** Retrieve / Download */

@@ -1,7 +1,9 @@
 import { EthAddress } from 'dcl-crypto'
-import { Profile, Fetcher, RequestOptions } from 'dcl-catalyst-commons'
+import { Profile, Fetcher } from 'dcl-catalyst-commons'
 import { sanitizeUrl } from './utils/Helper'
 import { LambdasAPI } from './LambdasAPI'
+import merge from 'deepmerge'
+import { RequestOptions } from 'dcl-catalyst-commons/dist/utils/FetcherConfiguration'
 
 export class LambdasClient implements LambdasAPI {
   private readonly lambdasUrl: string
@@ -11,6 +13,6 @@ export class LambdasClient implements LambdasAPI {
   }
 
   fetchProfile(ethAddress: EthAddress, options?: RequestOptions): Promise<Profile> {
-    return this.fetcher.fetchJson(`${this.lambdasUrl}/profile/${ethAddress}`, options)
+    return this.fetcher.fetchJson(merge(options ?? {}, { url: `${this.lambdasUrl}/profile/${ethAddress}` }))
   }
 }
