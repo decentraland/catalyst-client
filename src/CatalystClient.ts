@@ -24,15 +24,18 @@ import { ContentClient, DeploymentOptions } from './ContentClient'
 import { LambdasClient } from './LambdasClient'
 import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
 import { RequestOptions } from 'dcl-catalyst-commons/dist/utils/FetcherConfiguration'
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { version: VERSION } = require('../package.json')
 
 export class CatalystClient implements CatalystAPI {
   private readonly contentClient: ContentClient
   private readonly lambdasClient: LambdasClient
+  private static readonly USER_AGENT_VALUE = `catalyst-client/${VERSION} (+https://github.com/decentraland/catalyst-client)`
 
   constructor(
     catalystUrl: string,
     origin: string, // The name or a description of the app that is using the client
-    fetcher: Fetcher = new Fetcher()
+    fetcher: Fetcher = new Fetcher({ headers: { 'user-agent': CatalystClient.USER_AGENT_VALUE } })
   ) {
     catalystUrl = sanitizeUrl(catalystUrl)
     this.contentClient = new ContentClient(catalystUrl + '/content', origin, fetcher)

@@ -35,15 +35,18 @@ import {
 } from './utils/Helper'
 import { DeploymentData } from './utils/DeploymentBuilder'
 import { RequestOptions } from 'dcl-catalyst-commons/dist/utils/FetcherConfiguration'
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { version: VERSION } = require('../package.json')
 
 export class ContentClient implements ContentAPI {
   private static readonly CHARS_LEFT_FOR_OFFSET = 7
   private readonly contentUrl: string
+  private static readonly USER_AGENT_VALUE = `content-client/${VERSION} (+https://github.com/decentraland/catalyst-client)`
 
   constructor(
     contentUrl: string,
     private readonly origin: string, // The name or a description of the app that is using the client
-    private readonly fetcher: Fetcher = new Fetcher({ headers: { 'user-agent': 'ContentServer/v2' } })
+    private readonly fetcher: Fetcher = new Fetcher({ headers: { 'user-agent': ContentClient.USER_AGENT_VALUE } })
   ) {
     this.contentUrl = sanitizeUrl(contentUrl)
   }
