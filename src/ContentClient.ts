@@ -55,7 +55,11 @@ export class ContentClient implements ContentAPI {
       })
   }
 
-  async deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {
+  async deployEntity(
+    deployData: DeploymentData,
+    fix: boolean = false,
+    options?: Partial<RequestOptions>
+  ): Promise<Timestamp> {
     const form = new FormData()
     form.append('entityId', deployData.entityId)
     addModelToFormData(deployData.authChain, form, 'authChain')
@@ -85,7 +89,7 @@ export class ContentClient implements ContentAPI {
     return creationTimestamp
   }
 
-  fetchEntitiesByPointers(type: EntityType, pointers: Pointer[], options?: RequestOptions): Promise<Entity[]> {
+  fetchEntitiesByPointers(type: EntityType, pointers: Pointer[], options?: Partial<RequestOptions>): Promise<Entity[]> {
     if (pointers.length === 0) {
       return Promise.reject(`You must set at least one pointer.`)
     }
@@ -93,7 +97,7 @@ export class ContentClient implements ContentAPI {
     return this.splitAndFetch<Entity, EntityId>(`/entities/${type}`, 'pointer', pointers, ({ id }) => id, options)
   }
 
-  fetchEntitiesByIds(type: EntityType, ids: EntityId[], options?: RequestOptions): Promise<Entity[]> {
+  fetchEntitiesByIds(type: EntityType, ids: EntityId[], options?: Partial<RequestOptions>): Promise<Entity[]> {
     if (ids.length === 0) {
       return Promise.reject(`You must set at least one id.`)
     }
@@ -101,7 +105,7 @@ export class ContentClient implements ContentAPI {
     return this.splitAndFetch<Entity, EntityId>(`/entities/${type}`, 'id', ids, ({ id }) => id, options)
   }
 
-  async fetchEntityById(type: EntityType, id: EntityId, options?: RequestOptions): Promise<Entity> {
+  async fetchEntityById(type: EntityType, id: EntityId, options?: Partial<RequestOptions>): Promise<Entity> {
     const entities: Entity[] = await this.fetchEntitiesByIds(type, [id], options)
     if (entities.length === 0) {
       return Promise.reject(`Failed to find an entity with type '${type}' and id '${id}'.`)
@@ -109,13 +113,13 @@ export class ContentClient implements ContentAPI {
     return entities[0]
   }
 
-  fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<LegacyAuditInfo> {
+  fetchAuditInfo(type: EntityType, id: EntityId, options?: Partial<RequestOptions>): Promise<LegacyAuditInfo> {
     return this.fetchJson(`/audit/${type}/${id}`, options)
   }
 
   async fetchFullHistory(
     query?: { from?: number; to?: number; serverName?: string },
-    options?: RequestOptions
+    options?: Partial<RequestOptions>
   ): Promise<LegacyDeploymentHistory> {
     // We are setting different defaults in this case, because if one of the request fails, then all fail
     const withSomeDefaults = merge({ attempts: 3, waitTime: '1s' }, options ?? {})
@@ -154,7 +158,7 @@ export class ContentClient implements ContentAPI {
     return this.fetchJson(path, options)
   }
 
-  fetchStatus(options?: RequestOptions): Promise<ServerStatus> {
+  fetchStatus(options?: Partial<RequestOptions>): Promise<ServerStatus> {
     return this.fetchJson('/status', options)
   }
 
@@ -187,21 +191,21 @@ export class ContentClient implements ContentAPI {
    */
   fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
     deploymentOptions?: DeploymentOptions<T>,
-    options?: RequestOptions
+    options?: Partial<RequestOptions>
   ): Promise<T[]> {
     return asyncToArray(this.iterateThroughDeployments(deploymentOptions, options))
   }
 
   streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
     deploymentOptions?: DeploymentOptions<T>,
-    options?: RequestOptions
+    options?: Partial<RequestOptions>
   ): Readable {
     return Readable.from(this.iterateThroughDeployments(deploymentOptions, options))
   }
 
   private async *iterateThroughDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
     deploymentOptions?: DeploymentOptions<T>,
-    options?: RequestOptions
+    options?: Partial<RequestOptions>
   ): AsyncIterable<T> {
     // We are setting different defaults in this case, because if one of the request fails, then all fail
     const withSomeDefaults = applySomeDefaults({ attempts: 3, waitTime: '1s' }, options)
@@ -291,7 +295,7 @@ export class ContentClient implements ContentAPI {
     return new Map(entries)
   }
 
-  isContentAvailable(cids: string[], options?: RequestOptions): Promise<AvailableContentResult> {
+  isContentAvailable(cids: string[], options?: Partial<RequestOptions>): Promise<AvailableContentResult> {
     if (cids.length === 0) {
       return Promise.reject(`You must set at least one cid.`)
     }
@@ -308,7 +312,7 @@ export class ContentClient implements ContentAPI {
   /** Given an array of file hashes, return a set with those already uploaded on the server */
   private async hashesAlreadyOnServer(
     hashes: ContentFileHash[],
-    options: RequestOptions | undefined
+    options?: Partial<RequestOptions>
   ): Promise<Set<ContentFileHash>> {
     const result: AvailableContentResult = await this.isContentAvailable(hashes, options)
 
@@ -325,7 +329,7 @@ export class ContentClient implements ContentAPI {
     queryParamName: string,
     values: string[],
     extractKey: (object: E) => K,
-    options?: RequestOptions
+    options?: Partial<RequestOptions>
   ): Promise<E[]> {
     // Split values into different queries
     const queries = splitValuesIntoManyQueries(this.contentUrl, basePath, queryParamName, values)
