@@ -30,16 +30,21 @@ const { version: VERSION } = require('../package.json')
 export class CatalystClient implements CatalystAPI {
   private readonly contentClient: ContentClient
   private readonly lambdasClient: LambdasClient
-  private static readonly USER_AGENT_VALUE = `catalyst-client/${VERSION} (+https://github.com/decentraland/catalyst-client)`
+  private readonly userAgentValue = `catalyst-client/${VERSION} (+https://github.com/decentraland/catalyst-client)`
 
   constructor(
     catalystUrl: string,
     origin: string, // The name or a description of the app that is using the client
-    fetcher: Fetcher = new Fetcher({ headers: { 'user-agent': CatalystClient.USER_AGENT_VALUE } })
+    fetcher?: Fetcher
   ) {
     catalystUrl = sanitizeUrl(catalystUrl)
+    fetcher = fetcher ?? new Fetcher({ headers: { 'user-agent': this.getUserAgentValue() } })
     this.contentClient = new ContentClient(catalystUrl + '/content', origin, fetcher)
     this.lambdasClient = new LambdasClient(catalystUrl + '/lambdas', fetcher)
+  }
+
+  private getUserAgentValue(): string {
+    return this.userAgentValue
   }
 
   deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {

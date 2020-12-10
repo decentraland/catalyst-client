@@ -256,6 +256,14 @@ describe('ContentClient', () => {
     expect(result).to.deep.equal([deployment1, deployment2])
   })
 
+  it('Given a ContentClient When Getting the user_agent Then It is correctly calculated', () => {
+    const client = new ContentClient(URL, 'origin')
+
+    expect(client.getUserAgentValue()).to.equal(
+      'content-client/0.0.0-development (+https://github.com/decentraland/catalyst-client)'
+    )
+  })
+
   function someDeployment(): Deployment {
     return {
       entityId: `entityId${Math.random()}`,

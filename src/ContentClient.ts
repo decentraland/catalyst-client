@@ -41,14 +41,20 @@ const { version: VERSION } = require('../package.json')
 export class ContentClient implements ContentAPI {
   private static readonly CHARS_LEFT_FOR_OFFSET = 7
   private readonly contentUrl: string
-  private static readonly USER_AGENT_VALUE = `content-client/${VERSION} (+https://github.com/decentraland/catalyst-client)`
+  private readonly userAgentValue = `content-client/${VERSION} (+https://github.com/decentraland/catalyst-client)`
+  private readonly fetcher
 
   constructor(
     contentUrl: string,
     private readonly origin: string, // The name or a description of the app that is using the client
-    private readonly fetcher: Fetcher = new Fetcher({ headers: { 'user-agent': ContentClient.USER_AGENT_VALUE } })
+    fetcher?: Fetcher
   ) {
     this.contentUrl = sanitizeUrl(contentUrl)
+    this.fetcher = fetcher ?? new Fetcher({ headers: { 'user-agent': this.getUserAgentValue() } })
+  }
+
+  getUserAgentValue(): string {
+    return this.userAgentValue
   }
 
   async deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {
