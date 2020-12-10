@@ -29,7 +29,6 @@ import { version } from '../package.json'
 export class CatalystClient implements CatalystAPI {
   private readonly contentClient: ContentClient
   private readonly lambdasClient: LambdasClient
-  private readonly userAgentValue = `catalyst-client/${version} (+https://github.com/decentraland/catalyst-client)`
 
   constructor(
     catalystUrl: string,
@@ -37,13 +36,13 @@ export class CatalystClient implements CatalystAPI {
     fetcher?: Fetcher
   ) {
     catalystUrl = sanitizeUrl(catalystUrl)
-    fetcher = fetcher ?? new Fetcher({ headers: { 'User-Agent': this.getUserAgentValue() } })
+    fetcher =
+      fetcher ??
+      new Fetcher({
+        headers: { 'User-Agent': `catalyst-client/${version} (+https://github.com/decentraland/catalyst-client)` }
+      })
     this.contentClient = new ContentClient(catalystUrl + '/content', origin, fetcher)
     this.lambdasClient = new LambdasClient(catalystUrl + '/lambdas', fetcher)
-  }
-
-  private getUserAgentValue(): string {
-    return this.userAgentValue
   }
 
   deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {

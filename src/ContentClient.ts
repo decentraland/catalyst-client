@@ -40,7 +40,6 @@ import { version } from '../package.json'
 export class ContentClient implements ContentAPI {
   private static readonly CHARS_LEFT_FOR_OFFSET = 7
   private readonly contentUrl: string
-  private readonly userAgentValue = `content-client/${version} (+https://github.com/decentraland/catalyst-client)`
   private readonly fetcher
 
   constructor(
@@ -49,11 +48,11 @@ export class ContentClient implements ContentAPI {
     fetcher?: Fetcher
   ) {
     this.contentUrl = sanitizeUrl(contentUrl)
-    this.fetcher = fetcher ?? new Fetcher({ headers: { 'User-Agent': this.getUserAgentValue() } })
-  }
-
-  getUserAgentValue(): string {
-    return this.userAgentValue
+    this.fetcher =
+      fetcher ??
+      new Fetcher({
+        headers: { 'User-Agent': `content-client/${version} (+https://github.com/decentraland/catalyst-client)` }
+      })
   }
 
   async deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {

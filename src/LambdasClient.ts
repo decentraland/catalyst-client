@@ -8,15 +8,14 @@ import { version } from '../package.json'
 export class LambdasClient implements LambdasAPI {
   private readonly lambdasUrl: string
   private readonly fetcher: Fetcher
-  private readonly userAgentValue = `lambdas-client/${version} (+https://github.com/decentraland/catalyst-client)`
 
   constructor(lambdasUrl: string, fetcher?: Fetcher) {
     this.lambdasUrl = sanitizeUrl(lambdasUrl)
-    this.fetcher = fetcher ?? new Fetcher({ headers: { 'User-Agent': this.getUserAgentValue() } })
-  }
-
-  private getUserAgentValue(): string {
-    return this.userAgentValue
+    this.fetcher =
+      fetcher ??
+      new Fetcher({
+        headers: { 'User-Agent': `lambdas-client/${version} (+https://github.com/decentraland/catalyst-client)` }
+      })
   }
 
   fetchProfile(ethAddress: EthAddress, options?: RequestOptions): Promise<Profile> {
