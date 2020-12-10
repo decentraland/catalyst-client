@@ -1,16 +1,14 @@
 import { EthAddress } from 'dcl-crypto'
-import { Profile, Fetcher } from 'dcl-catalyst-commons'
+import { Profile, Fetcher, RequestOptions } from 'dcl-catalyst-commons'
 import { sanitizeUrl } from './utils/Helper'
 import { LambdasAPI } from './LambdasAPI'
 import merge from 'deepmerge'
-import { RequestOptions } from 'dcl-catalyst-commons/dist/utils/FetcherConfiguration'
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { version: VERSION } = require('../package.json')
+import { version } from '../package.json'
 
 export class LambdasClient implements LambdasAPI {
   private readonly lambdasUrl: string
   private readonly fetcher: Fetcher
-  private readonly userAgentValue = `lambdas-client/${VERSION} (+https://github.com/decentraland/catalyst-client)`
+  private readonly userAgentValue = `lambdas-client/${version} (+https://github.com/decentraland/catalyst-client)`
 
   constructor(lambdasUrl: string, fetcher?: Fetcher) {
     this.lambdasUrl = sanitizeUrl(lambdasUrl)

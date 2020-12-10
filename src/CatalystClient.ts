@@ -14,7 +14,8 @@ import {
   LegacyDeploymentHistory,
   AvailableContentResult,
   DeploymentBase,
-  LegacyAuditInfo
+  LegacyAuditInfo,
+  RequestOptions
 } from 'dcl-catalyst-commons'
 import { Readable } from 'stream'
 import { CatalystAPI } from './CatalystAPI'
@@ -23,14 +24,12 @@ import { sanitizeUrl } from './utils/Helper'
 import { ContentClient, DeploymentOptions } from './ContentClient'
 import { LambdasClient } from './LambdasClient'
 import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
-import { RequestOptions } from 'dcl-catalyst-commons/dist/utils/FetcherConfiguration'
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { version: VERSION } = require('../package.json')
+import { version } from '../package.json'
 
 export class CatalystClient implements CatalystAPI {
   private readonly contentClient: ContentClient
   private readonly lambdasClient: LambdasClient
-  private readonly userAgentValue = `catalyst-client/${VERSION} (+https://github.com/decentraland/catalyst-client)`
+  private readonly userAgentValue = `catalyst-client/${version} (+https://github.com/decentraland/catalyst-client)`
 
   constructor(
     catalystUrl: string,

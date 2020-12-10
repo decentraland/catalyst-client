@@ -14,12 +14,12 @@ import {
   DeploymentWithMetadata,
   DeploymentWithContent,
   DeploymentWithPointers,
-  LegacyAuditInfo
+  LegacyAuditInfo,
+  RequestOptions
 } from 'dcl-catalyst-commons'
 import { Readable } from 'stream'
 import { DeploymentData } from './utils/DeploymentBuilder'
 import { DeploymentOptions } from './ContentClient'
-import { RequestOptions } from 'dcl-catalyst-commons/dist/utils/FetcherConfiguration'
 
 export interface ContentAPI {
   /** Retrieve / Download */

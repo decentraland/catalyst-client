@@ -1,6 +1,5 @@
 import { EthAddress } from 'dcl-crypto'
-import { Profile } from 'dcl-catalyst-commons'
-import { RequestOptions } from 'dcl-catalyst-commons/dist/utils/FetcherConfiguration'
+import { Profile, RequestOptions } from 'dcl-catalyst-commons'
 
 export interface LambdasAPI {
   /** Retrieve / Download */
