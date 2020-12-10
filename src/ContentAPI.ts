@@ -9,13 +9,13 @@ import {
   ServerName,
   LegacyDeploymentHistory,
   LegacyPartialDeploymentHistory,
-  RequestOptions,
   AvailableContentResult,
   DeploymentBase,
   DeploymentWithMetadata,
   DeploymentWithContent,
   DeploymentWithPointers,
-  LegacyAuditInfo
+  LegacyAuditInfo,
+  RequestOptions
 } from 'dcl-catalyst-commons'
 import { Readable } from 'stream'
 import { DeploymentData } from './utils/DeploymentBuilder'

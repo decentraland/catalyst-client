@@ -10,12 +10,12 @@ import {
   ContentFileHash,
   Profile,
   Fetcher,
-  RequestOptions,
   LegacyPartialDeploymentHistory,
   LegacyDeploymentHistory,
   AvailableContentResult,
   DeploymentBase,
-  LegacyAuditInfo
+  LegacyAuditInfo,
+  RequestOptions
 } from 'dcl-catalyst-commons'
 import { Readable } from 'stream'
 import { CatalystAPI } from './CatalystAPI'
@@ -24,6 +24,7 @@ import { sanitizeUrl } from './utils/Helper'
 import { ContentClient, DeploymentOptions } from './ContentClient'
 import { LambdasClient } from './LambdasClient'
 import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
+import { version } from '../package.json'
 
 export class CatalystClient implements CatalystAPI {
   private readonly contentClient: ContentClient
@@ -32,9 +33,14 @@ export class CatalystClient implements CatalystAPI {
   constructor(
     catalystUrl: string,
     origin: string, // The name or a description of the app that is using the client
-    fetcher: Fetcher = new Fetcher()
+    fetcher?: Fetcher
   ) {
     catalystUrl = sanitizeUrl(catalystUrl)
+    fetcher =
+      fetcher ??
+      new Fetcher({
+        headers: { 'User-Agent': `catalyst-client/${version} (+https://github.com/decentraland/catalyst-client)` }
+      })
     this.contentClient = new ContentClient(catalystUrl + '/content', origin, fetcher)
     this.lambdasClient = new LambdasClient(catalystUrl + '/lambdas', fetcher)
   }

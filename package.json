@@ -44,7 +44,7 @@
   "homepage": "https://github.com/decentraland/catalyst-client#readme",
   "dependencies": {
     "async-iterator-to-array": "0.0.1",
-    "dcl-catalyst-commons": "^1.7.1",
+    "dcl-catalyst-commons": "2.0.1",
     "dcl-crypto": "^2.2.0",
     "isomorphic-form-data": "git+https://github.com/decentraland/isomorphic-form-data.git#3409301b9e0348dc30da63955fa9fdb3ac46ac3e"
   },
@@ -59,7 +59,6 @@
     "eslint": "^7.14.0",
     "eslint-config-prettier": "^6.15.0",
     "eslint-plugin-prettier": "^3.2.0",
-    "dcl-tslint-config-standard": "^2.0.0",
     "mocha": "^8.0.1",
     "nyc": "^15.1.0",
     "prettier": "^2.2.1",
