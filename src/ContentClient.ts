@@ -49,7 +49,7 @@ export class ContentClient implements ContentAPI {
     fetcher?: Fetcher
   ) {
     this.contentUrl = sanitizeUrl(contentUrl)
-    this.fetcher = fetcher ?? new Fetcher({ headers: { 'user-agent': this.getUserAgentValue() } })
+    this.fetcher = fetcher ?? new Fetcher({ headers: { 'User-Agent': this.getUserAgentValue() } })
   }
 
   getUserAgentValue(): string {

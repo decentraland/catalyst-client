@@ -37,7 +37,7 @@ export class CatalystClient implements CatalystAPI {
     fetcher?: Fetcher
   ) {
     catalystUrl = sanitizeUrl(catalystUrl)
-    fetcher = fetcher ?? new Fetcher({ headers: { 'user-agent': this.getUserAgentValue() } })
+    fetcher = fetcher ?? new Fetcher({ headers: { 'User-Agent': this.getUserAgentValue() } })
     this.contentClient = new ContentClient(catalystUrl + '/content', origin, fetcher)
     this.lambdasClient = new LambdasClient(catalystUrl + '/lambdas', fetcher)
   }

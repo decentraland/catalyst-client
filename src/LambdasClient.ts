@@ -12,7 +12,7 @@ export class LambdasClient implements LambdasAPI {
 
   constructor(lambdasUrl: string, fetcher?: Fetcher) {
     this.lambdasUrl = sanitizeUrl(lambdasUrl)
-    this.fetcher = fetcher ?? new Fetcher({ headers: { 'user-agent': this.getUserAgentValue() } })
+    this.fetcher = fetcher ?? new Fetcher({ headers: { 'User-Agent': this.getUserAgentValue() } })
   }
 
   private getUserAgentValue(): string {
