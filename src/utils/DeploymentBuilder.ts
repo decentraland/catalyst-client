@@ -83,7 +83,7 @@ export class DeploymentBuilder {
     // We will try to use a global time API, so if the local PC clock is off, it will still work
     const fetcher = new Fetcher()
     try {
-      const { datetime } = await fetcher.fetchJson({ url: 'https://worldtimeapi.org/api/timezone/Etc/UTC' })
+      const { datetime } = await fetcher.fetchJson('https://worldtimeapi.org/api/timezone/Etc/UTC')
       return new Date(datetime).getTime()
     } catch (e) {
       return Date.now()

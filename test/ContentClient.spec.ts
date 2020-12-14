@@ -85,25 +85,17 @@ describe('ContentClient', () => {
     expect(result).to.equal(entity)
   })
 
-  it('When a file is downloaded, then the client retries if there if the downloaded file is not as expected', async () => {
+  it('When a file is downloaded, then the client retries if the downloaded file is not as expected', async () => {
     const failBuffer = Buffer.from('Fail')
     const realBuffer = Buffer.from('Real')
     const fileHash = await Hashing.calculateBufferHash(realBuffer)
 
     // Create mock, and return the wrong buffer the first time, and the correct one the second time
     const mockedFetcher: Fetcher = mock(Fetcher)
-    let times: number = 0
-
-    when(mockedFetcher.fetchBuffer(anything())).thenCall((options) => {
-      if (times == 0) {
-        times++
-        expect(options.url).to.equal(`${URL}/contents/${fileHash}`)
-        return Promise.resolve(failBuffer)
-      } else {
-        expect(options.url).to.equal(`${URL}/contents/${fileHash}`)
-        return Promise.resolve(realBuffer)
-      }
-    })
+    when(mockedFetcher.fetchBuffer(`${URL}/contents/${fileHash}`, anything())).thenReturn(
+      Promise.resolve(failBuffer),
+      Promise.resolve(realBuffer)
+    )
     const fetcher = instance(mockedFetcher)
 
     const client = buildClient(URL, fetcher)
@@ -111,7 +103,7 @@ describe('ContentClient', () => {
 
     // Assert that the correct buffer is returned, and that there was a retry attempt
     expect(result).to.equal(realBuffer)
-    verify(mockedFetcher.fetchBuffer(anything())).times(2)
+    verify(mockedFetcher.fetchBuffer(`${URL}/contents/${fileHash}`, anything())).times(2)
   })
 
   it('When a file is downloaded and all attempts failed, then an exception is thrown', async () => {
@@ -120,10 +112,7 @@ describe('ContentClient', () => {
 
     // Create mock, and return the wrong buffer always
     const mockedFetcher: Fetcher = mock(Fetcher)
-    when(mockedFetcher.fetchBuffer(anything())).thenCall((options) => {
-      expect(options.url).to.equal(`${URL}/contents/${fileHash}`)
-      return Promise.resolve(failBuffer)
-    })
+    when(mockedFetcher.fetchBuffer(`${URL}/contents/${fileHash}`, anything())).thenReturn(Promise.resolve(failBuffer))
     const fetcher = instance(mockedFetcher)
 
     const client = buildClient(URL, fetcher)
@@ -131,7 +120,7 @@ describe('ContentClient', () => {
 
     // Assert that the request failed, and that the client tried many times as expected
     await expect(result).to.be.rejectedWith(`Failed to fetch file with hash ${fileHash} from ${URL}`)
-    verify(mockedFetcher.fetchBuffer(anything())).times(2)
+    verify(mockedFetcher.fetchBuffer(`${URL}/contents/${fileHash}`, anything())).times(2)
   })
 
   it('When checking if content is available, then the result is as expected', async () => {
@@ -238,15 +227,8 @@ describe('ContentClient', () => {
     }
 
     const mockedFetcher: Fetcher = mock(Fetcher)
-    when(mockedFetcher.fetchJson(anything())).thenCall((options) => {
-      if (options.url == `${URL}/deployments?offset=0`) {
-        return Promise.resolve(requestResult1)
-      }
-      if (options.url == `${URL}/deployments?offset=1`) {
-        return Promise.resolve(requestResult2)
-      }
-      return undefined
-    })
+    when(mockedFetcher.fetchJson(`${URL}/deployments?offset=0`, anything())).thenReturn(Promise.resolve(requestResult1))
+    when(mockedFetcher.fetchJson(`${URL}/deployments?offset=1`, anything())).thenReturn(Promise.resolve(requestResult2))
     const fetcher = instance(mockedFetcher)
 
     const client = buildClient(URL, fetcher)
@@ -287,8 +269,8 @@ describe('ContentClient', () => {
     const mockedFetcher: Fetcher = mock(Fetcher)
 
     if (path) {
-      when(mockedFetcher.fetchJson(anything())).thenCall((options) => {
-        expect(options.url).to.equal(`${URL}${path}`)
+      when(mockedFetcher.fetchJson(anything(), anything())).thenCall((url, _) => {
+        expect(url).to.equal(`${URL}${path}`)
         return Promise.resolve(result)
       })
     }

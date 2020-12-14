@@ -22,11 +22,11 @@ import {
   DeploymentWithAuditInfo,
   LegacyAuditInfo,
   DeploymentSorting,
-  RequestOptions
+  RequestOptions,
+  mergeRequestOptions
 } from 'dcl-catalyst-commons'
 import asyncToArray from 'async-iterator-to-array'
 import { Readable } from 'stream'
-import merge from 'deepmerge'
 import { ContentAPI, DeploymentWithMetadataContentAndPointers } from './ContentAPI'
 import {
   addModelToFormData,
@@ -75,13 +75,15 @@ export class ContentClient implements ContentAPI {
       }
     }
 
-    const requestOptions = merge(options ?? {}, {
-      url: `${this.contentUrl}/entities${fix ? '?fix=true' : ''}`,
+    const requestOptions = mergeRequestOptions(options ?? {}, {
       body: form,
       headers: { 'x-upload-origin': this.origin }
     })
 
-    const { creationTimestamp } = await this.fetcher.postForm(requestOptions)
+    const { creationTimestamp } = await this.fetcher.postForm(
+      `${this.contentUrl}/entities${fix ? '?fix=true' : ''}`,
+      requestOptions
+    )
     return creationTimestamp
   }
 
@@ -118,7 +120,7 @@ export class ContentClient implements ContentAPI {
     options?: RequestOptions
   ): Promise<LegacyDeploymentHistory> {
     // We are setting different defaults in this case, because if one of the request fails, then all fail
-    const withSomeDefaults = merge({ attempts: 3, waitTime: '1s' }, options ?? {})
+    const withSomeDefaults = mergeRequestOptions({ attempts: 3, waitTime: '1s' }, options)
 
     const events: LegacyDeploymentHistory = []
     let offset = 0
@@ -164,10 +166,7 @@ export class ContentClient implements ContentAPI {
 
     return retry(
       async () => {
-        const content = await this.fetcher.fetchBuffer({
-          ...timeout,
-          url: `${this.contentUrl}/contents/${contentHash}`
-        })
+        const content = await this.fetcher.fetchBuffer(`${this.contentUrl}/contents/${contentHash}`, timeout)
         const downloadedHash = await Hashing.calculateBufferHash(content)
         // Sometimes, the downloaded file is not complete, so the hash turns out to be different.
         // So we will check the hash before considering the download successful.
@@ -241,9 +240,7 @@ export class ContentClient implements ContentAPI {
       while (keepRetrievingHistory && !exit) {
         const url = query + (queryParams.size === 0 ? '?' : '&') + `offset=${offset}`
         try {
-          const partialHistory: PartialDeploymentHistory<T> = await this.fetcher.fetchJson(
-            merge(withSomeDefaults, { url: url })
-          )
+          const partialHistory: PartialDeploymentHistory<T> = await this.fetcher.fetchJson(url, withSomeDefaults)
           for (const deployment of partialHistory.deployments) {
             if (!foundIds.has(deployment.entityId)) {
               foundIds.add(deployment.entityId)
@@ -333,7 +330,7 @@ export class ContentClient implements ContentAPI {
     // Perform the different queries
     const results: E[][] = []
     for (const query of queries) {
-      const result = await this.fetcher.fetchJson(merge(options ?? {}, { url: query }))
+      const result = await this.fetcher.fetchJson(query, options)
       results.push(result)
     }
 
@@ -348,7 +345,7 @@ export class ContentClient implements ContentAPI {
   }
 
   private fetchJson(path: string, options?: Partial<RequestOptions>): Promise<any> {
-    return this.fetcher.fetchJson(merge(options ?? {}, { url: `${this.contentUrl}${path}` }))
+    return this.fetcher.fetchJson(`${this.contentUrl}${path}`, options)
   }
 }
 
