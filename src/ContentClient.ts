@@ -40,7 +40,6 @@ export class ContentClient implements ContentAPI {
   private static readonly CHARS_LEFT_FOR_OFFSET = 7
   private readonly contentUrl: string
   private readonly fetcher
-  private readonly version = process.env.CURRENT_VERSION ?? 'v3'
 
   constructor(
     contentUrl: string,
@@ -51,7 +50,9 @@ export class ContentClient implements ContentAPI {
     this.fetcher =
       fetcher ??
       new Fetcher({
-        headers: { 'User-Agent': `content-client/${this.version} (+https://github.com/decentraland/catalyst-client)` }
+        headers: {
+          'User-Agent': `content-client/${Environment.RUNNING_VERSION} (+https://github.com/decentraland/catalyst-client)`
+        }
       })
   }
 

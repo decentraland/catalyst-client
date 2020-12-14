@@ -2,7 +2,6 @@ import { EthAddress } from 'dcl-crypto'
 import { Profile, Fetcher, RequestOptions } from 'dcl-catalyst-commons'
 import { sanitizeUrl } from './utils/Helper'
 import { LambdasAPI } from './LambdasAPI'
-import { version } from '../package.json'
 
 export class LambdasClient implements LambdasAPI {
   private readonly lambdasUrl: string
@@ -13,7 +12,9 @@ export class LambdasClient implements LambdasAPI {
     this.fetcher =
       fetcher ??
       new Fetcher({
-        headers: { 'User-Agent': `lambdas-client/${version} (+https://github.com/decentraland/catalyst-client)` }
+        headers: {
+          'User-Agent': `lambdas-client/${Environment.RUNNING_VERSION} (+https://github.com/decentraland/catalyst-client)`
+        }
       })
   }
 
