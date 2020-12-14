@@ -120,7 +120,7 @@ export class ContentClient implements ContentAPI {
     options?: RequestOptions
   ): Promise<LegacyDeploymentHistory> {
     // We are setting different defaults in this case, because if one of the request fails, then all fail
-    const withSomeDefaults = mergeRequestOptions({ attempts: 3, waitTime: '1s' }, options ?? {})
+    const withSomeDefaults = mergeRequestOptions({ attempts: 3, waitTime: '1s' }, options)
 
     const events: LegacyDeploymentHistory = []
     let offset = 0
