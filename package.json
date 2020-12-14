@@ -44,7 +44,7 @@
   "homepage": "https://github.com/decentraland/catalyst-client#readme",
   "dependencies": {
     "async-iterator-to-array": "0.0.1",
-    "dcl-catalyst-commons": "2.0.2",
+    "dcl-catalyst-commons": "^2.0.2",
     "dcl-crypto": "^2.2.0",
     "isomorphic-form-data": "git+https://github.com/decentraland/isomorphic-form-data.git#3409301b9e0348dc30da63955fa9fdb3ac46ac3e"
   },
