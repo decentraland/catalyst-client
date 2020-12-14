@@ -24,6 +24,7 @@ import { sanitizeUrl } from './utils/Helper'
 import { ContentClient, DeploymentOptions } from './ContentClient'
 import { LambdasClient } from './LambdasClient'
 import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
+import { RUNNING_VERSION } from './utils/Environment'
 
 export class CatalystClient implements CatalystAPI {
   private readonly contentClient: ContentClient
@@ -39,7 +40,7 @@ export class CatalystClient implements CatalystAPI {
       fetcher ??
       new Fetcher({
         headers: {
-          'User-Agent': `catalyst-client/${Environment.RUNNING_VERSION} (+https://github.com/decentraland/catalyst-client)`
+          'User-Agent': `catalyst-client/${RUNNING_VERSION} (+https://github.com/decentraland/catalyst-client)`
         }
       })
     this.contentClient = new ContentClient(catalystUrl + '/content', origin, fetcher)
