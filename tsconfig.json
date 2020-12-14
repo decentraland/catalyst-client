@@ -17,8 +17,7 @@
     "noUnusedParameters": true,
     "noUnusedLocals": true,
     "plugins": [{ "name": "tslint-language-service" }],
-    "declaration": true,
-    "resolveJsonModule": true
+    "declaration": true
   },
   "exclude": [
     "node_modules",
