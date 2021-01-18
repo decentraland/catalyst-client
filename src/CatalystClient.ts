@@ -108,7 +108,7 @@ export class CatalystClient implements CatalystAPI {
   }
 
   pipeContent(contentHash: ContentFileHash, responseTo: Response, options?: RequestOptions): Promise<void> {
-    this.contentClient.pipeContent(contentHash, responseTo, options)
+    return this.contentClient.pipeContent(contentHash, responseTo, options)
   }
 
   fetchProfile(ethAddress: EthAddress, options?: RequestOptions): Promise<Profile> {
