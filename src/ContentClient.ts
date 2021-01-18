@@ -182,6 +182,14 @@ export class ContentClient implements ContentAPI {
     )
   }
 
+  async pipeContent(
+    contentHash: ContentFileHash,
+    responseTo: Response,
+    options?: Partial<RequestOptions>
+  ): Promise<void> {
+    await this.fetcher.fetchPipe(`${this.contentUrl}/contents/${contentHash}`, responseTo, options)
+  }
+
   /**
    * This method fetches all deployments that match the given filters. It is important to mention, that if there are too many filters, then the
    * URL might get too long. In that case, we will internally make the necessary requests, but then the order of the deployments is not guaranteed.
