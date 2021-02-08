@@ -20,6 +20,7 @@ import {
 import { Readable } from 'stream'
 import { DeploymentData } from './utils/DeploymentBuilder'
 import { DeploymentOptions } from './ContentClient'
+import { Response } from 'express'
 
 export interface ContentAPI {
   /** Retrieve / Download */

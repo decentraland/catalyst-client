@@ -25,6 +25,7 @@ import { ContentClient, DeploymentOptions } from './ContentClient'
 import { LambdasClient } from './LambdasClient'
 import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
 import { RUNNING_VERSION } from './utils/Environment'
+import { Response } from 'express'
 
 export class CatalystClient implements CatalystAPI {
   private readonly contentClient: ContentClient

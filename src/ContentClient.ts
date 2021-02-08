@@ -36,6 +36,7 @@ import {
 } from './utils/Helper'
 import { DeploymentData } from './utils/DeploymentBuilder'
 import { RUNNING_VERSION } from './utils/Environment'
+import { Response } from 'express'
 
 export class ContentClient implements ContentAPI {
   private static readonly CHARS_LEFT_FOR_OFFSET = 7
