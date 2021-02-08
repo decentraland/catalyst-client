@@ -14,6 +14,7 @@ import {
   SortingField,
   SortingOrder
 } from 'dcl-catalyst-commons'
+import { DeploymentWithMetadataContentAndPointers } from 'ContentAPI'
 
 chai.use(chaiAsPromised)
 const expect = chai.expect
@@ -176,10 +177,10 @@ describe('ContentClient', () => {
 
   it('When fetching all deployments with no audit, then the result is as expected', async () => {
     const deployment = someDeployment()
-    delete deployment.auditInfo
-    const requestResult: PartialDeploymentHistory<Deployment> = {
+    const { auditInfo, ...deploymentWithoutAuditInfo } = deployment
+    const requestResult: PartialDeploymentHistory<DeploymentWithMetadataContentAndPointers> = {
       filters: {},
-      deployments: [deployment],
+      deployments: [deploymentWithoutAuditInfo],
       pagination: { offset: 10, limit: 10, moreData: false }
     }
     const { instance: fetcher } = mockFetcherJson(
@@ -190,7 +191,7 @@ describe('ContentClient', () => {
     const client = buildClient(URL, fetcher)
     const result = await client.fetchAllDeployments({ fields: DeploymentFields.POINTERS_CONTENT_AND_METADATA })
 
-    expect(result).to.deep.equal([deployment])
+    expect(result).to.deep.equal([deploymentWithoutAuditInfo])
   })
 
   it('When fetching all deployments with sort params, then the request has the correct query params', async () => {
