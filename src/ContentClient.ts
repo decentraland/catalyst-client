@@ -188,6 +188,7 @@ export class ContentClient implements ContentAPI {
     responseTo: Response,
     options?: Partial<RequestOptions>
   ): Promise<void> {
+    console.log('ggeting from url: ', `${this.contentUrl}/contents/${contentHash}`)
     await this.fetcher.fetchPipe(`${this.contentUrl}/contents/${contentHash}`, responseTo, options)
   }
 
