@@ -110,7 +110,7 @@ export class CatalystClient implements CatalystAPI {
 
   pipeContent(
     contentHash: ContentFileHash,
-    responseTo: Response,
+    responseTo: ReadableStream<Uint8Array>,
     options?: RequestOptions
   ): Promise<Map<string, string>> {
     return this.contentClient.pipeContent(contentHash, responseTo, options)

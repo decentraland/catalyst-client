@@ -49,7 +49,7 @@ export interface ContentAPI {
   isContentAvailable(cids: ContentFileHash[], options?: RequestOptions): Promise<AvailableContentResult>
   pipeContent(
     contentHash: ContentFileHash,
-    responseTo: Response,
+    responseTo: ReadableStream<Uint8Array>,
     options?: RequestOptions
   ): Promise<Map<string, string>>
 
