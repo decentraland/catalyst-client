@@ -36,7 +36,6 @@ import {
 } from './utils/Helper'
 import { DeploymentData } from './utils/DeploymentBuilder'
 import { RUNNING_VERSION } from './utils/Environment'
-import { Response } from 'express'
 
 export class ContentClient implements ContentAPI {
   private static readonly CHARS_LEFT_FOR_OFFSET = 7
@@ -185,11 +184,10 @@ export class ContentClient implements ContentAPI {
 
   async pipeContent(
     contentHash: ContentFileHash,
-    responseTo: Response,
+    responseTo: ReadableStream<Uint8Array>,
     options?: Partial<RequestOptions>
-  ): Promise<void> {
-    console.log('ggeting from url: ', `${this.contentUrl}/contents/${contentHash}`)
-    await this.fetcher.fetchPipe(`${this.contentUrl}/contents/${contentHash}`, responseTo, options)
+  ): Promise<Map<string, string>> {
+    return await this.fetcher.fetchPipe(`${this.contentUrl}/contents/${contentHash}`, responseTo, options)
   }
 
   /**
