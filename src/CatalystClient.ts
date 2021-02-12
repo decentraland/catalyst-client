@@ -108,7 +108,11 @@ export class CatalystClient implements CatalystAPI {
     return this.contentClient.downloadContent(contentHash, options)
   }
 
-  pipeContent(contentHash: ContentFileHash, responseTo: Response, options?: RequestOptions): Promise<void> {
+  pipeContent(
+    contentHash: ContentFileHash,
+    responseTo: Response,
+    options?: RequestOptions
+  ): Promise<Map<string, string>> {
     return this.contentClient.pipeContent(contentHash, responseTo, options)
   }
 
