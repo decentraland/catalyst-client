@@ -184,10 +184,10 @@ export class ContentClient implements ContentAPI {
 
   async pipeContent(
     contentHash: ContentFileHash,
-    responseTo: ReadableStream<Uint8Array>,
+    writeTo: ReadableStream<Uint8Array>,
     options?: Partial<RequestOptions>
   ): Promise<Map<string, string>> {
-    return await this.fetcher.fetchPipe(`${this.contentUrl}/contents/${contentHash}`, responseTo, options)
+    return await this.fetcher.fetchPipe(`${this.contentUrl}/contents/${contentHash}`, writeTo, options)
   }
 
   /**

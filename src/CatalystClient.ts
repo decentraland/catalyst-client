@@ -109,10 +109,10 @@ export class CatalystClient implements CatalystAPI {
 
   pipeContent(
     contentHash: ContentFileHash,
-    responseTo: ReadableStream<Uint8Array>,
+    writeTo: ReadableStream<Uint8Array>,
     options?: RequestOptions
   ): Promise<Map<string, string>> {
-    return this.contentClient.pipeContent(contentHash, responseTo, options)
+    return this.contentClient.pipeContent(contentHash, writeTo, options)
   }
 
   fetchProfile(ethAddress: EthAddress, options?: RequestOptions): Promise<Profile> {
