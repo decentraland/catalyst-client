@@ -15,6 +15,7 @@ import {
   SortingOrder
 } from 'dcl-catalyst-commons'
 import { DeploymentWithMetadataContentAndPointers } from 'ContentAPI'
+import { Headers } from 'node-fetch'
 
 chai.use(chaiAsPromised)
 const expect = chai.expect
@@ -239,6 +240,44 @@ describe('ContentClient', () => {
     expect(result).to.deep.equal([deployment1, deployment2])
   })
 
+  it('When a fetch is piped without headers then none is returned', async () => {
+    const contentHash = 'abc123'
+    const mockedResponse = instance(mock<ReadableStream>())
+    const { instance: fetcher } = mockPipeFetcher(new Headers())
+    const client = buildClient(URL, fetcher)
+
+    const result = await client.pipeContent(contentHash, mockedResponse)
+
+    expect(result).to.be.empty
+  })
+
+  it('When a fetch is piped with a non recognized header then none is returned', async () => {
+    const contentHash = 'abc123'
+    const mockedResponse = instance(mock<ReadableStream>())
+    const headers: Headers = new Headers()
+    headers.set('invalid', 'val')
+    const { instance: fetcher } = mockPipeFetcher(headers)
+    const client = buildClient(URL, fetcher)
+
+    const result = await client.pipeContent(contentHash, mockedResponse)
+
+    expect(result).to.be.empty
+  })
+
+  it('When a fetch is piped then only sanitized headers of the response are returned', async () => {
+    const contentHash = 'abc123'
+    const mockedResponse = instance(mock<ReadableStream>())
+    const headers: Headers = new Headers()
+    headers.set('invalid', 'val')
+    headers.set('content-length', '200')
+    const { instance: fetcher } = mockPipeFetcher(headers)
+    const client = buildClient(URL, fetcher)
+
+    const result = await client.pipeContent(contentHash, mockedResponse)
+
+    expect(result.has('Content-Length')).to.be.true
+  })
+
   function someDeployment(): Deployment {
     return {
       entityId: `entityId${Math.random()}`,
@@ -275,6 +314,16 @@ describe('ContentClient', () => {
         return Promise.resolve(result)
       })
     }
+
+    // Getting instance from mock
+    return { mock: mockedFetcher, instance: instance(mockedFetcher) }
+  }
+
+  function mockPipeFetcher(result: Headers): { mock: Fetcher; instance: Fetcher } {
+    // Create mock
+    const mockedFetcher: Fetcher = mock(Fetcher)
+
+    when(mockedFetcher.fetchPipe(anything(), anything(), anything())).thenResolve(result)
 
     // Getting instance from mock
     return { mock: mockedFetcher, instance: instance(mockedFetcher) }

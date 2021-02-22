@@ -107,6 +107,14 @@ export class CatalystClient implements CatalystAPI {
     return this.contentClient.downloadContent(contentHash, options)
   }
 
+  pipeContent(
+    contentHash: ContentFileHash,
+    writeTo: ReadableStream<Uint8Array>,
+    options?: RequestOptions
+  ): Promise<Map<string, string>> {
+    return this.contentClient.pipeContent(contentHash, writeTo, options)
+  }
+
   fetchProfile(ethAddress: EthAddress, options?: RequestOptions): Promise<Profile> {
     return this.lambdasClient.fetchProfile(ethAddress, options)
   }

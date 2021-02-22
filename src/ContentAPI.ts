@@ -46,6 +46,11 @@ export interface ContentAPI {
   ): Readable
   downloadContent(contentHash: ContentFileHash, options?: RequestOptions): Promise<Buffer>
   isContentAvailable(cids: ContentFileHash[], options?: RequestOptions): Promise<AvailableContentResult>
+  pipeContent(
+    contentHash: ContentFileHash,
+    writeTo: ReadableStream<Uint8Array>,
+    options?: RequestOptions
+  ): Promise<Map<string, string>>
 
   /** Upload */
   deployEntity(deployData: DeploymentData, fix?: boolean, options?: RequestOptions): Promise<Timestamp>
