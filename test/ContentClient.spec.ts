@@ -15,7 +15,7 @@ import {
   SortingOrder
 } from 'dcl-catalyst-commons'
 import { DeploymentWithMetadataContentAndPointers } from 'ContentAPI'
-import fetch from 'node-fetch'
+import { Headers } from 'node-fetch'
 
 chai.use(chaiAsPromised)
 const expect = chai.expect
@@ -243,18 +243,18 @@ describe('ContentClient', () => {
   it('When a fetch is piped without headers then none is returned', async () => {
     const contentHash = 'abc123'
     const mockedResponse = instance(mock<ReadableStream>())
-    const { instance: fetcher } = mockPipeFetcher(new fetch.Headers())
+    const { instance: fetcher } = mockPipeFetcher(new Headers())
     const client = buildClient(URL, fetcher)
 
     const result = await client.pipeContent(contentHash, mockedResponse)
 
     expect(result).to.be.empty
-  }).timeout('15s')
+  })
 
   it('When a fetch is piped with a non recognized header then none is returned', async () => {
     const contentHash = 'abc123'
     const mockedResponse = instance(mock<ReadableStream>())
-    const headers: Headers = new fetch.Headers()
+    const headers: Headers = new Headers()
     headers.set('invalid', 'val')
     const { instance: fetcher } = mockPipeFetcher(headers)
     const client = buildClient(URL, fetcher)
@@ -262,12 +262,12 @@ describe('ContentClient', () => {
     const result = await client.pipeContent(contentHash, mockedResponse)
 
     expect(result).to.be.empty
-  }).timeout('15s')
+  })
 
   it('When a fetch is piped then only sanitized headers of the response are returned', async () => {
     const contentHash = 'abc123'
     const mockedResponse = instance(mock<ReadableStream>())
-    const headers: Headers = new fetch.Headers()
+    const headers: Headers = new Headers()
     headers.set('invalid', 'val')
     headers.set('content-length', '200')
     const { instance: fetcher } = mockPipeFetcher(headers)
@@ -276,7 +276,7 @@ describe('ContentClient', () => {
     const result = await client.pipeContent(contentHash, mockedResponse)
 
     expect(result.has('Content-Length')).to.be.true
-  }).timeout('15s')
+  })
 
   function someDeployment(): Deployment {
     return {
