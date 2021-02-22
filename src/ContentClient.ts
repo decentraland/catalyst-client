@@ -187,7 +187,35 @@ export class ContentClient implements ContentAPI {
     writeTo: ReadableStream<Uint8Array>,
     options?: Partial<RequestOptions>
   ): Promise<Map<string, string>> {
-    return await this.fetcher.fetchPipe(`${this.contentUrl}/contents/${contentHash}`, writeTo, options)
+    return this.onlyKnownHeaders(
+      await this.fetcher.fetchPipe(`${this.contentUrl}/contents/${contentHash}`, writeTo, options)
+    )
+  }
+
+  private KNOWN_HEADERS: string[] = [
+    'Content-Type',
+    'Access-Control-Allow-Origin',
+    'Access-Control-Expose-Headers',
+    'ETag',
+    'Date',
+    'Content-Length',
+    'Cache-Control'
+  ]
+
+  private fixHeaderNameCase(headerName: string): string | undefined {
+    return this.KNOWN_HEADERS.find((item) => item.toLowerCase() === headerName.toLowerCase())
+  }
+
+  private onlyKnownHeaders(headersFromResponse: Headers): Map<string, string> {
+    const headers: Map<string, string> = new Map()
+    console.log(headersFromResponse)
+    headersFromResponse?.forEach((headerValue, headerName) => {
+      const fixedHeader = this.fixHeaderNameCase(headerName)
+      if (fixedHeader) {
+        headers.set(fixedHeader, headerValue)
+      }
+    })
+    return headers
   }
 
   /**
