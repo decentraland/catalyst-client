@@ -98,7 +98,7 @@ describe('Helper', () => {
     expect(query2).to.equal(buildQueryWithValues(valuesPerQuery, totalValues))
   })
 
-  it('When filters contain a non-basic type, then an error is thrown', () => {
+  it('When filters contain an invalid type, then an error is thrown', () => {
     const filters = {
       test: () => {}
     }

@@ -28,7 +28,7 @@ function removeDuplicates<T>(array: T[]): T[] {
 }
 
 /**
- * This method performs one or more fetches to the given server, splitting into different queries to avoid exceeding the max length of urls
+ * This method performs one or more fetches to the given server, splitting query params into different queries to avoid exceeding the max length of urls
  */
 export const MAX_URL_LENGTH: number = 2048
 export async function splitAndFetch<E>({
@@ -60,8 +60,8 @@ export async function splitAndFetch<E>({
 
 const CHARS_LEFT_FOR_OFFSET = 7
 /**
- * This method performs one or more fetches to the given server, splitting into different queries to avoid exceeding the max length of urls
- * This method should be use if the result is paginated, and needs to be queries many times
+ * This method performs one or more fetches to the given server, splitting query params into different queries to avoid exceeding the max length of urls
+ * This method should be used if the result is paginated, and needs to be queries many times
  */
 export async function splitAndFetchPaginated<E>({
   fetcher,

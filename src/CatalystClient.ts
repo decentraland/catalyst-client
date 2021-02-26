@@ -26,7 +26,7 @@ import { ContentClient, DeploymentOptions } from './ContentClient'
 import { LambdasClient } from './LambdasClient'
 import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
 import { RUNNING_VERSION } from './utils/Environment'
-import { WearablesFilters, OwnedWearables } from 'LambdasAPI'
+import { WearablesFilters, OwnedWearables } from './LambdasAPI'
 
 export class CatalystClient implements CatalystAPI {
   private readonly contentClient: ContentClient
