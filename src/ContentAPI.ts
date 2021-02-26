@@ -6,9 +6,6 @@ import {
   Pointer,
   EntityId,
   Entity,
-  ServerName,
-  LegacyDeploymentHistory,
-  LegacyPartialDeploymentHistory,
   AvailableContentResult,
   DeploymentBase,
   DeploymentWithMetadata,
@@ -27,14 +24,6 @@ export interface ContentAPI {
   fetchEntitiesByIds(type: EntityType, ids: EntityId[], options?: RequestOptions): Promise<Entity[]>
   fetchEntityById(type: EntityType, id: EntityId, options?: RequestOptions): Promise<Entity>
   fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<LegacyAuditInfo>
-  fetchFullHistory(
-    query?: { from?: Timestamp; to?: Timestamp; serverName?: ServerName },
-    options?: RequestOptions
-  ): Promise<LegacyDeploymentHistory>
-  fetchHistory(
-    query?: { from?: Timestamp; to?: Timestamp; serverName?: ServerName; offset?: number; limit?: number },
-    options?: RequestOptions
-  ): Promise<LegacyPartialDeploymentHistory>
   fetchStatus(options?: RequestOptions): Promise<ServerStatus>
   fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
     deploymentOptions?: DeploymentOptions<T>,
