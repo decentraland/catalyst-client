@@ -30,8 +30,9 @@ import { Readable } from 'stream'
 import { ContentAPI, DeploymentWithMetadataContentAndPointers } from './ContentAPI'
 import {
   addModelToFormData,
+  convertFiltersToQueryParams,
   sanitizeUrl,
-  splitManyValuesIntoManyQueries,
+  splitAndFetch,
   splitValuesIntoManyQueries
 } from './utils/Helper'
 import { DeploymentData } from './utils/DeploymentBuilder'
@@ -40,7 +41,7 @@ import { RUNNING_VERSION } from './utils/Environment'
 export class ContentClient implements ContentAPI {
   private static readonly CHARS_LEFT_FOR_OFFSET = 7
   private readonly contentUrl: string
-  private readonly fetcher
+  private readonly fetcher: Fetcher
 
   constructor(
     contentUrl: string,
@@ -94,7 +95,14 @@ export class ContentClient implements ContentAPI {
       return Promise.reject(`You must set at least one pointer.`)
     }
 
-    return this.splitAndFetch<Entity, EntityId>(`/entities/${type}`, 'pointer', pointers, ({ id }) => id, options)
+    return splitAndFetch<Entity>({
+      fetcher: this.fetcher,
+      baseUrl: this.contentUrl,
+      path: `/entities/${type}`,
+      queryParams: { name: 'pointer', values: pointers },
+      uniqueBy: 'id',
+      options
+    })
   }
 
   fetchEntitiesByIds(type: EntityType, ids: EntityId[], options?: RequestOptions): Promise<Entity[]> {
@@ -102,7 +110,14 @@ export class ContentClient implements ContentAPI {
       return Promise.reject(`You must set at least one id.`)
     }
 
-    return this.splitAndFetch<Entity, EntityId>(`/entities/${type}`, 'id', ids, ({ id }) => id, options)
+    return splitAndFetch<Entity>({
+      fetcher: this.fetcher,
+      baseUrl: this.contentUrl,
+      path: `/entities/${type}`,
+      queryParams: { name: 'id', values: ids },
+      uniqueBy: 'id',
+      options
+    })
   }
 
   async fetchEntityById(type: EntityType, id: EntityId, options?: RequestOptions): Promise<Entity> {
@@ -208,7 +223,6 @@ export class ContentClient implements ContentAPI {
 
   private onlyKnownHeaders(headersFromResponse: Headers): Map<string, string> {
     const headers: Map<string, string> = new Map()
-    console.log(headersFromResponse)
     headersFromResponse?.forEach((headerValue, headerName) => {
       const fixedHeader = this.fixHeaderNameCase(headerName)
       if (fixedHeader) {
@@ -244,7 +258,7 @@ export class ContentClient implements ContentAPI {
     const withSomeDefaults = applySomeDefaults({ attempts: 3, waitTime: '1s' }, options)
 
     // Transform filters object into query params map
-    const filterQueryParams: Map<string, string[]> = this.filtersToQueryParams(deploymentOptions?.filters)
+    const filterQueryParams: Map<string, string[]> = convertFiltersToQueryParams(deploymentOptions?.filters)
 
     // Transform sorting object into query params map
     const sortingQueryParams = this.sortingToQueryParams(deploymentOptions?.sortBy)
@@ -255,18 +269,18 @@ export class ContentClient implements ContentAPI {
     if (deploymentOptions?.fields) {
       const fieldsValue = deploymentOptions?.fields.getFields()
       queryParams.set('fields', [fieldsValue])
-
-      // TODO: Remove on next deployment
-      if (fieldsValue.includes('auditInfo')) {
-        queryParams.set('showAudit', ['true'])
-      }
     }
 
     // Reserve a few chars to send the offset
     const reservedChars = `&offset=`.length + ContentClient.CHARS_LEFT_FOR_OFFSET
 
     // Split values into different queries
-    const queries = splitManyValuesIntoManyQueries(this.contentUrl, '/deployments', queryParams, reservedChars)
+    const queries = splitValuesIntoManyQueries({
+      baseUrl: this.contentUrl,
+      path: '/deployments',
+      queryParams,
+      reservedChars
+    })
 
     // Perform the different queries
     const foundIds: Set<EntityId> = new Set()
@@ -308,36 +322,19 @@ export class ContentClient implements ContentAPI {
     return sortQueryParams
   }
 
-  private filtersToQueryParams(filters?: DeploymentFilters): Map<string, string[]> {
-    if (!filters) {
-      return new Map()
-    }
-    const entries = Object.entries(filters).map<[string, string[]]>(([name, value]) => {
-      const newName = name.endsWith('s') ? name.slice(0, -1) : name
-      let newValues: string[]
-      // Force coersion of number, boolean, or string into string
-      if (Array.isArray(value)) {
-        newValues = [...value].map((_) => `${_}`)
-      } else {
-        newValues = [`${value}`]
-      }
-      return [newName, newValues]
-    })
-    return new Map(entries)
-  }
-
   isContentAvailable(cids: string[], options?: RequestOptions): Promise<AvailableContentResult> {
     if (cids.length === 0) {
       return Promise.reject(`You must set at least one cid.`)
     }
 
-    return this.splitAndFetch<{ cid: ContentFileHash; available: boolean }, ContentFileHash>(
-      `/available-content`,
-      'cid',
-      cids,
-      ({ cid }) => cid,
+    return splitAndFetch<{ cid: ContentFileHash; available: boolean }>({
+      fetcher: this.fetcher,
+      baseUrl: this.contentUrl,
+      path: `/available-content`,
+      queryParams: { name: 'cid', values: cids },
+      uniqueBy: 'cid',
       options
-    )
+    })
   }
 
   /** Given an array of file hashes, return a set with those already uploaded on the server */
@@ -350,36 +347,6 @@ export class ContentClient implements ContentAPI {
     const alreadyUploaded = result.filter(({ available }) => available).map(({ cid }) => cid)
 
     return new Set(alreadyUploaded)
-  }
-
-  /**
-   * This method performs one or more fetches to the content server, splitting into different queries to avoid exceeding the max length of urls
-   */
-  private async splitAndFetch<E, K>(
-    basePath: string,
-    queryParamName: string,
-    values: string[],
-    extractKey: (object: E) => K,
-    options?: RequestOptions
-  ): Promise<E[]> {
-    // Split values into different queries
-    const queries = splitValuesIntoManyQueries(this.contentUrl, basePath, queryParamName, values)
-
-    // Perform the different queries
-    const results: E[][] = []
-    for (const query of queries) {
-      const result = await this.fetcher.fetchJson(query, options)
-      results.push(result)
-    }
-
-    // Flatten results
-    const flattenedResult: E[] = results.reduce((accum, value) => accum.concat(value), [])
-
-    // Group results by key, since there could be duplicates
-    const groupedResults: Map<K, E> = new Map(flattenedResult.map((result) => [extractKey(result), result]))
-
-    // Return results
-    return Array.from(groupedResults.values())
   }
 
   private fetchJson(path: string, options?: Partial<RequestOptions>): Promise<any> {

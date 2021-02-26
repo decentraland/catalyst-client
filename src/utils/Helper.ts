@@ -1,3 +1,5 @@
+import { Fetcher, RequestOptions } from 'dcl-catalyst-commons'
+
 require('isomorphic-form-data')
 
 export function addModelToFormData(model: any, form: FormData, namespace = ''): FormData {
@@ -21,36 +23,108 @@ export function addModelToFormData(model: any, form: FormData, namespace = ''): 
   return form
 }
 
-export function removeDuplicates<T>(array: T[]): T[] {
+function removeDuplicates<T>(array: T[]): T[] {
   return Array.from(new Set(array))
 }
 
 /**
- * This method performs splits what would be one query into many, to avoid exceeding the max length of urls
+ * This method performs one or more fetches to the given server, splitting into different queries to avoid exceeding the max length of urls
  */
 export const MAX_URL_LENGTH: number = 2048
-export function splitValuesIntoManyQueries(
-  baseUrl: string,
-  basePath: string,
-  queryParamName: string,
-  values: string[]
-): string[] {
-  return splitManyValuesIntoManyQueries(baseUrl, basePath, new Map([[queryParamName, values]]))
+export async function splitAndFetch<E>({
+  baseUrl,
+  path,
+  queryParams,
+  fetcher,
+  uniqueBy,
+  options
+}: Omit<SplitAndFetchParams<E>, 'elementsProperty'>): Promise<E[]> {
+  // Adding default
+  fetcher = fetcher ?? new Fetcher()
+
+  // Split values into different queries
+  const queries = splitValuesIntoManyQueries({ baseUrl, path, queryParams })
+
+  const results: Map<any, E> = new Map()
+  for (const query of queries) {
+    // Perform the different queries
+    const elements: E[] = await fetcher.fetchJson(query, options)
+
+    // Group by unique property (if set), or add all of them to the map
+    elements.forEach((element) => results.set(uniqueBy ? element[uniqueBy] : results.size, element))
+  }
+
+  // Return results
+  return Array.from(results.values())
 }
 
-export function splitManyValuesIntoManyQueries(
-  baseUrl: string,
-  basePath: string,
-  queryParams: Map<string, string[]>,
-  reservedChars: number = 0
-): string[] {
+const CHARS_LEFT_FOR_OFFSET = 7
+/**
+ * This method performs one or more fetches to the given server, splitting into different queries to avoid exceeding the max length of urls
+ * This method should be use if the result is paginated, and needs to be queries many times
+ */
+export async function splitAndFetchPaginated<E>({
+  fetcher,
+  baseUrl,
+  path,
+  queryParams,
+  elementsProperty,
+  uniqueBy,
+  options
+}: RequiredOne<SplitAndFetchParams<E>, 'uniqueBy'>): Promise<E[]> {
+  // A little clean up
+  fetcher = fetcher ?? new Fetcher()
+  const queryParamsMap: Map<string, string[]> =
+    'name' in queryParams ? new Map([[queryParams.name, queryParams.values]]) : queryParams
+
+  // Reserve a few chars to send the offset
+  const reservedChars = `&offset=`.length + CHARS_LEFT_FOR_OFFSET
+
+  // Split values into different queries
+  const queries = splitValuesIntoManyQueries({ baseUrl, path, queryParams, reservedChars })
+
+  // Perform the different queries
+  const foundElements: Map<any, E> = new Map()
+  let exit = false
+  for (let i = 0; i < queries.length && !exit; i++) {
+    const query = queries[i]
+    let offset = 0
+    let keepRetrievingElements = true
+    while (keepRetrievingElements && !exit) {
+      const url = query + (queryParamsMap.size === 0 ? '?' : '&') + `offset=${offset}`
+      try {
+        const response: {
+          pagination: { offset: number; limit: number; moreData: boolean }
+        } = await fetcher.fetchJson(url, options)
+        const elements: E[] = response[elementsProperty]
+        elements.forEach((element) => foundElements.set(element[uniqueBy], element))
+        offset = response.pagination.offset + response.pagination.limit
+        keepRetrievingElements = response.pagination.moreData
+      } catch (error) {
+        exit = true
+      }
+    }
+  }
+
+  return Array.from(foundElements.values())
+}
+
+export function splitValuesIntoManyQueries({
+  queryParams,
+  baseUrl,
+  path,
+  reservedChars
+}: SplitIntoQueriesParams): string[] {
+  const queryParamsMap: Map<string, string[]> =
+    'name' in queryParams ? new Map([[queryParams.name, queryParams.values]]) : queryParams
+
   // Check that it makes sent to apply the algorithm
-  if (queryParams.size === 0) {
-    return [baseUrl + basePath]
+  if (queryParamsMap.size === 0) {
+    return [baseUrl + path]
   }
 
   // Remove duplicates
-  const withoutDuplicates: [string, string[]][] = Array.from(queryParams.entries()).map(([name, values]) => [
+  const withoutDuplicates: [string, string[]][] = Array.from(queryParamsMap.entries()).map(([name, values]) => [
     name,
     removeDuplicates(values)
   ])
@@ -61,7 +135,7 @@ export function splitManyValuesIntoManyQueries(
   )
 
   // Add all params (except the last one that is the one with the most values) into the url
-  const queryBuilder = new QueryBuilder(baseUrl + basePath, reservedChars)
+  const queryBuilder = new QueryBuilder(baseUrl + path, reservedChars)
   for (let i = 0; i < sortedByValues.length - 1; i++) {
     const [paramName, paramValues] = sortedByValues[i]
     if (!queryBuilder.canAddParams(paramName, paramValues)) {
@@ -93,6 +167,35 @@ export function splitManyValuesIntoManyQueries(
   return urls
 }
 
+export function convertFiltersToQueryParams(filters?: Record<string, any>): Map<string, string[]> {
+  if (!filters) {
+    return new Map()
+  }
+  const entries = Object.entries(filters)
+    .filter(([_, value]) => !!value)
+    .map<[string, string[]]>(([name, value]) => {
+      const newName = name.endsWith('s') ? name.slice(0, -1) : name
+      let newValues: string[]
+      // Force coersion of number, boolean, or string into string
+      if (Array.isArray(value)) {
+        newValues = [...value].filter(isValidQueryParamValue).map((_) => `${_}`)
+      } else if (isValidQueryParamValue(value)) {
+        newValues = [`${value}`]
+      } else {
+        throw new Error(
+          'Query params must be either a string, a number, a boolean or an array of the types just mentioned'
+        )
+      }
+      return [newName, newValues]
+    })
+    .filter(([_, values]) => values.length > 0)
+  return new Map(entries)
+}
+
+function isValidQueryParamValue(value: any): boolean {
+  return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+}
+
 /** Remove white spaces and add https if no protocol is specified */
 export function sanitizeUrl(url: string): string {
   // Remove empty spaces
@@ -111,7 +214,28 @@ export function sanitizeUrl(url: string): string {
   return url
 }
 
-export class QueryBuilder {
+type RequiredOne<T, K extends keyof T> = Omit<T, K> & Required<Pick<T, K>>
+
+type QueryParams = { name: string; values: string[] } | Map<string, string[]>
+
+type SplitIntoQueriesParams = {
+  baseUrl: string
+  path: string
+  queryParams: QueryParams
+  reservedChars?: number
+}
+
+type SplitAndFetchParams<E> = {
+  baseUrl: string
+  path: string
+  queryParams: QueryParams
+  elementsProperty: string
+  fetcher?: Fetcher
+  uniqueBy?: keyof E
+  options?: RequestOptions
+}
+
+class QueryBuilder {
   private currentUrl: string
   private addedParam = false
   private baseAddedParam = false
