@@ -10,17 +10,6 @@ const expect = chai.expect
 describe('LambdasClient', () => {
   const URL = 'https://url.com'
 
-  it('When fetching for a profile, then the result is as expected', async () => {
-    const requestResult = someResult()
-    const ethAddress = 'ethAddress'
-    const { instance: fetcher } = mockFetcherJson(`/profile/${ethAddress}`, requestResult)
-
-    const client = buildClient(URL, fetcher)
-    const result = await client.fetchProfile(ethAddress)
-
-    expect(result).to.deep.equal(requestResult)
-  })
-
   it('When fetching for many profiles, then the result is as expected', async () => {
     const requestResult = [someResult()]
     const [ethAddress1, ethAddress2] = ['ethAddress1', 'ethAddress2']

@@ -2,8 +2,6 @@ import { EthAddress } from 'dcl-crypto'
 import { EntityMetadata, Profile, RequestOptions } from 'dcl-catalyst-commons'
 
 export interface LambdasAPI {
-  /** Retrieve / Download */
-  fetchProfile(ethAddress: EthAddress, options?: RequestOptions): Promise<Profile>
 
   fetchProfiles(ethAddresses: EthAddress[], options?: RequestOptions): Promise<Profile[]>
 

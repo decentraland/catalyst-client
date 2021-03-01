@@ -37,7 +37,7 @@ export interface ContentAPI {
   ): Promise<LegacyPartialDeploymentHistory>
   fetchStatus(options?: RequestOptions): Promise<ServerStatus>
   fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
-    deploymentOptions?: DeploymentOptions<T>,
+    deploymentOptions: DeploymentOptions<T>,
     options?: RequestOptions
   ): Promise<T[]>
   streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(

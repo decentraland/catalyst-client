@@ -185,14 +185,35 @@ describe('ContentClient', () => {
       pagination: { offset: 10, limit: 10, moreData: false }
     }
     const { instance: fetcher } = mockFetcherJson(
-      `/deployments?fields=pointers,content,metadata&offset=0`,
+      `/deployments?entityType=${EntityType.PROFILE}&fields=pointers,content,metadata&offset=0`,
       requestResult
     )
 
     const client = buildClient(URL, fetcher)
-    const result = await client.fetchAllDeployments({ fields: DeploymentFields.POINTERS_CONTENT_AND_METADATA })
+    const result = await client.fetchAllDeployments({
+      filters: { entityTypes: [EntityType.PROFILE] },
+      fields: DeploymentFields.POINTERS_CONTENT_AND_METADATA
+    })
 
     expect(result).to.deep.equal([deploymentWithoutAuditInfo])
+  })
+
+  it('When fetching all deployments with no filters, then an error is thrown', async () => {
+    const client = buildClient(URL)
+
+    const promise = client.fetchAllDeployments({
+      filters: {
+        deployedBy: [],
+        entityTypes: [],
+        entityIds: [],
+        pointers: [],
+        onlyCurrentlyPointed: true
+      }
+    })
+
+    expect(promise).to.be.rejectedWith(
+      `When fetching deployments, you must set at least one filter that isn't 'onlyCurrentlyPointed'`
+    )
   })
 
   it('When fetching all deployments with sort params, then the request has the correct query params', async () => {
@@ -203,12 +224,13 @@ describe('ContentClient', () => {
       pagination: { offset: 10, limit: 10, moreData: false }
     }
     const { instance: fetcher } = mockFetcherJson(
-      `/deployments?sortingField=entity_timestamp&sortingOrder=ASC&offset=0`,
+      `/deployments?entityType=${EntityType.PROFILE}&sortingField=entity_timestamp&sortingOrder=ASC&offset=0`,
       requestResult
     )
 
     const client = buildClient(URL, fetcher)
     const result = await client.fetchAllDeployments({
+      filters: { entityTypes: [EntityType.PROFILE] },
       sortBy: { field: SortingField.ENTITY_TIMESTAMP, order: SortingOrder.ASCENDING }
     })
 
@@ -229,12 +251,16 @@ describe('ContentClient', () => {
     }
 
     const mockedFetcher: Fetcher = mock(Fetcher)
-    when(mockedFetcher.fetchJson(`${URL}/deployments?offset=0`, anything())).thenReturn(Promise.resolve(requestResult1))
-    when(mockedFetcher.fetchJson(`${URL}/deployments?offset=1`, anything())).thenReturn(Promise.resolve(requestResult2))
+    when(
+      mockedFetcher.fetchJson(`${URL}/deployments?entityType=${EntityType.PROFILE}&offset=0`, anything())
+    ).thenReturn(Promise.resolve(requestResult1))
+    when(
+      mockedFetcher.fetchJson(`${URL}/deployments?entityType=${EntityType.PROFILE}&offset=1`, anything())
+    ).thenReturn(Promise.resolve(requestResult2))
     const fetcher = instance(mockedFetcher)
 
     const client = buildClient(URL, fetcher)
-    const result = await client.fetchAllDeployments()
+    const result = await client.fetchAllDeployments({ filters: { entityTypes: [EntityType.PROFILE] } })
 
     // We make sure that repeated deployments were ignored
     expect(result).to.deep.equal([deployment1, deployment2])
@@ -329,7 +355,7 @@ describe('ContentClient', () => {
     return { mock: mockedFetcher, instance: instance(mockedFetcher) }
   }
 
-  function buildClient(URL: string, fetcher: Fetcher) {
+  function buildClient(URL: string, fetcher?: Fetcher) {
     return new ContentClient(URL, 'origin', fetcher)
   }
 })

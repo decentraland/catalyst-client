@@ -15,8 +15,7 @@ import {
   AvailableContentResult,
   DeploymentBase,
   LegacyAuditInfo,
-  RequestOptions,
-  CompleteRequestOptions
+  RequestOptions
 } from 'dcl-catalyst-commons'
 import { Readable } from 'stream'
 import { CatalystAPI } from './CatalystAPI'
@@ -88,7 +87,7 @@ export class CatalystClient implements CatalystAPI {
   }
 
   fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
-    deploymentOptions?: DeploymentOptions<T>,
+    deploymentOptions: DeploymentOptions<T>,
     options?: RequestOptions
   ): Promise<T[]> {
     return this.contentClient.fetchAllDeployments(deploymentOptions, options)
@@ -117,22 +116,18 @@ export class CatalystClient implements CatalystAPI {
     return this.contentClient.pipeContent(contentHash, writeTo, options)
   }
 
-  fetchProfile(ethAddress: EthAddress, options?: RequestOptions): Promise<Profile> {
-    return this.lambdasClient.fetchProfile(ethAddress, options)
-  }
-
-  fetchProfiles(ethAddresses: string[], options?: Partial<CompleteRequestOptions>): Promise<Profile[]> {
+  fetchProfiles(ethAddresses: EthAddress[], options?: RequestOptions): Promise<Profile[]> {
     return this.lambdasClient.fetchProfiles(ethAddresses, options)
   }
 
-  fetchWearables(filters: WearablesFilters, options?: Partial<CompleteRequestOptions>): Promise<any[]> {
+  fetchWearables(filters: WearablesFilters, options?: RequestOptions): Promise<any[]> {
     return this.lambdasClient.fetchWearables(filters, options)
   }
 
   fetchOwnedWearables<B extends boolean>(
-    ethAddress: string,
+    ethAddress: EthAddress,
     includeDefinitions: B,
-    options?: Partial<CompleteRequestOptions>
+    options?: RequestOptions
   ): Promise<OwnedWearables<B>> {
     return this.lambdasClient.fetchOwnedWearables(ethAddress, includeDefinitions, options)
   }
