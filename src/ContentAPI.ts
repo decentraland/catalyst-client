@@ -41,7 +41,7 @@ export interface ContentAPI {
     options?: RequestOptions
   ): Promise<T[]>
   streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
-    deploymentOptions?: DeploymentOptions<T>,
+    deploymentOptions: DeploymentOptions<T>,
     options?: RequestOptions
   ): Readable
   downloadContent(contentHash: ContentFileHash, options?: RequestOptions): Promise<Buffer>

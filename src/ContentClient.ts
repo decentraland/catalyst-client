@@ -244,7 +244,7 @@ export class ContentClient implements ContentAPI {
   }
 
   streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
-    deploymentOptions?: DeploymentOptions<T>,
+    deploymentOptions: DeploymentOptions<T>,
     options?: RequestOptions
   ): Readable {
     return Readable.from(this.iterateThroughDeployments(deploymentOptions, options))

@@ -94,7 +94,7 @@ export class CatalystClient implements CatalystAPI {
   }
 
   streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
-    deploymentOptions?: DeploymentOptions<T>,
+    deploymentOptions: DeploymentOptions<T>,
     options?: RequestOptions
   ): Readable {
     return this.contentClient.streamAllDeployments(deploymentOptions, options)
