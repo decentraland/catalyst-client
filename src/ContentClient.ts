@@ -195,14 +195,14 @@ export class ContentClient implements ContentAPI {
    *  but then the order of the deployments is not guaranteed.
    */
   fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
-    deploymentOptions?: DeploymentOptions<T>,
+    deploymentOptions: DeploymentOptions<T>,
     options?: RequestOptions
   ): Promise<T[]> {
     return asyncToArray(this.iterateThroughDeployments(deploymentOptions, options))
   }
 
   streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
-    deploymentOptions?: DeploymentOptions<T>,
+    deploymentOptions: DeploymentOptions<T>,
     options?: RequestOptions
   ): Readable {
     return Readable.from(this.iterateThroughDeployments(deploymentOptions, options))
@@ -217,6 +217,9 @@ export class ContentClient implements ContentAPI {
 
     // Transform filters object into query params map
     const filterQueryParams: Map<string, string[]> = convertFiltersToQueryParams(deploymentOptions?.filters)
+
+    // Validate that some params were used, so that not everything is fetched
+    this.assertFiltersAreSet(deploymentOptions?.filters)
 
     // Transform sorting object into query params map
     const sortingQueryParams = this.sortingToQueryParams(deploymentOptions?.sortBy)
@@ -269,6 +272,19 @@ export class ContentClient implements ContentAPI {
     }
   }
 
+  private assertFiltersAreSet(filters: DeploymentFilters | undefined) {
+    const filtersAreSet =
+      filters?.fromLocalTimestamp ||
+      filters?.toLocalTimestamp ||
+      (filters?.deployedBy && filters?.deployedBy.length > 0) ||
+      (filters?.entityTypes && filters?.entityTypes.length > 0) ||
+      (filters?.entityIds && filters?.entityIds.length > 0) ||
+      (filters?.pointers && filters?.pointers.length > 0)
+    if (!filtersAreSet) {
+      throw new Error(`When fetching deployments, you must set at least one filter that isn't 'onlyCurrentlyPointed'`)
+    }
+  }
+
   private sortingToQueryParams(sort?: DeploymentSorting): Map<string, string[]> {
     const sortQueryParams: Map<string, string[]> = new Map()
     if (sort?.field) {
@@ -313,7 +329,7 @@ export class ContentClient implements ContentAPI {
 }
 
 export type DeploymentOptions<T> = {
-  filters?: DeploymentFilters
+  filters: DeploymentFilters
   sortBy?: DeploymentSorting
   fields?: DeploymentFields<T>
   errorListener?: (errorMessage: string) => void

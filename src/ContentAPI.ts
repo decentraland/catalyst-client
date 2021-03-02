@@ -26,11 +26,11 @@ export interface ContentAPI {
   fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<LegacyAuditInfo>
   fetchStatus(options?: RequestOptions): Promise<ServerStatus>
   fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
-    deploymentOptions?: DeploymentOptions<T>,
+    deploymentOptions: DeploymentOptions<T>,
     options?: RequestOptions
   ): Promise<T[]>
   streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
-    deploymentOptions?: DeploymentOptions<T>,
+    deploymentOptions: DeploymentOptions<T>,
     options?: RequestOptions
   ): Readable
   downloadContent(contentHash: ContentFileHash, options?: RequestOptions): Promise<Buffer>
