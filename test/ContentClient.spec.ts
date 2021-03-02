@@ -314,8 +314,6 @@ describe('ContentClient', () => {
       auditInfo: {
         version: EntityVersion.V2,
         authChain: [],
-        originServerUrl: 'serverUrl',
-        originTimestamp: 20,
         localTimestamp: 30
       }
     }

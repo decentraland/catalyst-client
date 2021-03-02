@@ -6,12 +6,9 @@ import {
   Entity,
   EntityId,
   ServerStatus,
-  ServerName,
   ContentFileHash,
   Profile,
   Fetcher,
-  LegacyPartialDeploymentHistory,
-  LegacyDeploymentHistory,
   AvailableContentResult,
   DeploymentBase,
   LegacyAuditInfo,
@@ -66,20 +63,6 @@ export class CatalystClient implements CatalystAPI {
 
   fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<LegacyAuditInfo> {
     return this.contentClient.fetchAuditInfo(type, id, options)
-  }
-
-  fetchFullHistory(
-    query?: { from?: number; to?: number; serverName?: string },
-    options?: RequestOptions
-  ): Promise<LegacyDeploymentHistory> {
-    return this.contentClient.fetchFullHistory(query, options)
-  }
-
-  fetchHistory(
-    query?: { from?: Timestamp; to?: Timestamp; serverName?: ServerName; offset?: number; limit?: number },
-    options?: RequestOptions
-  ): Promise<LegacyPartialDeploymentHistory> {
-    return this.contentClient.fetchHistory(query, options)
   }
 
   fetchStatus(options?: RequestOptions): Promise<ServerStatus> {
