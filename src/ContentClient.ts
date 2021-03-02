@@ -6,18 +6,15 @@ import {
   Entity,
   EntityId,
   ServerStatus,
-  ServerName,
   ContentFileHash,
   PartialDeploymentHistory,
   applySomeDefaults,
   retry,
   Fetcher,
   Hashing,
-  LegacyPartialDeploymentHistory,
   DeploymentFilters,
   Deployment,
   AvailableContentResult,
-  LegacyDeploymentHistory,
   DeploymentBase,
   DeploymentWithAuditInfo,
   LegacyAuditInfo,
@@ -132,47 +129,6 @@ export class ContentClient implements ContentAPI {
     return this.fetchJson(`/audit/${type}/${id}`, options)
   }
 
-  async fetchFullHistory(
-    query?: { from?: number; to?: number; serverName?: string },
-    options?: RequestOptions
-  ): Promise<LegacyDeploymentHistory> {
-    // We are setting different defaults in this case, because if one of the request fails, then all fail
-    const withSomeDefaults = mergeRequestOptions({ attempts: 3, waitTime: '1s' }, options)
-
-    const events: LegacyDeploymentHistory = []
-    let offset = 0
-    let keepRetrievingHistory = true
-    while (keepRetrievingHistory) {
-      const currentQuery = { ...query, offset }
-      const partialHistory: LegacyPartialDeploymentHistory = await this.fetchHistory(currentQuery, withSomeDefaults)
-      events.push(...partialHistory.events)
-      offset = partialHistory.pagination.offset + partialHistory.pagination.limit
-      keepRetrievingHistory = partialHistory.pagination.moreData
-    }
-
-    return events
-  }
-
-  fetchHistory(
-    query?: { from?: Timestamp; to?: Timestamp; serverName?: ServerName; offset?: number; limit?: number },
-    options?: Partial<RequestOptions>
-  ): Promise<LegacyPartialDeploymentHistory> {
-    let path = `/history?offset=${query?.offset ?? 0}`
-    if (query?.from) {
-      path += `&from=${query?.from}`
-    }
-    if (query?.to) {
-      path += `&to=${query?.to}`
-    }
-    if (query?.serverName) {
-      path += `&serverName=${query?.serverName}`
-    }
-    if (query?.limit) {
-      path += `&limit=${query?.limit}`
-    }
-    return this.fetchJson(path, options)
-  }
-
   fetchStatus(options?: RequestOptions): Promise<ServerStatus> {
     return this.fetchJson('/status', options)
   }
@@ -233,8 +189,10 @@ export class ContentClient implements ContentAPI {
   }
 
   /**
-   * This method fetches all deployments that match the given filters. It is important to mention, that if there are too many filters, then the
-   * URL might get too long. In that case, we will internally make the necessary requests, but then the order of the deployments is not guaranteed.
+   * This method fetches all deployments that match the given filters.
+   *  It is important to mention, that if there are too many filters, then the URL might get too long.
+   *  In that case, we will internally make the necessary requests,
+   *  but then the order of the deployments is not guaranteed.
    */
   fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
     deploymentOptions?: DeploymentOptions<T>,
