@@ -17,7 +17,7 @@ export async function clientConnectedToCatalystIn(
   if (noContractList) {
     list = noContractList
   } else {
-    console.warn('Falling back to the smart contract')
+    console.warn('Falling back to the smart contract to get an updated list of active servers')
     list = await getApprovedListFromContract(network)
   }
   const shuffled = shuffleArray(list)
