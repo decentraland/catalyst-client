@@ -30,6 +30,8 @@ jobs:
             npm-
       - name: Install node dependencies
         run: npm install
+      - name: Update catalyst list
+        run: npm run catalysts-list
       - name: Build library
         run: npm run build
       - name: Run tests

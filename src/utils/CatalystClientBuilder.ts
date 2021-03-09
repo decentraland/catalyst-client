@@ -47,12 +47,6 @@ async function getApprovedListFromContract(network: 'mainnet' | 'ropsten'): Prom
   return servers.map(({ address }) => address)
 }
 
-// getUpdatedApprovedListWithoutQueryingContract
-// When the amount of known servers on the list is less than required, then no fetching is performed and nothing is returned
-// When one of the first N servers doesn't respond, then next one is queried
-// When not enough servers responded, then nothing is returned
-// When there are enough updated lists, then the intersection is returned
-
 /**
  * The idea here is to build an updated list of the catalysts approved by the DAO, without actually querying the DAO's contract
  * directly. This is because that query is both slow and expensive, so the idea is to used a list of known servers and ask them
