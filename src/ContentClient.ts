@@ -129,7 +129,7 @@ export class ContentClient implements ContentAPI {
     return this.fetchJson(`/audit/${type}/${id}`, options)
   }
 
-  fetchStatus(options?: RequestOptions): Promise<ServerStatus> {
+  fetchContentStatus(options?: RequestOptions): Promise<ServerStatus> {
     return this.fetchJson('/status', options)
   }
 
