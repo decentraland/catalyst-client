@@ -1,5 +1,5 @@
 import { EthAddress } from 'dcl-crypto'
-import { Profile, Fetcher, RequestOptions, EntityMetadata } from 'dcl-catalyst-commons'
+import { Profile, Fetcher, RequestOptions, EntityMetadata, ServerMetadata } from 'dcl-catalyst-commons'
 import { convertFiltersToQueryParams, sanitizeUrl, splitAndFetch, splitAndFetchPaginated } from './utils/Helper'
 import {
   LambdasAPI,
@@ -64,5 +64,13 @@ export class LambdasClient implements LambdasAPI {
       queryParams: { name: 'includeDefinitions', values: [`${includeDefinitions}`] },
       options
     })
+  }
+
+  fetchCatalystsApprovedByDAO(options?: RequestOptions): Promise<ServerMetadata[]> {
+    return this.fetcher.fetchJson(`${this.lambdasUrl}/contracts/servers`, options)
+  }
+
+  fetchLambdasStatus(options?: RequestOptions): Promise<{ contentServerUrl: string }> {
+    return this.fetcher.fetchJson(`${this.lambdasUrl}/status`, options)
   }
 }

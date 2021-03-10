@@ -12,7 +12,8 @@ import {
   AvailableContentResult,
   DeploymentBase,
   LegacyAuditInfo,
-  RequestOptions
+  RequestOptions,
+  ServerMetadata
 } from 'dcl-catalyst-commons'
 import { Readable } from 'stream'
 import { CatalystAPI } from './CatalystAPI'
@@ -23,6 +24,7 @@ import { LambdasClient } from './LambdasClient'
 import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
 import { RUNNING_VERSION } from './utils/Environment'
 import { WearablesFilters, OwnedWearables } from './LambdasAPI'
+import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
 
 export class CatalystClient implements CatalystAPI {
   private readonly contentClient: ContentClient
@@ -65,8 +67,8 @@ export class CatalystClient implements CatalystAPI {
     return this.contentClient.fetchAuditInfo(type, id, options)
   }
 
-  fetchStatus(options?: RequestOptions): Promise<ServerStatus> {
-    return this.contentClient.fetchStatus(options)
+  fetchContentStatus(options?: RequestOptions): Promise<ServerStatus> {
+    return this.contentClient.fetchContentStatus(options)
   }
 
   fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
@@ -113,5 +115,17 @@ export class CatalystClient implements CatalystAPI {
     options?: RequestOptions
   ): Promise<OwnedWearables<B>> {
     return this.lambdasClient.fetchOwnedWearables(ethAddress, includeDefinitions, options)
+  }
+
+  fetchCatalystsApprovedByDAO(options?: RequestOptions): Promise<ServerMetadata[]> {
+    return this.lambdasClient.fetchCatalystsApprovedByDAO(options)
+  }
+
+  fetchLambdasStatus(options?: RequestOptions): Promise<{ contentServerUrl: string }> {
+    return this.lambdasClient.fetchLambdasStatus(options)
+  }
+
+  public static connectedToCatalystIn(network: 'mainnet' | 'ropsten', origin: string): Promise<CatalystClient> {
+    return clientConnectedToCatalystIn(network, origin)
   }
 }

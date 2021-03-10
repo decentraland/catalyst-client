@@ -24,7 +24,7 @@ export interface ContentAPI {
   fetchEntitiesByIds(type: EntityType, ids: EntityId[], options?: RequestOptions): Promise<Entity[]>
   fetchEntityById(type: EntityType, id: EntityId, options?: RequestOptions): Promise<Entity>
   fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<LegacyAuditInfo>
-  fetchStatus(options?: RequestOptions): Promise<ServerStatus>
+  fetchContentStatus(options?: RequestOptions): Promise<ServerStatus>
   fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
     deploymentOptions: DeploymentOptions<T>,
     options?: RequestOptions

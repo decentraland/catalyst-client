@@ -1,8 +1,7 @@
 import { EthAddress } from 'dcl-crypto'
-import { EntityMetadata, Profile, RequestOptions } from 'dcl-catalyst-commons'
+import { EntityMetadata, Profile, RequestOptions, ServerMetadata } from 'dcl-catalyst-commons'
 
 export interface LambdasAPI {
-
   fetchProfiles(ethAddresses: EthAddress[], options?: RequestOptions): Promise<Profile[]>
 
   fetchWearables(filters: WearablesFilters, options?: RequestOptions): Promise<EntityMetadata[]>
@@ -12,6 +11,10 @@ export interface LambdasAPI {
     includeDefinitions: B,
     options?: RequestOptions
   ): Promise<OwnedWearables<B>>
+
+  fetchCatalystsApprovedByDAO(options?: RequestOptions): Promise<ServerMetadata[]>
+
+  fetchLambdasStatus(options?: RequestOptions): Promise<{ contentServerUrl: string }>
 }
 
 export type WearablesFilters = {
