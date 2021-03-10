@@ -17,7 +17,7 @@ export async function clientConnectedToCatalystIn(
   if (noContractList) {
     list = noContractList
   } else {
-    console.warn('Falling back to the smart contract')
+    console.warn('Falling back to the smart contract to get an updated list of active servers')
     list = await getApprovedListFromContract(network)
   }
   const shuffled = shuffleArray(list)
@@ -49,7 +49,7 @@ async function getApprovedListFromContract(network: 'mainnet' | 'ropsten'): Prom
 
 /**
  * The idea here is to build an updated list of the catalysts approved by the DAO, without actually querying the DAO's contract
- * directly. This is because that query is both slow and expensive, so the idea is to used a list of known servers and ask them
+ * directly. This is because that query is both slow and expensive, so the idea is to use a list of known servers and ask them
  * for the updated list. The thing is this known server list might be outdated, so we need to take that into account. We will
  * take N (defined by REQUIRED_LISTS below) random servers from this known list, and ask them for the currently approved ones. We will then use the intersection of those
  * N lists as the updated list.
