@@ -85,7 +85,7 @@ export async function getUpdatedApprovedListWithoutQueryingContract({
   // Ask N of them for their list
   const approvedServersList = await Promise.all(
     shuffledPreKnownServers
-      .slice(0, requiredAmountOfLists)
+      .slice(0, requiredAmountOfLists + 3)
       .map((server) => server.address)
       .map((address) => catalystListFetch(address, origin))
   )
@@ -96,7 +96,7 @@ export async function getUpdatedApprovedListWithoutQueryingContract({
   )
 
   // Check if we need to ask for anyone else's list
-  let i = requiredAmountOfLists
+  let i = requiredAmountOfLists + 3
   while (i < shuffledPreKnownServers.length && allLists.length < requiredAmountOfLists) {
     const list = await catalystListFetch(shuffledPreKnownServers[i].address, origin)
     if (list) {
@@ -132,7 +132,7 @@ function calculateIntersection(lists: string[][]): string[] {
 async function fetchCatalystsApprovedByDAO(catalystUrl: string, origin: string): Promise<string[] | undefined> {
   const client = new CatalystClient(catalystUrl, origin)
   try {
-    const servers = await client.fetchCatalystsApprovedByDAO({ timeout: '5s' })
+    const servers = await client.fetchCatalystsApprovedByDAO({ timeout: '10s' })
     return servers.map(({ address }) => address)
   } catch {
     return undefined

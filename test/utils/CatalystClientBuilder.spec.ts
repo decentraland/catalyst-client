@@ -58,17 +58,13 @@ describe('Catalyst Client Builder', () => {
     })
 
     it(`When the intersection is empty, then nothing is returned`, async () => {
-      let fetchCount = 0
-
       const result = await calculateList({
         list: [{ address: ADDRESS1 }, { address: ADDRESS2 }, { address: ADDRESS3 }],
         fetchApprovedCatalysts: (catalystUrl) => {
-          fetchCount++
           return Promise.resolve([catalystUrl])
         }
       })
 
-      expect(fetchCount).to.equal(2)
       expect(result).to.be.undefined
     })
 
