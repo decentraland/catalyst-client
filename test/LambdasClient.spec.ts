@@ -2,7 +2,7 @@ import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import { mock, instance, when, anything } from 'ts-mockito'
 import { Fetcher } from 'dcl-catalyst-commons'
-import { LambdasClient } from 'index'
+import { LambdasClient, ProfileFields } from 'index'
 
 chai.use(chaiAsPromised)
 const expect = chai.expect
@@ -17,6 +17,17 @@ describe('LambdasClient', () => {
 
     const client = buildClient(URL, fetcher)
     const result = await client.fetchProfiles([ethAddress1, ethAddress2])
+
+    expect(result).to.deep.equal(requestResult)
+  })
+
+  it('When fetching only snapshots in profiles, then the result is as expected', async () => {
+    const requestResult = [someResult()]
+    const [ethAddress1, ethAddress2] = ['ethAddress1', 'ethAddress2']
+    const { instance: fetcher } = mockFetcherJson(`/profiles?fields=snapshots&id=${ethAddress1}&id=${ethAddress2}`, requestResult)
+
+    const client = buildClient(URL, fetcher)
+    const result = await client.fetchProfiles([ethAddress1, ethAddress2], { fields: ProfileFields.ONLY_SNAPSHOTS })
 
     expect(result).to.deep.equal(requestResult)
   })

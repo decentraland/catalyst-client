@@ -23,7 +23,7 @@ import { ContentClient, DeploymentOptions } from './ContentClient'
 import { LambdasClient } from './LambdasClient'
 import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
 import { RUNNING_VERSION } from './utils/Environment'
-import { WearablesFilters, OwnedWearables } from './LambdasAPI'
+import { WearablesFilters, OwnedWearables, ProfileOptions } from './LambdasAPI'
 import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
 
 export class CatalystClient implements CatalystAPI {
@@ -101,8 +101,8 @@ export class CatalystClient implements CatalystAPI {
     return this.contentClient.pipeContent(contentHash, writeTo, options)
   }
 
-  fetchProfiles(ethAddresses: EthAddress[], options?: RequestOptions): Promise<Profile[]> {
-    return this.lambdasClient.fetchProfiles(ethAddresses, options)
+  fetchProfiles(ethAddresses: EthAddress[], profileOptions?: ProfileOptions, options?: RequestOptions): Promise<Profile[]> {
+    return this.lambdasClient.fetchProfiles(ethAddresses, profileOptions, options)
   }
 
   fetchWearables(filters: WearablesFilters, options?: RequestOptions): Promise<any[]> {
