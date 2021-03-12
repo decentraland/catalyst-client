@@ -6,6 +6,7 @@ import {
   OwnedWearables,
   OwnedWearablesWithDefinition,
   OwnedWearablesWithoutDefinition,
+  ProfileOptions,
   WearablesFilters
 } from './LambdasAPI'
 import { RUNNING_VERSION } from './utils/Environment'
@@ -25,12 +26,18 @@ export class LambdasClient implements LambdasAPI {
       })
   }
 
-  fetchProfiles(ethAddresses: EthAddress[], options?: RequestOptions): Promise<Profile[]> {
+  fetchProfiles(ethAddresses: EthAddress[], profileOptions?: ProfileOptions, options?: RequestOptions): Promise<Profile[]> {
+    const queryParams: Map<string, string[]> = new Map()
+    queryParams.set('id', ethAddresses)
+    if (profileOptions?.fields) {
+      const fieldsValue = profileOptions?.fields.getFields()
+      queryParams.set('fields', [fieldsValue])
+    }
     return splitAndFetch<Profile>({
       fetcher: this.fetcher,
       baseUrl: this.lambdasUrl,
       path: '/profiles',
-      queryParams: { name: 'id', values: ethAddresses },
+      queryParams,
       options
     })
   }

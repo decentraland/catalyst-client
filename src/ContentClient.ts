@@ -355,7 +355,7 @@ export class DeploymentFields<T extends Partial<Deployment>> {
     'metadata'
   ])
 
-  private constructor(private readonly fields: string[]) {}
+  private constructor(private readonly fields: string[]) { }
 
   getFields(): string {
     return this.fields.join(',')
