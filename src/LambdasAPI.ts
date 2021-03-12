@@ -15,6 +15,8 @@ export interface LambdasAPI {
   fetchCatalystsApprovedByDAO(options?: RequestOptions): Promise<ServerMetadata[]>
 
   fetchLambdasStatus(options?: RequestOptions): Promise<{ contentServerUrl: string }>
+
+  getLambdasUrl(): string
 }
 
 export type WearablesFilters = {
