@@ -63,7 +63,7 @@ export class ContentClient implements ContentAPI {
     const alreadyUploadedHashes = await this.hashesAlreadyOnServer(Array.from(deployData.files.keys()), options)
     for (const [fileHash, file] of deployData.files) {
       if (!alreadyUploadedHashes.has(fileHash) || fileHash === deployData.entityId) {
-        if (typeof window === 'undefined') {
+        if (typeof window === 'undefined' || !('Blob' in globalThis)) {
           // Node
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore
@@ -309,6 +309,10 @@ export class ContentClient implements ContentAPI {
       uniqueBy: 'cid',
       options
     })
+  }
+
+  getContentUrl(): string {
+    return this.contentUrl
   }
 
   /** Given an array of file hashes, return a set with those already uploaded on the server */

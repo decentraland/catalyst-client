@@ -43,6 +43,9 @@ export interface ContentAPI {
 
   /** Upload */
   deployEntity(deployData: DeploymentData, fix?: boolean, options?: RequestOptions): Promise<Timestamp>
+
+  /** Status */
+  getContentUrl(): string
 }
 
 export type DeploymentWithMetadataContentAndPointers = DeploymentWithMetadata &

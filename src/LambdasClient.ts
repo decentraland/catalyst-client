@@ -80,4 +80,8 @@ export class LambdasClient implements LambdasAPI {
   fetchLambdasStatus(options?: RequestOptions): Promise<{ contentServerUrl: string }> {
     return this.fetcher.fetchJson(`${this.lambdasUrl}/status`, options)
   }
+
+  getLambdasUrl(): string {
+    return this.lambdasUrl
+  }
 }

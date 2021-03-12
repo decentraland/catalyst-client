@@ -29,13 +29,14 @@ import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
 export class CatalystClient implements CatalystAPI {
   private readonly contentClient: ContentClient
   private readonly lambdasClient: LambdasClient
+  private readonly catalystUrl: string
 
   constructor(
     catalystUrl: string,
     origin: string, // The name or a description of the app that is using the client
     fetcher?: Fetcher
   ) {
-    catalystUrl = sanitizeUrl(catalystUrl)
+    this.catalystUrl = sanitizeUrl(catalystUrl)
     fetcher =
       fetcher ??
       new Fetcher({
@@ -43,8 +44,8 @@ export class CatalystClient implements CatalystAPI {
           'User-Agent': `catalyst-client/${RUNNING_VERSION} (+https://github.com/decentraland/catalyst-client)`
         }
       })
-    this.contentClient = new ContentClient(catalystUrl + '/content', origin, fetcher)
-    this.lambdasClient = new LambdasClient(catalystUrl + '/lambdas', fetcher)
+    this.contentClient = new ContentClient(this.catalystUrl + '/content', origin, fetcher)
+    this.lambdasClient = new LambdasClient(this.catalystUrl + '/lambdas', fetcher)
   }
 
   deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {
@@ -123,6 +124,18 @@ export class CatalystClient implements CatalystAPI {
 
   fetchLambdasStatus(options?: RequestOptions): Promise<{ contentServerUrl: string }> {
     return this.lambdasClient.fetchLambdasStatus(options)
+  }
+
+  getCatalystUrl(): string {
+    return this.catalystUrl
+  }
+
+  getContentUrl(): string {
+    return this.contentClient.getContentUrl()
+  }
+
+  getLambdasUrl(): string {
+    return this.lambdasClient.getLambdasUrl()
   }
 
   public static connectedToCatalystIn(network: 'mainnet' | 'ropsten', origin: string): Promise<CatalystClient> {
