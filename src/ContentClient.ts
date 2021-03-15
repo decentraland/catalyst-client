@@ -60,10 +60,13 @@ export class ContentClient implements ContentAPI {
     form.append('entityId', deployData.entityId)
     addModelToFormData(deployData.authChain, form, 'authChain')
 
+    // Check if we are running in node or browser
+    const isNode = typeof window === 'undefined' || !this.isBlobAvailable()
+
     const alreadyUploadedHashes = await this.hashesAlreadyOnServer(Array.from(deployData.files.keys()), options)
     for (const [fileHash, file] of deployData.files) {
       if (!alreadyUploadedHashes.has(fileHash) || fileHash === deployData.entityId) {
-        if (typeof window === 'undefined' || !('Blob' in globalThis)) {
+        if (isNode) {
           // Node
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore
@@ -330,6 +333,15 @@ export class ContentClient implements ContentAPI {
   private fetchJson(path: string, options?: Partial<RequestOptions>): Promise<any> {
     return this.fetcher.fetchJson(`${this.contentUrl}${path}`, options)
   }
+
+  private isBlobAvailable(): boolean {
+    try {
+      new Blob()
+      return true
+    } catch {
+      return false
+    }
+  }
 }
 
 export type DeploymentOptions<T> = {
@@ -355,7 +367,7 @@ export class DeploymentFields<T extends Partial<Deployment>> {
     'metadata'
   ])
 
-  private constructor(private readonly fields: string[]) { }
+  private constructor(private readonly fields: string[]) {}
 
   getFields(): string {
     return this.fields.join(',')
