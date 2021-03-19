@@ -20,7 +20,9 @@ import {
   LegacyAuditInfo,
   DeploymentSorting,
   RequestOptions,
-  mergeRequestOptions
+  mergeRequestOptions,
+  SortingField,
+  SortingOrder
 } from 'dcl-catalyst-commons'
 import asyncToArray from 'async-iterator-to-array'
 import { Readable } from 'stream'
@@ -28,9 +30,10 @@ import { ContentAPI, DeploymentWithMetadataContentAndPointers } from './ContentA
 import {
   addModelToFormData,
   convertFiltersToQueryParams,
+  QueryBuilder,
   sanitizeUrl,
   splitAndFetch,
-  splitValuesIntoManyQueries
+  splitValuesIntoManyQueryBuilders
 } from './utils/Helper'
 import { DeploymentData } from './utils/DeploymentBuilder'
 import { RUNNING_VERSION } from './utils/Environment'
@@ -218,11 +221,11 @@ export class ContentClient implements ContentAPI {
     // We are setting different defaults in this case, because if one of the request fails, then all fail
     const withSomeDefaults = applySomeDefaults({ attempts: 3, waitTime: '1s' }, options)
 
-    // Transform filters object into query params map
-    const filterQueryParams: Map<string, string[]> = convertFiltersToQueryParams(deploymentOptions?.filters)
-
     // Validate that some params were used, so that not everything is fetched
     this.assertFiltersAreSet(deploymentOptions?.filters)
+
+    // Transform filters object into query params map
+    const filterQueryParams: Map<string, string[]> = convertFiltersToQueryParams(deploymentOptions?.filters)
 
     // Transform sorting object into query params map
     const sortingQueryParams = this.sortingToQueryParams(deploymentOptions?.sortBy)
@@ -235,11 +238,63 @@ export class ContentClient implements ContentAPI {
       queryParams.set('fields', [fieldsValue])
     }
 
-    // Reserve a few chars to send the offset
-    const reservedChars = `&offset=`.length + ContentClient.CHARS_LEFT_FOR_OFFSET
+    let reservedChars: number
+    let modifyQueryBasedOnResult: (result: PartialDeploymentHistory<T>, builder: QueryBuilder) => void
 
+    const canWeUseLocalTimestampInsteadOfOffset =
+      deploymentOptions?.fields &&
+      deploymentOptions.fields.isFieldIncluded('auditInfo') &&
+      (!deploymentOptions?.sortBy || deploymentOptions.sortBy.field === SortingField.LOCAL_TIMESTAMP)
+
+    if (canWeUseLocalTimestampInsteadOfOffset) {
+      // Note: the approach used below will get stuck if all 500 deployments on the same page have the same localTimestamp, but that is extremely unlikely
+      reservedChars = '&fromLocalTimestamp='.length + 13
+      if (deploymentOptions?.sortBy?.order === SortingOrder.ASCENDING) {
+        // Ascending
+        modifyQueryBasedOnResult = (result, builder) => {
+          const newestDeployment = result.deployments[result.deployments.length - 1]
+          if (newestDeployment) {
+            // @ts-ignore
+            builder.setParam('fromLocalTimestamp', newestDeployment.auditInfo.localTimestamp)
+          }
+        }
+      } else {
+        // Descending
+        modifyQueryBasedOnResult = (result, builder) => {
+          const oldestDeployment = result.deployments[result.deployments.length - 1]
+          if (oldestDeployment) {
+            // @ts-ignore
+            builder.setParam('toLocalTimestamp', oldestDeployment.auditInfo.localTimestamp)
+          }
+        }
+      }
+    } else {
+      // We will use offset then
+      reservedChars = `&offset=`.length + ContentClient.CHARS_LEFT_FOR_OFFSET
+      modifyQueryBasedOnResult = (result, queryBuilder) =>
+        queryBuilder.setParam('offset', result.pagination.limit + result.pagination.offset)
+    }
+
+    yield* this.iterateThroughDeploymentsBasedOnResult<T>(
+      queryParams,
+      reservedChars,
+      modifyQueryBasedOnResult,
+      deploymentOptions?.errorListener,
+      withSomeDefaults
+    )
+  }
+
+  private async *iterateThroughDeploymentsBasedOnResult<
+    T extends DeploymentBase = DeploymentWithMetadataContentAndPointers
+  >(
+    queryParams: Map<string, string[]>,
+    reservedChars: number,
+    modifyQueryBasedOnResult: (result: PartialDeploymentHistory<T>, builder: QueryBuilder) => void,
+    errorListener?: (errorMessage: string) => void,
+    options?: RequestOptions
+  ): AsyncIterable<T> {
     // Split values into different queries
-    const queries = splitValuesIntoManyQueries({
+    const builders = splitValuesIntoManyQueryBuilders({
       baseUrl: this.contentUrl,
       path: '/deployments',
       queryParams,
@@ -249,25 +304,24 @@ export class ContentClient implements ContentAPI {
     // Perform the different queries
     const foundIds: Set<EntityId> = new Set()
     let exit = false
-    for (let i = 0; i < queries.length && !exit; i++) {
-      const query = queries[i]
-      let offset = 0
+    for (let i = 0; i < builders.length && !exit; i++) {
+      const queryBuilder = builders[i]
       let keepRetrievingHistory = true
       while (keepRetrievingHistory && !exit) {
-        const url = query + (queryParams.size === 0 ? '?' : '&') + `offset=${offset}`
+        const url = queryBuilder.toString()
         try {
-          const partialHistory: PartialDeploymentHistory<T> = await this.fetcher.fetchJson(url, withSomeDefaults)
+          const partialHistory: PartialDeploymentHistory<T> = await this.fetcher.fetchJson(url, options)
           for (const deployment of partialHistory.deployments) {
             if (!foundIds.has(deployment.entityId)) {
               foundIds.add(deployment.entityId)
               yield deployment
             }
           }
-          offset = partialHistory.pagination.offset + partialHistory.pagination.limit
+          modifyQueryBasedOnResult(partialHistory, queryBuilder)
           keepRetrievingHistory = partialHistory.pagination.moreData
         } catch (error) {
-          if (deploymentOptions?.errorListener) {
-            deploymentOptions.errorListener(`${error}`)
+          if (errorListener) {
+            errorListener(`${error}`)
           }
           exit = true
         }
@@ -371,5 +425,9 @@ export class DeploymentFields<T extends Partial<Deployment>> {
 
   getFields(): string {
     return this.fields.join(',')
+  }
+
+  isFieldIncluded(name: string) {
+    return this.fields.includes(name)
   }
 }
