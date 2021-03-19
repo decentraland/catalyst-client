@@ -166,7 +166,7 @@ describe('ContentClient', () => {
       pagination: { offset: 10, limit: 10, moreData: false }
     }
     const { instance: fetcher } = mockFetcherJson(
-      `/deployments?fromLocalTimestamp=20&toLocalTimestamp=30&onlyCurrentlyPointed=true&deployedBy=eth1&deployedBy=eth2&entityType=profile&entityType=scene&entityId=id1&entityId=id2&pointer=p1&pointer=p2`,
+      `/deployments?fromLocalTimestamp=20&toLocalTimestamp=30&onlyCurrentlyPointed=true&deployedBy=eth1&deployedBy=eth2&entityType=profile&entityType=scene&entityId=id1&entityId=id2&pointer=p1&pointer=p2&offset=0`,
       requestResult
     )
 
@@ -185,7 +185,7 @@ describe('ContentClient', () => {
       pagination: { offset: 10, limit: 10, moreData: false }
     }
     const { instance: fetcher } = mockFetcherJson(
-      `/deployments?entityType=${EntityType.PROFILE}&fields=pointers,content,metadata`,
+      `/deployments?entityType=${EntityType.PROFILE}&fields=pointers,content,metadata&offset=0`,
       requestResult
     )
 
@@ -224,7 +224,7 @@ describe('ContentClient', () => {
       pagination: { offset: 10, limit: 10, moreData: false }
     }
     const { instance: fetcher } = mockFetcherJson(
-      `/deployments?entityType=${EntityType.PROFILE}&sortingField=entity_timestamp&sortingOrder=ASC`,
+      `/deployments?entityType=${EntityType.PROFILE}&sortingField=entity_timestamp&sortingOrder=ASC&offset=0`,
       requestResult
     )
 
@@ -251,9 +251,9 @@ describe('ContentClient', () => {
     }
 
     const mockedFetcher: Fetcher = mock(Fetcher)
-    when(mockedFetcher.fetchJson(`${URL}/deployments?entityType=${EntityType.PROFILE}`, anything())).thenReturn(
-      Promise.resolve(requestResult1)
-    )
+    when(
+      mockedFetcher.fetchJson(`${URL}/deployments?entityType=${EntityType.PROFILE}&offset=0`, anything())
+    ).thenReturn(Promise.resolve(requestResult1))
     when(
       mockedFetcher.fetchJson(`${URL}/deployments?entityType=${EntityType.PROFILE}&offset=1`, anything())
     ).thenReturn(Promise.resolve(requestResult2))

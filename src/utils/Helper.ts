@@ -109,18 +109,18 @@ export async function splitAndFetchPaginated<E>({
   return Array.from(foundElements.values())
 }
 
-export function splitValuesIntoManyQueryBuilders({
+export function splitValuesIntoManyQueries({
   queryParams,
   baseUrl,
   path,
   reservedChars
-}: SplitIntoQueriesParams): QueryBuilder[] {
+}: SplitIntoQueriesParams): string[] {
   const queryParamsMap: Map<string, string[]> =
     'name' in queryParams ? new Map([[queryParams.name, queryParams.values]]) : queryParams
 
   // Check that it makes sent to apply the algorithm
   if (queryParamsMap.size === 0) {
-    return [new QueryBuilder(baseUrl + path, queryParamsMap, reservedChars)]
+    return [baseUrl + path]
   }
 
   // Remove duplicates
@@ -135,41 +135,36 @@ export function splitValuesIntoManyQueryBuilders({
   )
 
   // Add all params (except the last one that is the one with the most values) into the url
-  const defaultQueryBuilder = new QueryBuilder(baseUrl + path, new Map(), reservedChars)
+  const queryBuilder = new QueryBuilder(baseUrl + path, reservedChars)
   for (let i = 0; i < sortedByValues.length - 1; i++) {
     const [paramName, paramValues] = sortedByValues[i]
-    if (!defaultQueryBuilder.canSetParams(paramName, paramValues)) {
+    if (!queryBuilder.canAddParams(paramName, paramValues)) {
       throw new Error(
         `This library can split one query param into many HTTP requests, but it can't split more than one. You will need to do that on the client side.`
       )
     }
-    defaultQueryBuilder.setParams(paramName, paramValues)
+    queryBuilder.addParams(paramName, paramValues)
   }
 
   // Prepare everything
-  let queryBuilder = QueryBuilder.clone(defaultQueryBuilder)
+  queryBuilder.setCurrentAsBase()
   const [lastParamName, lastParamValues] = sortedByValues[sortedByValues.length - 1]
-  const result: QueryBuilder[] = []
+  const urls: string[] = []
 
   for (const value of lastParamValues) {
     // Check url length
     if (!queryBuilder.canAddParam(lastParamName, value)) {
-      result.push(queryBuilder)
-      queryBuilder = QueryBuilder.clone(defaultQueryBuilder)
+      urls.push(queryBuilder.toString())
+      queryBuilder.reset()
     }
 
     queryBuilder.addParam(lastParamName, value)
   }
 
-  // Add current builder one last time
-  result.push(queryBuilder)
+  // Add current url one last time
+  urls.push(queryBuilder.toString())
 
-  return result
-}
-
-export function splitValuesIntoManyQueries(parameters: SplitIntoQueriesParams): string[] {
-  const builders = splitValuesIntoManyQueryBuilders(parameters)
-  return builders.map((builder) => builder.toString())
+  return urls
 }
 
 export function convertFiltersToQueryParams(filters?: Record<string, any>): Map<string, string[]> {
@@ -240,91 +235,54 @@ type SplitAndFetchParams<E> = {
   options?: RequestOptions
 }
 
-export class QueryBuilder {
-  private length: number
+class QueryBuilder {
+  private currentUrl: string
+  private addedParam = false
+  private baseAddedParam = false
 
-  constructor(
-    private readonly baseUrl: string,
-    private readonly queryParams: Map<string, string[]> = new Map(),
-    private readonly reservedChars: number = 0
-  ) {
-    this.length = this.baseUrl.length + reservedChars
-    for (const [paramName, paramValues] of queryParams) {
-      this.length += this.calculateAddedLength(paramName, paramValues)
-    }
+  constructor(private baseUrl: string, private readonly reservedChars: number = 0) {
+    this.currentUrl = baseUrl
   }
 
   canAddParam(paramName: string, paramValue: string) {
-    return this.length + paramName.length + paramValue.length + 2 < MAX_URL_LENGTH
+    return this.currentUrl.length + this.reservedChars + paramName.length + paramValue.length + 2 < MAX_URL_LENGTH
   }
 
   addParam(paramName: string, paramValue: string) {
     if (!this.canAddParam(paramName, paramValue)) {
       throw new Error(`You can't add this parameter '${paramName}', since it would exceed the max url length`)
     }
-    const values = this.queryParams.get(paramName) ?? []
-    values.push(paramValue)
-    this.queryParams.set(paramName, values)
-    this.length += this.calculateAddedLength(paramName, [paramValue])
-    return this
-  }
-
-  canSetParams(paramName: string, paramValues: any[]) {
-    if (this.queryParams.has(paramName)) {
-      const previousLength = this.calculateAddedLength(paramName, this.queryParams.get(paramName)!)
-      const newLength = this.calculateAddedLength(paramName, paramValues)
-      return this.length - previousLength + newLength < MAX_URL_LENGTH
+    if (this.addedParam) {
+      this.currentUrl += `&${paramName}=${paramValue}`
     } else {
-      const addedTotalLength = this.calculateAddedLength(paramName, paramValues)
-      return this.length + addedTotalLength < MAX_URL_LENGTH
+      this.currentUrl += `?${paramName}=${paramValue}`
+      this.addedParam = true
     }
   }
 
-  /** This action will override whatever configuration there was previously for the given query parameter */
-  setParams(paramName: string, paramValues: (string | number)[]) {
-    if (!this.canSetParams(paramName, paramValues)) {
-      throw new Error(`You can't add this parameter '${paramName}', since it would exceed the max url length`)
-    }
-    this.length += this.calculateAddedLength(paramName, paramValues)
-    this.queryParams.set(
-      paramName,
-      paramValues.map((value) => `${value}`)
-    )
-    return this
+  canAddParams(paramName: string, paramValues: string[]) {
+    const valuesLength = paramValues.reduce((accum, curr) => accum + curr.length, 0)
+    const addedTotalLength = valuesLength + (paramName.length + 2) * paramValues.length
+    return this.currentUrl.length + this.reservedChars + addedTotalLength < MAX_URL_LENGTH
   }
 
-  /** This action will override whatever configuration there was previously for the given query parameter */
-  setParam(paramName: string, paramValue: string | number) {
-    this.setParams(paramName, [paramValue])
-    return this
+  addParams(paramName: string, paramValues: string[]) {
+    for (const value of paramValues) {
+      this.addParam(paramName, value)
+    }
+  }
+
+  setCurrentAsBase() {
+    this.baseUrl = this.currentUrl
+    this.baseAddedParam = this.addedParam
+  }
+
+  reset() {
+    this.currentUrl = this.baseUrl
+    this.addedParam = this.baseAddedParam
   }
 
   toString() {
-    let url = this.baseUrl
-    let addedParamAlready = false
-    for (const [paramName, paramValues] of this.queryParams) {
-      for (const paramValue of paramValues) {
-        if (addedParamAlready) {
-          url += `&${paramName}=${paramValue}`
-        } else {
-          url += `?${paramName}=${paramValue}`
-          addedParamAlready = true
-        }
-      }
-    }
-    return url
-  }
-
-  static clone(queryBuilder: QueryBuilder): QueryBuilder {
-    return new QueryBuilder(queryBuilder.baseUrl, new Map(queryBuilder.queryParams), queryBuilder.reservedChars)
-  }
-
-  private calculateAddedLength(paramName: string, paramValues: (string | number)[]) {
-    const valuesLength = this.calculateArrayLength(paramValues)
-    return valuesLength + (paramName.length + 2) * paramValues.length
-  }
-
-  private calculateArrayLength(array: (string | number)[]) {
-    return array.map((value) => `${value}`).reduce((accum, curr) => accum + curr.length, 0)
+    return this.currentUrl
   }
 }
