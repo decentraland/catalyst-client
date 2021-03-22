@@ -251,22 +251,12 @@ export class ContentClient implements ContentAPI {
       reservedChars = '&fromLocalTimestamp='.length + 13
       if (deploymentOptions?.sortBy?.order === SortingOrder.ASCENDING) {
         // Ascending
-        modifyQueryBasedOnResult = (result, builder) => {
-          const newestDeployment = result.deployments[result.deployments.length - 1]
-          if (newestDeployment) {
-            // @ts-ignore
-            builder.setParam('fromLocalTimestamp', newestDeployment.auditInfo.localTimestamp)
-          }
-        }
+        modifyQueryBasedOnResult = (result, builder) =>
+          this.setParamBasedOnResult<T>('fromLocalTimestamp', result, builder)
       } else {
         // Descending
-        modifyQueryBasedOnResult = (result, builder) => {
-          const oldestDeployment = result.deployments[result.deployments.length - 1]
-          if (oldestDeployment) {
-            // @ts-ignore
-            builder.setParam('toLocalTimestamp', oldestDeployment.auditInfo.localTimestamp)
-          }
-        }
+        modifyQueryBasedOnResult = (result, builder) =>
+          this.setParamBasedOnResult<T>('toLocalTimestamp', result, builder)
       }
     } else {
       // We will use offset then
@@ -326,6 +316,18 @@ export class ContentClient implements ContentAPI {
           exit = true
         }
       }
+    }
+  }
+
+  private setParamBasedOnResult<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
+    paramName: string,
+    result: PartialDeploymentHistory<T>,
+    builder: QueryBuilder
+  ) {
+    const lastDeployment = result.deployments[result.deployments.length - 1]
+    if (lastDeployment) {
+      // @ts-ignore
+      builder.setParam(paramName, lastDeployment.auditInfo.localTimestamp)
     }
   }
 

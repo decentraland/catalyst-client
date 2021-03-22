@@ -237,7 +237,7 @@ describe('ContentClient', () => {
     expect(result).to.deep.equal([deployment])
   })
 
-  it('When fetching all deployments with pagination, then the result is as expected', async () => {
+  it('When fetching all deployments with offset pagination, then the result is as expected', async () => {
     const [deployment1, deployment2] = [someDeployment(), someDeployment()]
     const requestResult1: PartialDeploymentHistory<Deployment> = {
       filters: {},
@@ -263,6 +263,41 @@ describe('ContentClient', () => {
     const result = await client.fetchAllDeployments({ filters: { entityTypes: [EntityType.PROFILE] } })
 
     // We make sure that repeated deployments were ignored
+    expect(result).to.deep.equal([deployment1, deployment2])
+  })
+
+  it('When fetching all deployments with local timestamp instead of offset, then the result is as expected', async () => {
+    const [deployment1, deployment2] = [someDeployment(), someDeployment()]
+    const requestResult1: PartialDeploymentHistory<Deployment> = {
+      filters: {},
+      deployments: [deployment1],
+      pagination: { offset: 0, limit: 1, moreData: true }
+    }
+    const requestResult2: PartialDeploymentHistory<Deployment> = {
+      filters: {},
+      deployments: [deployment2],
+      pagination: { offset: 1, limit: 2, moreData: false }
+    }
+
+    const mockedFetcher: Fetcher = mock(Fetcher)
+    when(
+      mockedFetcher.fetchJson(`${URL}/deployments?entityType=${EntityType.PROFILE}&fields=auditInfo`, anything())
+    ).thenReturn(Promise.resolve(requestResult1))
+
+    when(
+      mockedFetcher.fetchJson(
+        `${URL}/deployments?entityType=${EntityType.PROFILE}&fields=auditInfo&toLocalTimestamp=${deployment1.auditInfo.localTimestamp}`,
+        anything()
+      )
+    ).thenReturn(Promise.resolve(requestResult2))
+    const fetcher = instance(mockedFetcher)
+
+    const client = buildClient(URL, fetcher)
+    const result = await client.fetchAllDeployments({
+      filters: { entityTypes: [EntityType.PROFILE] },
+      fields: DeploymentFields.AUDIT_INFO
+    })
+
     expect(result).to.deep.equal([deployment1, deployment2])
   })
 
@@ -314,7 +349,7 @@ describe('ContentClient', () => {
       auditInfo: {
         version: EntityVersion.V2,
         authChain: [],
-        localTimestamp: 30
+        localTimestamp: Math.round(Math.random() * 50)
       }
     }
   }
