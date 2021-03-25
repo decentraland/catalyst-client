@@ -78,10 +78,10 @@ export async function splitAndFetchPaginated<E>({
     'name' in queryParams ? new Map([[queryParams.name, queryParams.values]]) : queryParams
 
   // Reserve a few chars to send the offset
-  const reservedChars = `&offset=`.length + CHARS_LEFT_FOR_OFFSET
+  const reservedParams = new Map([['offset', CHARS_LEFT_FOR_OFFSET]])
 
   // Split values into different queries
-  const queries = splitValuesIntoManyQueries({ baseUrl, path, queryParams, reservedChars })
+  const queries = splitValuesIntoManyQueries({ baseUrl, path, queryParams, reservedParams })
 
   // Perform the different queries
   const foundElements: Map<any, E> = new Map()
@@ -113,14 +113,14 @@ export function splitValuesIntoManyQueryBuilders({
   queryParams,
   baseUrl,
   path,
-  reservedChars
+  reservedParams
 }: SplitIntoQueriesParams): QueryBuilder[] {
   const queryParamsMap: Map<string, string[]> =
     'name' in queryParams ? new Map([[queryParams.name, queryParams.values]]) : queryParams
 
   // Check that it makes sent to apply the algorithm
   if (queryParamsMap.size === 0) {
-    return [new QueryBuilder(baseUrl + path, queryParamsMap, reservedChars)]
+    return [new QueryBuilder(baseUrl + path, queryParamsMap, reservedParams)]
   }
 
   // Remove duplicates
@@ -135,7 +135,7 @@ export function splitValuesIntoManyQueryBuilders({
   )
 
   // Add all params (except the last one that is the one with the most values) into the url
-  const defaultQueryBuilder = new QueryBuilder(baseUrl + path, new Map(), reservedChars)
+  const defaultQueryBuilder = new QueryBuilder(baseUrl + path, new Map(), reservedParams)
   for (let i = 0; i < sortedByValues.length - 1; i++) {
     const [paramName, paramValues] = sortedByValues[i]
     if (!defaultQueryBuilder.canSetParams(paramName, paramValues)) {
@@ -227,7 +227,7 @@ type SplitIntoQueriesParams = {
   baseUrl: string
   path: string
   queryParams: QueryParams
-  reservedChars?: number
+  reservedParams?: Map<string, number>
 }
 
 type SplitAndFetchParams<E> = {
@@ -246,9 +246,12 @@ export class QueryBuilder {
   constructor(
     private readonly baseUrl: string,
     private readonly queryParams: Map<string, string[]> = new Map(),
-    private readonly reservedChars: number = 0
+    private readonly reservedParams: Map<string, number> = new Map()
   ) {
-    this.length = this.baseUrl.length + reservedChars
+    this.length = this.baseUrl.length
+    for (const [paramName, reserved] of reservedParams) {
+      this.length += paramName.length + 2 + reserved
+    }
     for (const [paramName, paramValues] of queryParams) {
       this.length += this.calculateAddedLength(paramName, paramValues)
     }
@@ -270,14 +273,9 @@ export class QueryBuilder {
   }
 
   canSetParams(paramName: string, paramValues: any[]) {
-    if (this.queryParams.has(paramName)) {
-      const previousLength = this.calculateAddedLength(paramName, this.queryParams.get(paramName)!)
-      const newLength = this.calculateAddedLength(paramName, paramValues)
-      return this.length - previousLength + newLength < MAX_URL_LENGTH
-    } else {
-      const addedTotalLength = this.calculateAddedLength(paramName, paramValues)
-      return this.length + addedTotalLength < MAX_URL_LENGTH
-    }
+    const newQueryParams: Map<string, string[]> = new Map([...this.queryParams, [paramName, paramValues]])
+    const newLength = this.calculateUrlLength(newQueryParams, this.reservedParams)
+    return newLength < MAX_URL_LENGTH
   }
 
   /** This action will override whatever configuration there was previously for the given query parameter */
@@ -285,11 +283,11 @@ export class QueryBuilder {
     if (!this.canSetParams(paramName, paramValues)) {
       throw new Error(`You can't add this parameter '${paramName}', since it would exceed the max url length`)
     }
-    this.length += this.calculateAddedLength(paramName, paramValues)
     this.queryParams.set(
       paramName,
       paramValues.map((value) => `${value}`)
     )
+    this.length = this.calculateUrlLength(this.queryParams, this.reservedParams)
     return this
   }
 
@@ -315,8 +313,22 @@ export class QueryBuilder {
     return url
   }
 
+  private calculateUrlLength(queryParams: Map<string, string[]>, reservedParams: Map<string, number>) {
+    let length = this.baseUrl.length
+    for (const [paramName, reserved] of reservedParams) {
+      if (!this.queryParams.has(paramName)) {
+        // We will avoid the reserved parameters that already have a value set
+        length += paramName.length + 2 + reserved
+      }
+    }
+    for (const [paramName, paramValues] of queryParams) {
+      length += this.calculateAddedLength(paramName, paramValues)
+    }
+    return length
+  }
+
   static clone(queryBuilder: QueryBuilder): QueryBuilder {
-    return new QueryBuilder(queryBuilder.baseUrl, new Map(queryBuilder.queryParams), queryBuilder.reservedChars)
+    return new QueryBuilder(queryBuilder.baseUrl, new Map(queryBuilder.queryParams), queryBuilder.reservedParams)
   }
 
   private calculateAddedLength(paramName: string, paramValues: (string | number)[]) {
