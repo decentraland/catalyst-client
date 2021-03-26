@@ -1,6 +1,12 @@
 import { EthAddress } from 'dcl-crypto'
 import { Profile, Fetcher, RequestOptions, EntityMetadata, ServerMetadata } from 'dcl-catalyst-commons'
-import { convertFiltersToQueryParams, sanitizeUrl, splitAndFetch, splitAndFetchPaginated } from './utils/Helper'
+import {
+  convertFiltersToQueryParams,
+  getHeadersWithUserAgent,
+  sanitizeUrl,
+  splitAndFetch,
+  splitAndFetchPaginated
+} from './utils/Helper'
 import {
   LambdasAPI,
   OwnedWearables,
@@ -9,7 +15,6 @@ import {
   ProfileOptions,
   WearablesFilters
 } from './LambdasAPI'
-import { RUNNING_VERSION } from './utils/Environment'
 
 export class LambdasClient implements LambdasAPI {
   private readonly lambdasUrl: string
@@ -20,13 +25,15 @@ export class LambdasClient implements LambdasAPI {
     this.fetcher =
       fetcher ??
       new Fetcher({
-        headers: {
-          'User-Agent': `lambdas-client/${RUNNING_VERSION} (+https://github.com/decentraland/catalyst-client)`
-        }
+        headers: getHeadersWithUserAgent('lambdas-client')
       })
   }
 
-  fetchProfiles(ethAddresses: EthAddress[], profileOptions?: ProfileOptions, options?: RequestOptions): Promise<Profile[]> {
+  fetchProfiles(
+    ethAddresses: EthAddress[],
+    profileOptions?: ProfileOptions,
+    options?: RequestOptions
+  ): Promise<Profile[]> {
     const queryParams: Map<string, string[]> = new Map()
     queryParams.set('id', ethAddresses)
     if (profileOptions?.fields) {
