@@ -248,13 +248,7 @@ export class QueryBuilder {
     private readonly queryParams: Map<string, string[]> = new Map(),
     private readonly reservedParams: Map<string, number> = new Map()
   ) {
-    this.length = this.baseUrl.length
-    for (const [paramName, reserved] of reservedParams) {
-      this.length += paramName.length + 2 + reserved
-    }
-    for (const [paramName, paramValues] of queryParams) {
-      this.length += this.calculateAddedLength(paramName, paramValues)
-    }
+    this.length = this.calculateUrlLength(queryParams, reservedParams)
   }
 
   canAddParam(paramName: string, paramValue: string) {
