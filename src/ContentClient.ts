@@ -30,13 +30,14 @@ import { ContentAPI, DeploymentWithMetadataContentAndPointers } from './ContentA
 import {
   addModelToFormData,
   convertFiltersToQueryParams,
+  getHeadersWithUserAgent,
+  isNode,
   QueryBuilder,
   sanitizeUrl,
   splitAndFetch,
   splitValuesIntoManyQueryBuilders
 } from './utils/Helper'
 import { DeploymentData } from './utils/DeploymentBuilder'
-import { RUNNING_VERSION } from './utils/Environment'
 
 export class ContentClient implements ContentAPI {
   private static readonly CHARS_LEFT_FOR_OFFSET = 7
@@ -52,9 +53,7 @@ export class ContentClient implements ContentAPI {
     this.fetcher =
       fetcher ??
       new Fetcher({
-        headers: {
-          'User-Agent': `content-client/${RUNNING_VERSION} (+https://github.com/decentraland/catalyst-client)`
-        }
+        headers: getHeadersWithUserAgent('content-client')
       })
   }
 
@@ -64,12 +63,12 @@ export class ContentClient implements ContentAPI {
     addModelToFormData(deployData.authChain, form, 'authChain')
 
     // Check if we are running in node or browser
-    const isNode = typeof window === 'undefined' || !this.isBlobAvailable()
+    const areWeRunningInNode = isNode()
 
     const alreadyUploadedHashes = await this.hashesAlreadyOnServer(Array.from(deployData.files.keys()), options)
     for (const [fileHash, file] of deployData.files) {
       if (!alreadyUploadedHashes.has(fileHash) || fileHash === deployData.entityId) {
-        if (isNode) {
+        if (areWeRunningInNode) {
           // Node
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore
@@ -391,15 +390,6 @@ export class ContentClient implements ContentAPI {
 
   private fetchJson(path: string, options?: Partial<RequestOptions>): Promise<any> {
     return this.fetcher.fetchJson(`${this.contentUrl}${path}`, options)
-  }
-
-  private isBlobAvailable(): boolean {
-    try {
-      new Blob()
-      return true
-    } catch {
-      return false
-    }
   }
 }
 

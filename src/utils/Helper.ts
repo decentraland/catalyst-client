@@ -1,4 +1,5 @@
 import { Fetcher, RequestOptions } from 'dcl-catalyst-commons'
+import { RUNNING_VERSION } from './Environment'
 
 require('isomorphic-form-data')
 
@@ -195,6 +196,25 @@ export function convertFiltersToQueryParams(filters?: Record<string, any>): Map<
     })
     .filter(([_, values]) => values.length > 0)
   return new Map(entries)
+}
+
+export function isNode() {
+  return typeof window === 'undefined' || !isBlobAvailable()
+}
+
+export function getHeadersWithUserAgent(client: string) {
+  return isNode()
+    ? { 'User-Agent': `${client}/${RUNNING_VERSION} (+https://github.com/decentraland/catalyst-client)` }
+    : undefined
+}
+
+function isBlobAvailable(): boolean {
+  try {
+    new Blob()
+    return true
+  } catch {
+    return false
+  }
 }
 
 function isValidQueryParamValue(value: any): boolean {

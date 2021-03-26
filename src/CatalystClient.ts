@@ -18,11 +18,10 @@ import {
 import { Readable } from 'stream'
 import { CatalystAPI } from './CatalystAPI'
 import { DeploymentData } from './utils/DeploymentBuilder'
-import { sanitizeUrl } from './utils/Helper'
+import { getHeadersWithUserAgent, sanitizeUrl } from './utils/Helper'
 import { ContentClient, DeploymentOptions } from './ContentClient'
 import { LambdasClient } from './LambdasClient'
 import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
-import { RUNNING_VERSION } from './utils/Environment'
 import { WearablesFilters, OwnedWearables, ProfileOptions } from './LambdasAPI'
 import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
 
@@ -40,9 +39,7 @@ export class CatalystClient implements CatalystAPI {
     fetcher =
       fetcher ??
       new Fetcher({
-        headers: {
-          'User-Agent': `catalyst-client/${RUNNING_VERSION} (+https://github.com/decentraland/catalyst-client)`
-        }
+        headers: getHeadersWithUserAgent('catalyst-client')
       })
     this.contentClient = new ContentClient(this.catalystUrl + '/content', origin, fetcher)
     this.lambdasClient = new LambdasClient(this.catalystUrl + '/lambdas', fetcher)
@@ -102,7 +99,11 @@ export class CatalystClient implements CatalystAPI {
     return this.contentClient.pipeContent(contentHash, writeTo, options)
   }
 
-  fetchProfiles(ethAddresses: EthAddress[], profileOptions?: ProfileOptions, options?: RequestOptions): Promise<Profile[]> {
+  fetchProfiles(
+    ethAddresses: EthAddress[],
+    profileOptions?: ProfileOptions,
+    options?: RequestOptions
+  ): Promise<Profile[]> {
     return this.lambdasClient.fetchProfiles(ethAddresses, profileOptions, options)
   }
 
