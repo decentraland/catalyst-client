@@ -237,7 +237,7 @@ export class ContentClient implements ContentAPI {
       queryParams.set('fields', [fieldsValue])
     }
 
-    let reservedChars: number
+    let reservedParams: Map<string, number>
     let modifyQueryBasedOnResult: (result: PartialDeploymentHistory<T>, builder: QueryBuilder) => void
 
     const canWeUseLocalTimestampInsteadOfOffset =
@@ -247,7 +247,10 @@ export class ContentClient implements ContentAPI {
 
     if (canWeUseLocalTimestampInsteadOfOffset) {
       // Note: the approach used below will get stuck if all 500 deployments on the same page have the same localTimestamp, but that is extremely unlikely
-      reservedChars = '&fromLocalTimestamp='.length + 13
+      reservedParams = new Map([
+        ['fromLocalTimestamp', 13],
+        ['toLocalTimestamp', 13]
+      ])
       if (deploymentOptions?.sortBy?.order === SortingOrder.ASCENDING) {
         // Ascending
         modifyQueryBasedOnResult = (result, builder) =>
@@ -259,14 +262,14 @@ export class ContentClient implements ContentAPI {
       }
     } else {
       // We will use offset then
-      reservedChars = `&offset=`.length + ContentClient.CHARS_LEFT_FOR_OFFSET
+      reservedParams = new Map([['offset', ContentClient.CHARS_LEFT_FOR_OFFSET]])
       modifyQueryBasedOnResult = (result, queryBuilder) =>
         queryBuilder.setParam('offset', result.pagination.limit + result.pagination.offset)
     }
 
     yield* this.iterateThroughDeploymentsBasedOnResult<T>(
       queryParams,
-      reservedChars,
+      reservedParams,
       modifyQueryBasedOnResult,
       deploymentOptions?.errorListener,
       withSomeDefaults
@@ -277,7 +280,7 @@ export class ContentClient implements ContentAPI {
     T extends DeploymentBase = DeploymentWithMetadataContentAndPointers
   >(
     queryParams: Map<string, string[]>,
-    reservedChars: number,
+    reservedParams: Map<string, number>,
     modifyQueryBasedOnResult: (result: PartialDeploymentHistory<T>, builder: QueryBuilder) => void,
     errorListener?: (errorMessage: string) => void,
     options?: RequestOptions
@@ -287,7 +290,7 @@ export class ContentClient implements ContentAPI {
       baseUrl: this.contentUrl,
       path: '/deployments',
       queryParams,
-      reservedChars
+      reservedParams
     })
 
     // Perform the different queries
