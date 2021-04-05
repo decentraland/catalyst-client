@@ -73,10 +73,8 @@ export async function splitAndFetchPaginated<E>({
   uniqueBy,
   options
 }: RequiredOne<SplitAndFetchParams<E>, 'uniqueBy'>): Promise<E[]> {
-  // A little clean up
+  // Set default
   fetcher = fetcher ?? new Fetcher()
-  const queryParamsMap: Map<string, string[]> =
-    'name' in queryParams ? new Map([[queryParams.name, queryParams.values]]) : queryParams
 
   // Reserve a few chars to send the offset
   const reservedParams = new Map([['offset', CHARS_LEFT_FOR_OFFSET]])
@@ -88,19 +86,15 @@ export async function splitAndFetchPaginated<E>({
   const foundElements: Map<any, E> = new Map()
   let exit = false
   for (let i = 0; i < queries.length && !exit; i++) {
-    const query = queries[i]
-    let offset = 0
-    let keepRetrievingElements = true
-    while (keepRetrievingElements && !exit) {
-      const url = query + (queryParamsMap.size === 0 ? '?' : '&') + `offset=${offset}`
+    let nextQuery: string | undefined = queries[i]
+    while (nextQuery && !exit) {
       try {
         const response: {
-          pagination: { offset: number; limit: number; moreData: boolean }
-        } = await fetcher.fetchJson(url, options)
+          pagination: { limit: number; next?: string }
+        } = await fetcher.fetchJson(nextQuery, options)
         const elements: E[] = response[elementsProperty]
         elements.forEach((element) => foundElements.set(element[uniqueBy], element))
-        offset = response.pagination.offset + response.pagination.limit
-        keepRetrievingElements = response.pagination.moreData
+        nextQuery = response.pagination.next
       } catch (error) {
         exit = true
       }

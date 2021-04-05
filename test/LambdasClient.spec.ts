@@ -24,7 +24,10 @@ describe('LambdasClient', () => {
   it('When fetching only snapshots in profiles, then the result is as expected', async () => {
     const requestResult = [someResult()]
     const [ethAddress1, ethAddress2] = ['ethAddress1', 'ethAddress2']
-    const { instance: fetcher } = mockFetcherJson(`/profiles?fields=snapshots&id=${ethAddress1}&id=${ethAddress2}`, requestResult)
+    const { instance: fetcher } = mockFetcherJson(
+      `/profiles?fields=snapshots&id=${ethAddress1}&id=${ethAddress2}`,
+      requestResult
+    )
 
     const client = buildClient(URL, fetcher)
     const result = await client.fetchProfiles([ethAddress1, ethAddress2], { fields: ProfileFields.ONLY_SNAPSHOTS })
@@ -39,7 +42,7 @@ describe('LambdasClient', () => {
       pagination: { offset: 0, limit: 0, moreData: false }
     }
     const { instance: fetcher } = mockFetcherJson(
-      `/collections/wearables?textSearch=text&wearableId=id1&wearableId=id2&offset=0`,
+      `/collections/wearables?textSearch=text&wearableId=id1&wearableId=id2`,
       requestResult
     )
 
