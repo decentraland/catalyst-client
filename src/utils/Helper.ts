@@ -94,7 +94,8 @@ export async function splitAndFetchPaginated<E>({
         } = await fetcher.fetchJson(nextQuery, options)
         const elements: E[] = response[elementsProperty]
         elements.forEach((element) => foundElements.set(element[uniqueBy], element))
-        nextQuery = response.pagination.next
+        const nextRelative = response.pagination.next
+        nextQuery = nextRelative ? new URL(nextRelative, nextQuery).toString() : undefined
       } catch (error) {
         exit = true
       }
