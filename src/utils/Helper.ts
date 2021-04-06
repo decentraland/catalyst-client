@@ -86,15 +86,16 @@ export async function splitAndFetchPaginated<E>({
   const foundElements: Map<any, E> = new Map()
   let exit = false
   for (let i = 0; i < queries.length && !exit; i++) {
-    let nextQuery: string | undefined = queries[i]
-    while (nextQuery && !exit) {
+    let url: string | undefined = queries[i]
+    while (url && !exit) {
       try {
         const response: {
           pagination: { limit: number; next?: string }
-        } = await fetcher.fetchJson(nextQuery, options)
+        } = await fetcher.fetchJson(url, options)
         const elements: E[] = response[elementsProperty]
         elements.forEach((element) => foundElements.set(element[uniqueBy], element))
-        nextQuery = response.pagination.next
+        const nextRelative = response.pagination.next
+        url = nextRelative ? new URL(nextRelative, url).toString() : undefined
       } catch (error) {
         exit = true
       }

@@ -129,14 +129,14 @@ describe('Helper', () => {
     const baseUrl = 'http://base.com'
     const path = '/path'
     const queryParams = { name: 'someName', values: ['value1', 'value2'] }
-    const next = `${baseUrl}${path}?someName=value1&someName=value3`
+    const next = `?someName=value1&someName=value3`
 
     const mockedFetcher: Fetcher = mock(Fetcher)
     when(mockedFetcher.fetchJson(`${baseUrl}${path}?someName=value1&someName=value2`, anything())).thenResolve({
       elements: [{ id: 'id1' }, { id: 'id2' }],
       pagination: { limit: 2, next }
     })
-    when(mockedFetcher.fetchJson(next, anything())).thenResolve({
+    when(mockedFetcher.fetchJson(`${baseUrl}${path}${next}`, anything())).thenResolve({
       elements: [{ id: 'id2' }, { id: 'id3' }],
       pagination: { limit: 2 }
     })
