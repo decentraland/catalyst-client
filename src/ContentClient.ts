@@ -63,7 +63,7 @@ export class ContentClient implements ContentAPI {
 
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    const form: FormData = areWeRunningInNode ? new FormData() : new NodeFormData()
+    const form: FormData = areWeRunningInNode ? new NodeFormData() : new FormData()
     form.append('entityId', deployData.entityId)
     addModelToFormData(deployData.authChain, form, 'authChain')
 
