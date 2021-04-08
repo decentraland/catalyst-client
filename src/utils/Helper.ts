@@ -1,8 +1,6 @@
 import { Fetcher, RequestOptions } from 'dcl-catalyst-commons'
 import { RUNNING_VERSION } from './Environment'
 
-require('isomorphic-form-data')
-
 export function addModelToFormData(model: any, form: FormData, namespace = ''): FormData {
   for (const propertyName in model) {
     if (!model.hasOwnProperty(propertyName) || model[propertyName] === null || model[propertyName] === undefined)
