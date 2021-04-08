@@ -1,4 +1,3 @@
-require('isomorphic-form-data')
 import {
   Timestamp,
   Pointer,
@@ -38,6 +37,7 @@ import {
   splitValuesIntoManyQueryBuilders
 } from './utils/Helper'
 import { DeploymentData } from './utils/DeploymentBuilder'
+import NodeFormData from 'form-data'
 
 export class ContentClient implements ContentAPI {
   private static readonly CHARS_LEFT_FOR_OFFSET = 7
@@ -58,12 +58,14 @@ export class ContentClient implements ContentAPI {
   }
 
   async deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {
-    const form = new FormData()
-    form.append('entityId', deployData.entityId)
-    addModelToFormData(deployData.authChain, form, 'authChain')
-
     // Check if we are running in node or browser
     const areWeRunningInNode = isNode()
+
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    const form: FormData = areWeRunningInNode ? new FormData() : new NodeFormData()
+    form.append('entityId', deployData.entityId)
+    addModelToFormData(deployData.authChain, form, 'authChain')
 
     const alreadyUploadedHashes = await this.hashesAlreadyOnServer(Array.from(deployData.files.keys()), options)
     for (const [fileHash, file] of deployData.files) {
