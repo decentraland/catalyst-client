@@ -337,8 +337,8 @@ export class ContentClient implements ContentAPI {
 
   private assertFiltersAreSet(filters: DeploymentFilters | undefined) {
     const filtersAreSet =
-      filters?.fromLocalTimestamp ||
-      filters?.toLocalTimestamp ||
+      filters?.from ||
+      filters?.to ||
       (filters?.deployedBy && filters?.deployedBy.length > 0) ||
       (filters?.entityTypes && filters?.entityTypes.length > 0) ||
       (filters?.entityIds && filters?.entityIds.length > 0) ||
