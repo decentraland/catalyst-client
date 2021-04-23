@@ -239,6 +239,18 @@ export class ContentClient implements ContentAPI {
       queryParams.set('fields', [fieldsValue])
     }
 
+    // Set legacy filters for get all deployments
+    if (deploymentOptions?.sortBy?.field !== SortingField.ENTITY_TIMESTAMP) {
+      if (deploymentOptions?.filters.from) {
+        const from = deploymentOptions.filters.from
+        queryParams.set('fromLocalTimestamp', [`${from}`])
+      }
+      if (deploymentOptions?.filters.to) {
+        const to = deploymentOptions.filters.to
+        queryParams.set('toLocalTimestamp', [`${to}`])
+      }
+    }
+
     let reservedParams: Map<string, number>
     let modifyQueryBasedOnResult: (result: PartialDeploymentHistory<T>, builder: QueryBuilder) => void
 
