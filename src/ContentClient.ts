@@ -240,7 +240,7 @@ export class ContentClient implements ContentAPI {
     }
 
     // Set legacy filters for get all deployments
-    if (!deploymentOptions?.sortBy || deploymentOptions.sortBy.field === SortingField.LOCAL_TIMESTAMP) {
+    if (!(deploymentOptions?.sortBy?.field === SortingField.ENTITY_TIMESTAMP)) {
       if (deploymentOptions?.filters.from) {
         const from = deploymentOptions.filters.from
         queryParams.set('fromLocalTimestamp', [`${from}`])
