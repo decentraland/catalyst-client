@@ -27,27 +27,30 @@ describe('ContentClient', () => {
   describe("When calling buildDeployment", () => {
     let mocked;
     let fetcher;
+    const type = EntityType.PROFILE;
+    const pointers = ["p1"];
+    const files = new Map();
+    const metadata = {};
     const currentTime = 100;
+    let deploymentBuilderClassMock: typeof DeploymentBuilder;
 
     beforeEach(async () => {
       ({ mock: mocked, instance: fetcher } = mockFetcherJson('/status', { currentTime }))
 
-      const deploymentBuilderClassMock: typeof DeploymentBuilder = mock<typeof DeploymentBuilder>(DeploymentBuilder);
-
-      const type = EntityType.PROFILE;
-      const pointers = ["p1"];
-      const files = new Map();
-      const metadata = {};
+      deploymentBuilderClassMock = mock<typeof DeploymentBuilder>(DeploymentBuilder);
 
       when(deploymentBuilderClassMock.buildEntity(type, pointers, files, metadata, currentTime)).thenResolve()
 
       const client = buildClient(URL, fetcher, instance(deploymentBuilderClassMock))
-
-      await client.buildDeployment(type, pointers, files, metadata)
+      await client.buildEntity(type, pointers, files, metadata)
     })
 
     it("should fetch the status", () => {
       verify(mocked.fetchJson(URL + '/status', anything())).once()
+    })
+
+    it("should call the deployer builder with the expected parameters", () => {
+      verify(deploymentBuilderClassMock.buildEntity(type, pointers, files, metadata, currentTime)).once()
     })
   })
 

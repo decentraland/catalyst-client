@@ -61,7 +61,7 @@ export class ContentClient implements ContentAPI {
     this.deploymentBuilderClass = deploymentBuilderClass ?? DeploymentBuilder
   }
 
-  async buildDeployment(type: EntityType,
+  async buildEntity(type: EntityType,
     pointers: Pointer[],
     files: Map<string, Buffer> = new Map(),
     metadata?: EntityMetadata): Promise<DeploymentPreparationData> {
