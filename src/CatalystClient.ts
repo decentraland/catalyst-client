@@ -13,11 +13,12 @@ import {
   DeploymentBase,
   LegacyAuditInfo,
   RequestOptions,
-  ServerMetadata
+  ServerMetadata,
+  EntityMetadata
 } from 'dcl-catalyst-commons'
 import { Readable } from 'stream'
 import { CatalystAPI } from './CatalystAPI'
-import { DeploymentData } from './utils/DeploymentBuilder'
+import { DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 import { getHeadersWithUserAgent, sanitizeUrl } from './utils/Helper'
 import { ContentClient, DeploymentOptions } from './ContentClient'
 import { LambdasClient } from './LambdasClient'
@@ -43,6 +44,13 @@ export class CatalystClient implements CatalystAPI {
       })
     this.contentClient = new ContentClient(this.catalystUrl + '/content', origin, fetcher)
     this.lambdasClient = new LambdasClient(this.catalystUrl + '/lambdas', fetcher)
+  }
+
+  async buildDeployment(type: EntityType,
+    pointers: Pointer[],
+    files: Map<string, Buffer> = new Map(),
+    metadata?: EntityMetadata): Promise<DeploymentPreparationData> {
+    return this.contentClient.buildDeployment(type, pointers, files, metadata);
   }
 
   deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {

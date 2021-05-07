@@ -21,7 +21,8 @@ import {
   RequestOptions,
   mergeRequestOptions,
   SortingField,
-  SortingOrder
+  SortingOrder,
+  EntityMetadata
 } from 'dcl-catalyst-commons'
 import asyncToArray from 'async-iterator-to-array'
 import { Readable } from 'stream'
@@ -36,7 +37,7 @@ import {
   splitAndFetch,
   splitValuesIntoManyQueryBuilders
 } from './utils/Helper'
-import { DeploymentData } from './utils/DeploymentBuilder'
+import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 import NodeFormData from 'form-data'
 
 export class ContentClient implements ContentAPI {
@@ -55,6 +56,15 @@ export class ContentClient implements ContentAPI {
       new Fetcher({
         headers: getHeadersWithUserAgent('content-client')
       })
+  }
+
+  async buildDeployment(type: EntityType,
+    pointers: Pointer[],
+    files: Map<string, Buffer> = new Map(),
+    metadata?: EntityMetadata): Promise<DeploymentPreparationData> {
+    const result = await this.fetchContentStatus();
+    const timestamp = result.currentTime;
+    return DeploymentBuilder.buildEntity(type, pointers, files, metadata, timestamp);
   }
 
   async deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {
@@ -430,7 +440,7 @@ export class DeploymentFields<T extends Partial<Deployment>> {
     'metadata'
   ])
 
-  private constructor(private readonly fields: string[]) {}
+  private constructor(private readonly fields: string[]) { }
 
   getFields(): string {
     return this.fields.join(',')

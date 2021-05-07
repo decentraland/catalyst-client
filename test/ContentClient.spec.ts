@@ -23,6 +23,40 @@ const expect = chai.expect
 describe('ContentClient', () => {
   const URL = 'https://url.com'
 
+  describe("When calling buildDeployment", () => {
+    let mocked;
+    let fetcher;
+    const currentTime = 100;
+
+    beforeEach(async () => {
+      ({ mock: mocked, instance: fetcher } = mockFetcherJson('/status', { currentTime }))
+
+      const client = buildClient(URL, fetcher)
+
+      const type = EntityType.PROFILE;
+      const pointers = ["p1"];
+      const files = new Map();
+      const metadata = {};
+
+      await client.buildDeployment(type, pointers, files, metadata)
+    })
+
+    it("should fetch the status", () => {
+      verify(mocked.fetchJson(URL + '/status', anything())).once()
+    })
+  })
+
+  it('When building a deployment, then the deployment is built', async () => {
+    const requestResult: Entity[] = [someEntity()]
+    const pointer = 'P'
+    const { instance: fetcher } = mockFetcherJson(`/entities/profile?pointer=${pointer}`, requestResult)
+
+    const client = buildClient(URL, fetcher)
+    const result = await client.fetchEntitiesByPointers(EntityType.PROFILE, [pointer])
+
+    expect(result).to.deep.equal(requestResult)
+  })
+
   it('When fetching by pointers, if none is set, then an error is thrown', () => {
     const { mock: mocked, instance: fetcher } = mockFetcherJson()
 
