@@ -18,7 +18,7 @@ import {
 } from 'dcl-catalyst-commons'
 import { Readable } from 'stream'
 import { CatalystAPI } from './CatalystAPI'
-import { DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
+import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 import { getHeadersWithUserAgent, sanitizeUrl } from './utils/Helper'
 import { ContentClient, DeploymentOptions } from './ContentClient'
 import { LambdasClient } from './LambdasClient'
@@ -34,7 +34,8 @@ export class CatalystClient implements CatalystAPI {
   constructor(
     catalystUrl: string,
     origin: string, // The name or a description of the app that is using the client
-    fetcher?: Fetcher
+    fetcher?: Fetcher,
+    deploymentBuilderClass?: typeof DeploymentBuilder
   ) {
     this.catalystUrl = sanitizeUrl(catalystUrl)
     fetcher =
@@ -42,7 +43,7 @@ export class CatalystClient implements CatalystAPI {
       new Fetcher({
         headers: getHeadersWithUserAgent('catalyst-client')
       })
-    this.contentClient = new ContentClient(this.catalystUrl + '/content', origin, fetcher)
+    this.contentClient = new ContentClient(this.catalystUrl + '/content', origin, fetcher, deploymentBuilderClass)
     this.lambdasClient = new LambdasClient(this.catalystUrl + '/lambdas', fetcher)
   }
 

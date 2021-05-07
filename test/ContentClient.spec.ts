@@ -16,6 +16,7 @@ import {
 } from 'dcl-catalyst-commons'
 import { DeploymentWithMetadataContentAndPointers } from 'ContentAPI'
 import { Headers } from 'node-fetch'
+import { DeploymentBuilder } from 'utils'
 
 chai.use(chaiAsPromised)
 const expect = chai.expect
@@ -31,12 +32,16 @@ describe('ContentClient', () => {
     beforeEach(async () => {
       ({ mock: mocked, instance: fetcher } = mockFetcherJson('/status', { currentTime }))
 
-      const client = buildClient(URL, fetcher)
+      const deploymentBuilderClassMock: typeof DeploymentBuilder = mock<typeof DeploymentBuilder>(DeploymentBuilder);
 
       const type = EntityType.PROFILE;
       const pointers = ["p1"];
       const files = new Map();
       const metadata = {};
+
+      when(deploymentBuilderClassMock.buildEntity(type, pointers, files, metadata, currentTime)).thenResolve()
+
+      const client = buildClient(URL, fetcher, instance(deploymentBuilderClassMock))
 
       await client.buildDeployment(type, pointers, files, metadata)
     })
@@ -422,7 +427,7 @@ describe('ContentClient', () => {
     return { mock: mockedFetcher, instance: instance(mockedFetcher) }
   }
 
-  function buildClient(URL: string, fetcher?: Fetcher) {
-    return new ContentClient(URL, 'origin', fetcher)
+  function buildClient(URL: string, fetcher?: Fetcher, deploymentBuilderClass?: typeof DeploymentBuilder) {
+    return new ContentClient(URL, 'origin', fetcher, deploymentBuilderClass)
   }
 })
