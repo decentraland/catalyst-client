@@ -16,12 +16,54 @@ import {
 } from 'dcl-catalyst-commons'
 import { DeploymentWithMetadataContentAndPointers } from 'ContentAPI'
 import { Headers } from 'node-fetch'
+import { DeploymentBuilder } from 'utils'
 
 chai.use(chaiAsPromised)
 const expect = chai.expect
 
 describe('ContentClient', () => {
   const URL = 'https://url.com'
+
+  describe("When calling buildDeployment", () => {
+    let mocked;
+    let fetcher;
+    const type = EntityType.PROFILE;
+    const pointers = ["p1"];
+    const files = new Map();
+    const metadata = {};
+    const currentTime = 100;
+    let deploymentBuilderClassMock: typeof DeploymentBuilder;
+
+    beforeEach(async () => {
+      ({ mock: mocked, instance: fetcher } = mockFetcherJson('/status', { currentTime }))
+
+      deploymentBuilderClassMock = mock<typeof DeploymentBuilder>(DeploymentBuilder);
+
+      when(deploymentBuilderClassMock.buildEntity(type, pointers, files, metadata, currentTime)).thenResolve()
+
+      const client = buildClient(URL, fetcher, instance(deploymentBuilderClassMock))
+      await client.buildEntity(type, pointers, files, metadata)
+    })
+
+    it("should fetch the status", () => {
+      verify(mocked.fetchJson(URL + '/status', anything())).once()
+    })
+
+    it("should call the deployer builder with the expected parameters", () => {
+      verify(deploymentBuilderClassMock.buildEntity(type, pointers, files, metadata, currentTime)).once()
+    })
+  })
+
+  it('When building a deployment, then the deployment is built', async () => {
+    const requestResult: Entity[] = [someEntity()]
+    const pointer = 'P'
+    const { instance: fetcher } = mockFetcherJson(`/entities/profile?pointer=${pointer}`, requestResult)
+
+    const client = buildClient(URL, fetcher)
+    const result = await client.fetchEntitiesByPointers(EntityType.PROFILE, [pointer])
+
+    expect(result).to.deep.equal(requestResult)
+  })
 
   it('When fetching by pointers, if none is set, then an error is thrown', () => {
     const { mock: mocked, instance: fetcher } = mockFetcherJson()
@@ -388,7 +430,7 @@ describe('ContentClient', () => {
     return { mock: mockedFetcher, instance: instance(mockedFetcher) }
   }
 
-  function buildClient(URL: string, fetcher?: Fetcher) {
-    return new ContentClient(URL, 'origin', fetcher)
+  function buildClient(URL: string, fetcher?: Fetcher, deploymentBuilderClass?: typeof DeploymentBuilder) {
+    return new ContentClient(URL, 'origin', fetcher, deploymentBuilderClass)
   }
 })
