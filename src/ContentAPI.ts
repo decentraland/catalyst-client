@@ -15,10 +15,13 @@ import {
   RequestOptions
 } from 'dcl-catalyst-commons'
 import { Readable } from 'stream'
-import { DeploymentData } from './utils/DeploymentBuilder'
-import { DeploymentOptions } from './ContentClient'
+import { DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
+import { BuildEntityOptions, DeploymentOptions } from './ContentClient'
 
 export interface ContentAPI {
+  /** Build entities */
+  buildEntity({ type, pointers, files, metadata }: BuildEntityOptions): Promise<DeploymentPreparationData>
+
   /** Retrieve / Download */
   fetchEntitiesByPointers(type: EntityType, pointers: Pointer[], options?: RequestOptions): Promise<Entity[]>
   fetchEntitiesByIds(type: EntityType, ids: EntityId[], options?: RequestOptions): Promise<Entity[]>

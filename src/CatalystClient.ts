@@ -13,14 +13,13 @@ import {
   DeploymentBase,
   LegacyAuditInfo,
   RequestOptions,
-  ServerMetadata,
-  EntityMetadata
+  ServerMetadata
 } from 'dcl-catalyst-commons'
 import { Readable } from 'stream'
 import { CatalystAPI } from './CatalystAPI'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 import { getHeadersWithUserAgent, sanitizeUrl } from './utils/Helper'
-import { ContentClient, DeploymentOptions } from './ContentClient'
+import { BuildEntityOptions, ContentClient, DeploymentOptions } from './ContentClient'
 import { LambdasClient } from './LambdasClient'
 import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
 import { WearablesFilters, OwnedWearables, ProfileOptions } from './LambdasAPI'
@@ -47,11 +46,8 @@ export class CatalystClient implements CatalystAPI {
     this.lambdasClient = new LambdasClient(this.catalystUrl + '/lambdas', fetcher)
   }
 
-  async buildEntity(type: EntityType,
-    pointers: Pointer[],
-    files: Map<string, Buffer> = new Map(),
-    metadata?: EntityMetadata): Promise<DeploymentPreparationData> {
-    return this.contentClient.buildEntity(type, pointers, files, metadata);
+  async buildEntity({ type, pointers, files, metadata }: BuildEntityOptions): Promise<DeploymentPreparationData> {
+    return this.contentClient.buildEntity({ type, pointers, files, metadata });
   }
 
   deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {

@@ -29,7 +29,7 @@ describe('ContentClient', () => {
     let fetcher;
     const type = EntityType.PROFILE;
     const pointers = ["p1"];
-    const files = new Map();
+    const files = undefined;
     const metadata = {};
     const currentTime = 100;
     let deploymentBuilderClassMock: typeof DeploymentBuilder;
@@ -42,7 +42,7 @@ describe('ContentClient', () => {
       when(deploymentBuilderClassMock.buildEntity(type, pointers, files, metadata, currentTime)).thenResolve()
 
       const client = buildClient(URL, fetcher, instance(deploymentBuilderClassMock))
-      await client.buildEntity(type, pointers, files, metadata)
+      await client.buildEntity({ type, pointers, files, metadata })
     })
 
     it("should fetch the status", () => {
