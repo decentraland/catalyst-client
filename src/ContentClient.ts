@@ -61,13 +61,11 @@ export class ContentClient implements ContentAPI {
     this.deploymentBuilderClass = deploymentBuilderClass ?? DeploymentBuilder
   }
 
-  async buildEntity(type: EntityType,
-    pointers: Pointer[],
-    files: Map<string, Buffer> = new Map(),
-    metadata?: EntityMetadata): Promise<DeploymentPreparationData> {
-    const result = await this.fetchContentStatus();
-    const timestamp = result.currentTime;
-    return this.deploymentBuilderClass.buildEntity(type, pointers, files, metadata, timestamp);
+  async buildEntity({ type, pointers, files, metadata }: BuildEntityOptions): Promise<DeploymentPreparationData> {
+    files = files || new Map()
+    const result = await this.fetchContentStatus()
+    const timestamp = result.currentTime
+    return this.deploymentBuilderClass.buildEntity(type, pointers, files, metadata, timestamp)
   }
 
   async deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {
@@ -425,6 +423,13 @@ export type DeploymentOptions<T> = {
   sortBy?: DeploymentSorting
   fields?: DeploymentFields<T>
   errorListener?: (errorMessage: string) => void
+}
+
+export interface BuildEntityOptions {
+  type: EntityType
+  pointers: Pointer[]
+  files?: Map<string, Buffer>
+  metadata?: EntityMetadata
 }
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment

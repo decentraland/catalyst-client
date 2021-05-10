@@ -1,6 +1,6 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
-import { mock, instance, when, anything, verify } from 'ts-mockito'
+import { mock, instance, when, anything, verify, deepEqual } from 'ts-mockito'
 import { ContentClient, DeploymentFields } from 'ContentClient'
 import {
   EntityType,
@@ -29,7 +29,7 @@ describe('ContentClient', () => {
     let fetcher;
     const type = EntityType.PROFILE;
     const pointers = ["p1"];
-    const files = new Map();
+    const files = undefined;
     const metadata = {};
     const currentTime = 100;
     let deploymentBuilderClassMock: typeof DeploymentBuilder;
@@ -42,7 +42,7 @@ describe('ContentClient', () => {
       when(deploymentBuilderClassMock.buildEntity(type, pointers, files, metadata, currentTime)).thenResolve()
 
       const client = buildClient(URL, fetcher, instance(deploymentBuilderClassMock))
-      await client.buildEntity(type, pointers, files, metadata)
+      await client.buildEntity({ type, pointers, files, metadata })
     })
 
     it("should fetch the status", () => {
@@ -50,7 +50,7 @@ describe('ContentClient', () => {
     })
 
     it("should call the deployer builder with the expected parameters", () => {
-      verify(deploymentBuilderClassMock.buildEntity(type, pointers, files, metadata, currentTime)).once()
+      verify(deploymentBuilderClassMock.buildEntity(type, pointers, deepEqual(new Map()), metadata, currentTime)).once()
     })
   })
 
