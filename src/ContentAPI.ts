@@ -16,11 +16,12 @@ import {
 } from 'dcl-catalyst-commons'
 import { Readable } from 'stream'
 import { DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
-import { BuildEntityOptions, DeploymentOptions } from './ContentClient'
+import { BuildEntityOptions, BuildEntityWithoutFilesOptions, DeploymentOptions } from './ContentClient'
 
 export interface ContentAPI {
   /** Build entities */
   buildEntity({ type, pointers, files, metadata }: BuildEntityOptions): Promise<DeploymentPreparationData>
+  buildEntityWithoutNewFiles({ type, pointers, hashesByKey, metadata }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData>
 
   /** Retrieve / Download */
   fetchEntitiesByPointers(type: EntityType, pointers: Pointer[], options?: RequestOptions): Promise<Entity[]>

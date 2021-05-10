@@ -19,7 +19,7 @@ import { Readable } from 'stream'
 import { CatalystAPI } from './CatalystAPI'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 import { getHeadersWithUserAgent, sanitizeUrl } from './utils/Helper'
-import { BuildEntityOptions, ContentClient, DeploymentOptions } from './ContentClient'
+import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient, DeploymentOptions } from './ContentClient'
 import { LambdasClient } from './LambdasClient'
 import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
 import { WearablesFilters, OwnedWearables, ProfileOptions } from './LambdasAPI'
@@ -48,6 +48,10 @@ export class CatalystClient implements CatalystAPI {
 
   async buildEntity({ type, pointers, files, metadata }: BuildEntityOptions): Promise<DeploymentPreparationData> {
     return this.contentClient.buildEntity({ type, pointers, files, metadata });
+  }
+
+  async buildEntityWithoutNewFiles({ type, pointers, hashesByKey, metadata }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData> {
+    return this.contentClient.buildEntityWithoutNewFiles({ type, pointers, hashesByKey, metadata });
   }
 
   deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {

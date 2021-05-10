@@ -24,6 +24,36 @@ const expect = chai.expect
 describe('ContentClient', () => {
   const URL = 'https://url.com'
 
+  describe("When calling buildEntityWithoutNewFiles", () => {
+    let mocked;
+    let fetcher;
+    const type = EntityType.PROFILE;
+    const pointers = ["p1"];
+    const hashesByKey = undefined;
+    const metadata = {};
+    const currentTime = 100;
+    let deploymentBuilderClassMock: typeof DeploymentBuilder;
+
+    beforeEach(async () => {
+      ({ mock: mocked, instance: fetcher } = mockFetcherJson('/status', { currentTime }))
+
+      deploymentBuilderClassMock = mock<typeof DeploymentBuilder>(DeploymentBuilder);
+
+      when(deploymentBuilderClassMock.buildEntity(type, pointers, hashesByKey, metadata, currentTime)).thenResolve()
+
+      const client = buildClient(URL, fetcher, instance(deploymentBuilderClassMock))
+      await client.buildEntityWithoutNewFiles({ type, pointers, hashesByKey, metadata })
+    })
+
+    it("should fetch the status", () => {
+      verify(mocked.fetchJson(URL + '/status', anything())).once()
+    })
+
+    it("should call the deployer builder with the expected parameters", () => {
+      verify(deploymentBuilderClassMock.buildEntityWithoutNewFiles(type, pointers, hashesByKey, metadata, currentTime)).once()
+    })
+  })
+
   describe("When calling buildDeployment", () => {
     let mocked;
     let fetcher;

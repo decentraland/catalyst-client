@@ -61,6 +61,12 @@ export class ContentClient implements ContentAPI {
     this.deploymentBuilderClass = deploymentBuilderClass ?? DeploymentBuilder
   }
 
+  async buildEntityWithoutNewFiles({ type, pointers, hashesByKey, metadata }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData> {
+    const result = await this.fetchContentStatus()
+    const timestamp = result.currentTime
+    return this.deploymentBuilderClass.buildEntityWithoutNewFiles(type, pointers, hashesByKey, metadata, timestamp)
+  }
+
   async buildEntity({ type, pointers, files, metadata }: BuildEntityOptions): Promise<DeploymentPreparationData> {
     const result = await this.fetchContentStatus()
     const timestamp = result.currentTime
@@ -429,6 +435,13 @@ export interface BuildEntityOptions {
   pointers: Pointer[]
   files?: Map<string, Buffer>
   metadata?: EntityMetadata
+}
+
+export interface BuildEntityWithoutFilesOptions {
+  type: EntityType
+  pointers: Pointer[]
+  hashesByKey?: Map<string, ContentFileHash>,
+  metadata?: EntityMetadata,
 }
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
