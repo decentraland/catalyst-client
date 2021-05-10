@@ -39,7 +39,7 @@ const catalyst = await CatalystClient.connectedToCatalystIn('mainnet', origin)
 // Note: this operation is expensive, so try to store the created catalyst client somewhere, instead of re-building for each every request
 
 // Build entity and group all files
-const { entityId, files } = await catalyst.buildEntity({type: EntityType.*, pointers, contentFiles, metadata })
+const { entityId, files } = await catalyst.buildEntity({type: EntityType.*, pointers, files: contentFiles, metadata })
 
 // Build the deploy data
 const deployData = { entityId, files, authChain }
