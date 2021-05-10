@@ -1,6 +1,6 @@
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
-import { mock, instance, when, anything, verify, deepEqual } from 'ts-mockito'
+import { mock, instance, when, anything, verify } from 'ts-mockito'
 import { ContentClient, DeploymentFields } from 'ContentClient'
 import {
   EntityType,
@@ -50,7 +50,7 @@ describe('ContentClient', () => {
     })
 
     it("should call the deployer builder with the expected parameters", () => {
-      verify(deploymentBuilderClassMock.buildEntity(type, pointers, deepEqual(new Map()), metadata, currentTime)).once()
+      verify(deploymentBuilderClassMock.buildEntity(type, pointers, files, metadata, currentTime)).once()
     })
   })
 

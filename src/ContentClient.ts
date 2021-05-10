@@ -62,7 +62,6 @@ export class ContentClient implements ContentAPI {
   }
 
   async buildEntity({ type, pointers, files, metadata }: BuildEntityOptions): Promise<DeploymentPreparationData> {
-    files = files || new Map()
     const result = await this.fetchContentStatus()
     const timestamp = result.currentTime
     return this.deploymentBuilderClass.buildEntity(type, pointers, files, metadata, timestamp)
