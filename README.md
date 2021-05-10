@@ -26,8 +26,6 @@ import { CatalystClient, DeploymentBuilder } from 'dcl-catalyst-client'
 import { EntityType } from 'dcl-catalyst-commons'
 import { Authenticator } from 'dcl-crypto'
 
-// Build entity and group all files
-const { entityId, files } = await DeploymentBuilder.buildEntity(EntityType.*, pointers, contentFiles, metadata)
 
 // This is up to you. You will need to figure out how to make the owner of the pointer sign the entity id
 const { signature, address } = await sign(entityId)
@@ -39,6 +37,9 @@ const authChain = Authenticator.createSimpleAuthChain(entityId, address, signatu
 const origin = 'name_of_my_app'
 const catalyst = await CatalystClient.connectedToCatalystIn('mainnet', origin)
 // Note: this operation is expensive, so try to store the created catalyst client somewhere, instead of re-building for each every request
+
+// Build entity and group all files
+const { entityId, files } = await catalyst.buildEntity({type: EntityType.*, pointers, contentFiles, metadata })
 
 // Build the deploy data
 const deployData = { entityId, files, authChain }
