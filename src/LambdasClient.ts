@@ -1,5 +1,5 @@
 import { EthAddress } from 'dcl-crypto'
-import { Profile, Fetcher, RequestOptions, EntityMetadata, ServerMetadata } from 'dcl-catalyst-commons'
+import { Profile, Fetcher, RequestOptions, EntityMetadata, ServerMetadata, HealthStatus } from 'dcl-catalyst-commons'
 import {
   convertFiltersToQueryParams,
   getHeadersWithUserAgent,
@@ -86,6 +86,10 @@ export class LambdasClient implements LambdasAPI {
 
   fetchLambdasStatus(options?: RequestOptions): Promise<{ contentServerUrl: string }> {
     return this.fetcher.fetchJson(`${this.lambdasUrl}/status`, options)
+  }
+
+  fetchPeerHealth(options?: RequestOptions): Promise<Record<string, HealthStatus>> {
+    return this.fetcher.fetchJson(`${this.lambdasUrl}/health`, options)
   }
 
   getLambdasUrl(): string {

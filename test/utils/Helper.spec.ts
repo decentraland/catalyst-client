@@ -1,4 +1,3 @@
-import chai from 'chai'
 import { Fetcher } from 'dcl-catalyst-commons'
 import { mock, when, anything, instance, verify } from 'ts-mockito'
 import {
@@ -7,23 +6,21 @@ import {
   MAX_URL_LENGTH,
   convertFiltersToQueryParams,
   splitAndFetchPaginated
-} from 'utils/Helper'
-
-const expect = chai.expect
+} from '../../src/utils/Helper'
 
 describe('Helper', () => {
   it('When has spaces and trailing slash, they are removed', () => {
     const url = ' http://url.com/ '
     const sanitized = sanitizeUrl(url)
 
-    expect(sanitized).to.equal('http://url.com')
+    expect(sanitized).toEqual('http://url.com')
   })
 
   it('When there is no protocol set, then https is added', () => {
     const url = 'url.com'
     const sanitized = sanitizeUrl(url)
 
-    expect(sanitized).to.equal('https://url.com')
+    expect(sanitized).toEqual('https://url.com')
   })
 
   it('When there are too many query values for one param, then the queries are split correctly', () => {
@@ -47,13 +44,13 @@ describe('Helper', () => {
       (MAX_URL_LENGTH - baseUrl.length - basePath.length - 1) / (queryParamName.length + valueLength + 2)
     )
 
-    expect(queries.length).to.equal(Math.ceil(totalValues / valuesPerQuery))
+    expect(queries.length).toEqual(Math.ceil(totalValues / valuesPerQuery))
 
     const buildQueryWithValues = (from, to) =>
       `${baseUrl}${basePath}?${queryParamName}=${values.slice(from, to).join(`&${queryParamName}=`)}`
     const [query1, query2] = queries
-    expect(query1).to.equal(buildQueryWithValues(0, valuesPerQuery))
-    expect(query2).to.equal(buildQueryWithValues(valuesPerQuery, totalValues))
+    expect(query1).toEqual(buildQueryWithValues(0, valuesPerQuery))
+    expect(query2).toEqual(buildQueryWithValues(valuesPerQuery, totalValues))
   })
 
   it('When there are too many query params, then the queries are split correctly', () => {
@@ -87,15 +84,15 @@ describe('Helper', () => {
         (queryParamName2.length + valueLength + 2)
     )
 
-    expect(queries.length).to.equal(Math.ceil(totalValues / valuesPerQuery))
+    expect(queries.length).toEqual(Math.ceil(totalValues / valuesPerQuery))
 
     const buildQueryWithValues = (from, to) =>
       `${baseUrl}${basePath}?${queryParamName1}=a&${queryParamName1}=b&${queryParamName2}=${values
         .slice(from, to)
         .join(`&${queryParamName2}=`)}`
     const [query1, query2] = queries
-    expect(query1).to.equal(buildQueryWithValues(0, valuesPerQuery))
-    expect(query2).to.equal(buildQueryWithValues(valuesPerQuery, totalValues))
+    expect(query1).toEqual(buildQueryWithValues(0, valuesPerQuery))
+    expect(query2).toEqual(buildQueryWithValues(valuesPerQuery, totalValues))
   })
 
   it('When filters contain an invalid type, then an error is thrown', () => {
@@ -103,7 +100,7 @@ describe('Helper', () => {
       test: () => {}
     }
 
-    expect(() => convertFiltersToQueryParams(filters)).to.throw(
+    expect(() => convertFiltersToQueryParams(filters)).toThrowError(
       'Query params must be either a string, a number, a boolean or an array of the types just mentioned'
     )
   })
@@ -118,11 +115,11 @@ describe('Helper', () => {
 
     const queryParams = convertFiltersToQueryParams(filters)
 
-    expect(queryParams.size).to.equal(4)
-    expect(queryParams.get('aBool')).to.deep.equal(['true'])
-    expect(queryParams.get('aNum')).to.deep.equal(['10'])
-    expect(queryParams.get('aString')).to.deep.equal(['text'])
-    expect(queryParams.get('anArray')).to.deep.equal(['true', '10', 'text'])
+    expect(queryParams.size).toEqual(4)
+    expect(queryParams.get('aBool')).toEqual(['true'])
+    expect(queryParams.get('aNum')).toEqual(['10'])
+    expect(queryParams.get('aString')).toEqual(['text'])
+    expect(queryParams.get('anArray')).toEqual(['true', '10', 'text'])
   })
 
   it('When fetching paginated, then subsequent calls are made correctly', async () => {
@@ -151,7 +148,7 @@ describe('Helper', () => {
     })
 
     verify(mockedFetcher.fetchJson(anything(), anything())).twice()
-    expect(result).to.deep.equal([{ id: 'id1' }, { id: 'id2' }, { id: 'id3' }])
+    expect(result).toEqual([{ id: 'id1' }, { id: 'id2' }, { id: 'id3' }])
   })
 
   function buildArray(base: string, cases: number): string[] {

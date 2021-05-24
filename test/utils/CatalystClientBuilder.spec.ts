@@ -1,9 +1,4 @@
-import chai from 'chai'
-import chaiAsPromised from 'chai-as-promised'
-import { getUpdatedApprovedListWithoutQueryingContract } from 'utils/CatalystClientBuilder'
-
-chai.use(chaiAsPromised)
-const expect = chai.expect
+import { getUpdatedApprovedListWithoutQueryingContract } from '../../src/utils/CatalystClientBuilder'
 
 describe('Catalyst Client Builder', () => {
   describe('getUpdatedApprovedListWithoutQueryingContract', () => {
@@ -22,8 +17,8 @@ describe('Catalyst Client Builder', () => {
         }
       })
 
-      expect(fetchCount).to.equal(0)
-      expect(result).to.be.undefined
+      expect(fetchCount).toEqual(0)
+      expect(result).toBeUndefined()
     })
 
     it(`When one of the first N servers doesn't respond, then next one is queried`, async () => {
@@ -39,7 +34,7 @@ describe('Catalyst Client Builder', () => {
         }
       })
 
-      expect(fetchCount).to.equal(3)
+      expect(fetchCount).toEqual(3)
     })
 
     it(`When not enough servers responded with a valid list, then nothing is returned`, async () => {
@@ -53,8 +48,8 @@ describe('Catalyst Client Builder', () => {
         }
       })
 
-      expect(fetchCount).to.equal(3)
-      expect(result).to.be.undefined
+      expect(fetchCount).toEqual(3)
+      expect(result).toBeUndefined()
     })
 
     it(`When the intersection is empty, then nothing is returned`, async () => {
@@ -65,7 +60,7 @@ describe('Catalyst Client Builder', () => {
         }
       })
 
-      expect(result).to.be.undefined
+      expect(result).toBeUndefined()
     })
 
     it(`When there are enough updated lists, then the intersection is returned`, async () => {
@@ -84,9 +79,13 @@ describe('Catalyst Client Builder', () => {
         }
       })
 
-      expect(fetchCount).to.equal(2)
-      expect(result).to.deep.equal([ADDRESS2])
+      expect(fetchCount).toEqual(2)
+      expect(result).toEqual([ADDRESS2])
     })
+
+    // describe('isServerUp', () => {
+    //   const
+    // })
 
     function calculateList({
       list,

@@ -1,4 +1,4 @@
-import { getMainnetCatalysts, getRopstenCatalysts } from 'dcl-catalyst-commons'
+import { getMainnetCatalysts, getRopstenCatalysts, HealthStatus } from 'dcl-catalyst-commons'
 import { CatalystClient } from '../CatalystClient'
 import CatalystsList from '../CatalystsList'
 
@@ -35,8 +35,9 @@ export async function clientConnectedToCatalystIn(
 
 async function isServerUp(client: CatalystClient): Promise<boolean> {
   try {
-    await Promise.all([client.fetchContentStatus(), client.fetchLambdasStatus()])
-    return true
+    const result = await client.fetchPeerHealth()
+    const isSomeServerDown = Object.keys(result).some((service) => result[service] !== HealthStatus.HEALTHY)
+    return !isSomeServerDown
   } catch {
     return false
   }
