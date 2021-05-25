@@ -3,6 +3,8 @@ import { CatalystClient } from '../CatalystClient'
 import { getApprovedListFromContract, getUpdatedApprovedListWithoutQueryingContract } from './catalystList'
 import { shuffleArray } from './common'
 
+const FETCH_HEALTH_TIMEOUT = '10s'
+
 /**
  * Returns a CatalystClient connected to one of the catalysts in the given network
  */
@@ -39,7 +41,7 @@ export async function clientConnectedToCatalystIn(
 
 async function isServerUp(client: CatalystClient): Promise<boolean> {
   try {
-    const result = await client.fetchPeerHealth()
+    const result = await client.fetchPeerHealth({ timeout: FETCH_HEALTH_TIMEOUT })
     const isSomeServerDown = Object.keys(result).some((service) => result[service] !== HealthStatus.HEALTHY)
 
     return !isSomeServerDown
