@@ -1,9 +1,8 @@
 import { clientConnectedToCatalystIn } from '../../src/utils/CatalystClientBuilder'
 import * as catalystList from '../../src/utils/catalystList'
-// import { CatalystClient } from '../../src/CatalystClient'
+import { CatalystClient } from '../../src/CatalystClient'
 import { HealthStatus } from 'dcl-catalyst-commons'
 import * as common from '../../src/utils/common'
-import { CatalystClient } from 'CatalystClient'
 
 const server1 = 'server1'
 const healthyServer = 'server2'
@@ -11,44 +10,25 @@ const server3 = 'server3'
 
 const mockedServerList = [server1, healthyServer, server3]
 jest.mock('../../src/CatalystClient', () => ({
-  CatalystClient: jest
-    .fn()
-    .mockImplementationOnce(() => {
-      return {
-        fetchPeerHealth: jest.fn().mockReturnValueOnce({
-          comms: HealthStatus.UNHEALTHY,
-          lambdas: HealthStatus.HEALTHY,
-          content: HealthStatus.DOWN
-        })
-      }
-    })
-    .mockImplementationOnce(() => {
-      return {
-        fetchPeerHealth: jest.fn().mockReturnValueOnce({
+  CatalystClient: jest.fn().mockImplementation((url) => {
+    return {
+      fetchPeerHealth: jest.fn().mockImplementation(() => {
+        if (url === server1) {
+          return {
+            comms: HealthStatus.UNHEALTHY,
+            lambdas: HealthStatus.HEALTHY,
+            content: HealthStatus.DOWN
+          }
+        }
+
+        return {
           comms: HealthStatus.HEALTHY,
           lambdas: HealthStatus.HEALTHY,
           content: HealthStatus.HEALTHY
-        })
-      }
-    })
-    .mockImplementationOnce(() => {
-      return {
-        fetchPeerHealth: jest.fn().mockReturnValueOnce({
-          comms: HealthStatus.UNHEALTHY,
-          lambdas: HealthStatus.HEALTHY,
-          content: HealthStatus.DOWN
-        })
-      }
-    })
-    .mockImplementationOnce(() => {
-      return {
-        fetchPeerHealth: jest.fn().mockReturnValueOnce({
-          comms: HealthStatus.HEALTHY,
-          lambdas: HealthStatus.HEALTHY,
-          content: HealthStatus.HEALTHY
-        })
-      }
-    })
+        }
+      })
+    }
+  })
 }))
 
 describe('clientConnectedToCatalystIn', () => {

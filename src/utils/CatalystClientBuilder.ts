@@ -40,7 +40,6 @@ export async function clientConnectedToCatalystIn(
 async function isServerUp(client: CatalystClient): Promise<boolean> {
   try {
     const result = await client.fetchPeerHealth()
-
     const isSomeServerDown = Object.keys(result).some((service) => result[service] !== HealthStatus.HEALTHY)
 
     return !isSomeServerDown
