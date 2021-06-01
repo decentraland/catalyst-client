@@ -13,7 +13,8 @@ import {
   DeploymentBase,
   LegacyAuditInfo,
   RequestOptions,
-  ServerMetadata
+  ServerMetadata,
+  HealthStatus
 } from 'dcl-catalyst-commons'
 import { Readable } from 'stream'
 import { CatalystAPI } from './CatalystAPI'
@@ -47,11 +48,16 @@ export class CatalystClient implements CatalystAPI {
   }
 
   async buildEntity({ type, pointers, files, metadata }: BuildEntityOptions): Promise<DeploymentPreparationData> {
-    return this.contentClient.buildEntity({ type, pointers, files, metadata });
+    return this.contentClient.buildEntity({ type, pointers, files, metadata })
   }
 
-  async buildEntityWithoutNewFiles({ type, pointers, hashesByKey, metadata }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData> {
-    return this.contentClient.buildEntityWithoutNewFiles({ type, pointers, hashesByKey, metadata });
+  async buildEntityWithoutNewFiles({
+    type,
+    pointers,
+    hashesByKey,
+    metadata
+  }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData> {
+    return this.contentClient.buildEntityWithoutNewFiles({ type, pointers, hashesByKey, metadata })
   }
 
   deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {
@@ -134,6 +140,10 @@ export class CatalystClient implements CatalystAPI {
 
   fetchLambdasStatus(options?: RequestOptions): Promise<{ contentServerUrl: string }> {
     return this.lambdasClient.fetchLambdasStatus(options)
+  }
+
+  fetchPeerHealth(options?: RequestOptions): Promise<Record<string, HealthStatus>> {
+    return this.lambdasClient.fetchPeerHealth(options)
   }
 
   getCatalystUrl(): string {

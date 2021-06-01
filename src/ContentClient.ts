@@ -61,7 +61,12 @@ export class ContentClient implements ContentAPI {
     this.deploymentBuilderClass = deploymentBuilderClass ?? DeploymentBuilder
   }
 
-  async buildEntityWithoutNewFiles({ type, pointers, hashesByKey, metadata }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData> {
+  async buildEntityWithoutNewFiles({
+    type,
+    pointers,
+    hashesByKey,
+    metadata
+  }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData> {
     const result = await this.fetchContentStatus()
     const timestamp = result.currentTime
     return this.deploymentBuilderClass.buildEntityWithoutNewFiles(type, pointers, hashesByKey, metadata, timestamp)
@@ -440,8 +445,8 @@ export interface BuildEntityOptions {
 export interface BuildEntityWithoutFilesOptions {
   type: EntityType
   pointers: Pointer[]
-  hashesByKey?: Map<string, ContentFileHash>,
-  metadata?: EntityMetadata,
+  hashesByKey?: Map<string, ContentFileHash>
+  metadata?: EntityMetadata
 }
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -460,7 +465,7 @@ export class DeploymentFields<T extends Partial<Deployment>> {
     'metadata'
   ])
 
-  private constructor(private readonly fields: string[]) { }
+  private constructor(private readonly fields: string[]) {}
 
   getFields(): string {
     return this.fields.join(',')

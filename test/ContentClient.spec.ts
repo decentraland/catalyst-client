@@ -1,7 +1,4 @@
-import chai from 'chai'
-import chaiAsPromised from 'chai-as-promised'
 import { mock, instance, when, anything, verify } from 'ts-mockito'
-import { ContentClient, DeploymentFields } from 'ContentClient'
 import {
   EntityType,
   Entity,
@@ -14,30 +11,28 @@ import {
   SortingField,
   SortingOrder
 } from 'dcl-catalyst-commons'
-import { DeploymentWithMetadataContentAndPointers } from 'ContentAPI'
 import { Headers } from 'node-fetch'
-import { DeploymentBuilder } from 'utils'
-
-chai.use(chaiAsPromised)
-const expect = chai.expect
+import { DeploymentBuilder } from '../src/utils'
+import { DeploymentWithMetadataContentAndPointers } from '../src/ContentAPI'
+import { DeploymentFields, ContentClient } from '../src/ContentClient'
 
 describe('ContentClient', () => {
   const URL = 'https://url.com'
 
-  describe("When calling buildEntityWithoutNewFiles", () => {
-    let mocked;
-    let fetcher;
-    const type = EntityType.PROFILE;
-    const pointers = ["p1"];
-    const hashesByKey = undefined;
-    const metadata = {};
-    const currentTime = 100;
-    let deploymentBuilderClassMock: typeof DeploymentBuilder;
+  describe('When calling buildEntityWithoutNewFiles', () => {
+    let mocked
+    let fetcher
+    const type = EntityType.PROFILE
+    const pointers = ['p1']
+    const hashesByKey = undefined
+    const metadata = {}
+    const currentTime = 100
+    let deploymentBuilderClassMock: typeof DeploymentBuilder
 
     beforeEach(async () => {
-      ({ mock: mocked, instance: fetcher } = mockFetcherJson('/status', { currentTime }))
+      ;({ mock: mocked, instance: fetcher } = mockFetcherJson('/status', { currentTime }))
 
-      deploymentBuilderClassMock = mock<typeof DeploymentBuilder>(DeploymentBuilder);
+      deploymentBuilderClassMock = mock<typeof DeploymentBuilder>(DeploymentBuilder)
 
       when(deploymentBuilderClassMock.buildEntity(type, pointers, hashesByKey, metadata, currentTime)).thenResolve()
 
@@ -45,29 +40,31 @@ describe('ContentClient', () => {
       await client.buildEntityWithoutNewFiles({ type, pointers, hashesByKey, metadata })
     })
 
-    it("should fetch the status", () => {
+    it('should fetch the status', () => {
       verify(mocked.fetchJson(URL + '/status', anything())).once()
     })
 
-    it("should call the deployer builder with the expected parameters", () => {
-      verify(deploymentBuilderClassMock.buildEntityWithoutNewFiles(type, pointers, hashesByKey, metadata, currentTime)).once()
+    it('should call the deployer builder with the expected parameters', () => {
+      verify(
+        deploymentBuilderClassMock.buildEntityWithoutNewFiles(type, pointers, hashesByKey, metadata, currentTime)
+      ).once()
     })
   })
 
-  describe("When calling buildDeployment", () => {
-    let mocked;
-    let fetcher;
-    const type = EntityType.PROFILE;
-    const pointers = ["p1"];
-    const files = undefined;
-    const metadata = {};
-    const currentTime = 100;
-    let deploymentBuilderClassMock: typeof DeploymentBuilder;
+  describe('When calling buildDeployment', () => {
+    let mocked
+    let fetcher
+    const type = EntityType.PROFILE
+    const pointers = ['p1']
+    const files = undefined
+    const metadata = {}
+    const currentTime = 100
+    let deploymentBuilderClassMock: typeof DeploymentBuilder
 
     beforeEach(async () => {
-      ({ mock: mocked, instance: fetcher } = mockFetcherJson('/status', { currentTime }))
+      ;({ mock: mocked, instance: fetcher } = mockFetcherJson('/status', { currentTime }))
 
-      deploymentBuilderClassMock = mock<typeof DeploymentBuilder>(DeploymentBuilder);
+      deploymentBuilderClassMock = mock<typeof DeploymentBuilder>(DeploymentBuilder)
 
       when(deploymentBuilderClassMock.buildEntity(type, pointers, files, metadata, currentTime)).thenResolve()
 
@@ -75,11 +72,11 @@ describe('ContentClient', () => {
       await client.buildEntity({ type, pointers, files, metadata })
     })
 
-    it("should fetch the status", () => {
+    it('should fetch the status', () => {
       verify(mocked.fetchJson(URL + '/status', anything())).once()
     })
 
-    it("should call the deployer builder with the expected parameters", () => {
+    it('should call the deployer builder with the expected parameters', () => {
       verify(deploymentBuilderClassMock.buildEntity(type, pointers, files, metadata, currentTime)).once()
     })
   })
@@ -92,7 +89,7 @@ describe('ContentClient', () => {
     const client = buildClient(URL, fetcher)
     const result = await client.fetchEntitiesByPointers(EntityType.PROFILE, [pointer])
 
-    expect(result).to.deep.equal(requestResult)
+    expect(result).toEqual(requestResult)
   })
 
   it('When fetching by pointers, if none is set, then an error is thrown', () => {
@@ -101,7 +98,7 @@ describe('ContentClient', () => {
     const client = buildClient(URL, fetcher)
     const result = client.fetchEntitiesByPointers(EntityType.PROFILE, [])
 
-    expect(result).to.be.rejectedWith(`You must set at least one pointer.`)
+    expect(result).rejects.toEqual(`You must set at least one pointer.`)
     verify(mocked.fetchJson(anything())).never()
   })
 
@@ -113,7 +110,7 @@ describe('ContentClient', () => {
     const client = buildClient(URL, fetcher)
     const result = await client.fetchEntitiesByPointers(EntityType.PROFILE, [pointer])
 
-    expect(result).to.deep.equal(requestResult)
+    expect(result).toEqual(requestResult)
   })
 
   it('When fetching by ids, if none is set, then an error is thrown', () => {
@@ -122,7 +119,7 @@ describe('ContentClient', () => {
     const client = buildClient(URL, fetcher)
     const result = client.fetchEntitiesByIds(EntityType.PROFILE, [])
 
-    expect(result).to.be.rejectedWith(`You must set at least one id.`)
+    expect(result).rejects.toEqual(`You must set at least one id.`)
     verify(mocked.fetchJson(anything())).never()
   })
 
@@ -134,7 +131,7 @@ describe('ContentClient', () => {
     const client = buildClient(URL, fetcher)
     const result = await client.fetchEntitiesByIds(EntityType.PROFILE, [id])
 
-    expect(result).to.deep.equal(requestResult)
+    expect(result).toEqual(requestResult)
   })
 
   it('When fetching by id, if there are no results, then an error is thrown', async () => {
@@ -142,9 +139,10 @@ describe('ContentClient', () => {
     const { instance: fetcher } = mockFetcherJson(`/entities/profile?id=${id}`, [])
 
     const client = buildClient(URL, fetcher)
-    const result = client.fetchEntityById(EntityType.PROFILE, id)
 
-    expect(result).to.be.rejectedWith(`Failed to find an entity with type '${EntityType.PROFILE}' and id '${id}'.`)
+    await expect(client.fetchEntityById(EntityType.PROFILE, id)).rejects.toEqual(
+      `Failed to find an entity with type '${EntityType.PROFILE}' and id '${id}'.`
+    )
   })
 
   it('When fetching by id, then the result is as expected', async () => {
@@ -156,7 +154,7 @@ describe('ContentClient', () => {
     const client = buildClient(URL, fetcher)
     const result = await client.fetchEntityById(EntityType.PROFILE, id)
 
-    expect(result).to.equal(entity)
+    expect(result).toEqual(entity)
   })
 
   it('When a file is downloaded, then the client retries if the downloaded file is not as expected', async () => {
@@ -176,7 +174,7 @@ describe('ContentClient', () => {
     const result = await client.downloadContent(fileHash, { waitTime: '20' })
 
     // Assert that the correct buffer is returned, and that there was a retry attempt
-    expect(result).to.equal(realBuffer)
+    expect(result).toEqual(realBuffer)
     verify(mockedFetcher.fetchBuffer(`${URL}/contents/${fileHash}`, anything())).times(2)
   })
 
@@ -190,10 +188,12 @@ describe('ContentClient', () => {
     const fetcher = instance(mockedFetcher)
 
     const client = buildClient(URL, fetcher)
-    const result = client.downloadContent(fileHash, { attempts: 2, waitTime: '20' })
 
     // Assert that the request failed, and that the client tried many times as expected
-    await expect(result).to.be.rejectedWith(`Failed to fetch file with hash ${fileHash} from ${URL}`)
+    await expect(client.downloadContent(fileHash, { attempts: 2, waitTime: '20' })).rejects.toEqual(
+      new Error(`Failed to fetch file with hash ${fileHash} from ${URL}`)
+    )
+
     verify(mockedFetcher.fetchBuffer(`${URL}/contents/${fileHash}`, anything())).times(2)
   })
 
@@ -208,16 +208,15 @@ describe('ContentClient', () => {
     const client = buildClient(URL, fetcher)
     const result = await client.isContentAvailable([hash1, hash2])
 
-    expect(result).to.deep.equal(requestResult)
+    expect(result).toEqual(requestResult)
   })
 
-  it('When checking if content is available, if none is set, then an error is thrown', () => {
+  it('When checking if content is available, if none is set, then an error is thrown', async () => {
     const { mock: mocked, instance: fetcher } = mockFetcherJson()
 
     const client = buildClient(URL, fetcher)
-    const result = client.isContentAvailable([])
 
-    expect(result).to.be.rejectedWith(`You must set at least one cid.`)
+    await expect(client.isContentAvailable([])).rejects.toEqual(`You must set at least one cid.`)
     verify(mocked.fetchJson(anything())).never()
   })
 
@@ -245,7 +244,7 @@ describe('ContentClient', () => {
     const client = buildClient(URL, fetcher)
     const result = await client.fetchAllDeployments({ filters: filters })
 
-    expect(result).to.deep.equal([deployment])
+    expect(result).toEqual([deployment])
   })
 
   it('When fetching all deployments with no audit, then the result is as expected', async () => {
@@ -267,24 +266,24 @@ describe('ContentClient', () => {
       fields: DeploymentFields.POINTERS_CONTENT_AND_METADATA
     })
 
-    expect(result).to.deep.equal([deploymentWithoutAuditInfo])
+    expect(result).toEqual([deploymentWithoutAuditInfo])
   })
 
   it('When fetching all deployments with no filters, then an error is thrown', async () => {
     const client = buildClient(URL)
 
-    const promise = client.fetchAllDeployments({
-      filters: {
-        deployedBy: [],
-        entityTypes: [],
-        entityIds: [],
-        pointers: [],
-        onlyCurrentlyPointed: true
-      }
-    })
-
-    expect(promise).to.be.rejectedWith(
-      `When fetching deployments, you must set at least one filter that isn't 'onlyCurrentlyPointed'`
+    await expect(
+      client.fetchAllDeployments({
+        filters: {
+          deployedBy: [],
+          entityTypes: [],
+          entityIds: [],
+          pointers: [],
+          onlyCurrentlyPointed: true
+        }
+      })
+    ).rejects.toEqual(
+      new Error(`When fetching deployments, you must set at least one filter that isn't 'onlyCurrentlyPointed'`)
     )
   })
 
@@ -306,7 +305,7 @@ describe('ContentClient', () => {
       sortBy: { field: SortingField.ENTITY_TIMESTAMP, order: SortingOrder.ASCENDING }
     })
 
-    expect(result).to.deep.equal([deployment])
+    expect(result).toEqual([deployment])
   })
 
   it('When fetching all deployments with offset pagination, then the result is as expected', async () => {
@@ -335,7 +334,7 @@ describe('ContentClient', () => {
     const result = await client.fetchAllDeployments({ filters: { entityTypes: [EntityType.PROFILE] } })
 
     // We make sure that repeated deployments were ignored
-    expect(result).to.deep.equal([deployment1, deployment2])
+    expect(result).toEqual([deployment1, deployment2])
   })
 
   it('When fetching all deployments with local timestamp instead of offset, then the result is as expected', async () => {
@@ -370,7 +369,7 @@ describe('ContentClient', () => {
       fields: DeploymentFields.AUDIT_INFO
     })
 
-    expect(result).to.deep.equal([deployment1, deployment2])
+    expect(result).toEqual([deployment1, deployment2])
   })
 
   it('When a fetch is piped without headers then none is returned', async () => {
@@ -381,7 +380,7 @@ describe('ContentClient', () => {
 
     const result = await client.pipeContent(contentHash, mockedResponse)
 
-    expect(result).to.be.empty
+    expect(result).toEqual(new Map())
   })
 
   it('When a fetch is piped with a non recognized header then none is returned', async () => {
@@ -394,7 +393,7 @@ describe('ContentClient', () => {
 
     const result = await client.pipeContent(contentHash, mockedResponse)
 
-    expect(result).to.be.empty
+    expect(result).toEqual(new Map())
   })
 
   it('When a fetch is piped then only sanitized headers of the response are returned', async () => {
@@ -408,7 +407,7 @@ describe('ContentClient', () => {
 
     const result = await client.pipeContent(contentHash, mockedResponse)
 
-    expect(result.has('Content-Length')).to.be.true
+    expect(result.has('Content-Length')).toBe(true)
   })
 
   function someDeployment(): Deployment {
@@ -441,7 +440,7 @@ describe('ContentClient', () => {
 
     if (path) {
       when(mockedFetcher.fetchJson(anything(), anything())).thenCall((url, _) => {
-        expect(url).to.equal(`${URL}${path}`)
+        expect(url).toEqual(`${URL}${path}`)
         return Promise.resolve(result)
       })
     }
