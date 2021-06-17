@@ -308,7 +308,7 @@ describe('ContentClient', () => {
     expect(result).toEqual([deployment])
   })
 
-  it('When fetching all deployments paginates, then subsequent calls are made correctly', async () => {
+  it('When fetching all deployments with pagination, then subsequent calls are made correctly', async () => {
     const [deployment1, deployment2] = [someDeployment(), someDeployment()]
     const next = `?someName=value1&someName=value3`
     const requestResult1: PartialDeploymentHistory<Deployment> = {
