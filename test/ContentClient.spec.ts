@@ -313,12 +313,12 @@ describe('ContentClient', () => {
     const next = `?someName=value1&someName=value3`
     const requestResult1: PartialDeploymentHistory<Deployment> = {
       filters: {},
-      deployments: [deployment1, deployment2],
-      pagination: { offset: 0, limit: 1, moreData: true }
+      deployments: [deployment1],
+      pagination: { next, offset: 0, limit: 1, moreData: true }
     }
     const requestResult2: PartialDeploymentHistory<Deployment> = {
       filters: {},
-      deployments: [deployment2],
+      deployments: [deployment1, deployment2],
       pagination: { offset: 1, limit: 2, moreData: false }
     }
 
