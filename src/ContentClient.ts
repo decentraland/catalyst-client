@@ -20,6 +20,8 @@ import {
   DeploymentSorting,
   RequestOptions,
   mergeRequestOptions,
+  SortingField,
+  SortingOrder,
   EntityMetadata
 } from 'dcl-catalyst-commons'
 import asyncToArray from 'async-iterator-to-array'
@@ -30,14 +32,16 @@ import {
   convertFiltersToQueryParams,
   getHeadersWithUserAgent,
   isNode,
+  QueryBuilder,
   sanitizeUrl,
   splitAndFetch,
-  splitValuesIntoManyQueries
+  splitValuesIntoManyQueryBuilders
 } from './utils/Helper'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 import NodeFormData from 'form-data'
 
 export class ContentClient implements ContentAPI {
+  private static readonly CHARS_LEFT_FOR_OFFSET = 7
   private readonly contentUrl: string
   private readonly fetcher: Fetcher
   private readonly deploymentBuilderClass: typeof DeploymentBuilder
@@ -256,15 +260,52 @@ export class ContentClient implements ContentAPI {
       queryParams.set('fields', [fieldsValue])
     }
 
-    // Reserve space in the url for possible pagination
-    const reservedParams: Map<string, number> = new Map([
-      ['from', 13],
-      ['to', 13]
-    ])
+    // Set legacy filters for get all deployments
+    if (deploymentOptions?.sortBy?.field !== SortingField.ENTITY_TIMESTAMP) {
+      if (deploymentOptions?.filters.from) {
+        const from = deploymentOptions.filters.from
+        queryParams.set('fromLocalTimestamp', [`${from}`])
+      }
+      if (deploymentOptions?.filters.to) {
+        const to = deploymentOptions.filters.to
+        queryParams.set('toLocalTimestamp', [`${to}`])
+      }
+    }
+
+    let reservedParams: Map<string, number>
+    let modifyQueryBasedOnResult: (result: PartialDeploymentHistory<T>, builder: QueryBuilder) => void
+
+    const canWeUseLocalTimestampInsteadOfOffset =
+      deploymentOptions?.fields &&
+      deploymentOptions.fields.isFieldIncluded('auditInfo') &&
+      (!deploymentOptions?.sortBy || deploymentOptions.sortBy.field === SortingField.LOCAL_TIMESTAMP)
+
+    if (canWeUseLocalTimestampInsteadOfOffset) {
+      // Note: the approach used below will get stuck if all 500 deployments on the same page have the same localTimestamp, but that is extremely unlikely
+      reservedParams = new Map([
+        ['fromLocalTimestamp', 13],
+        ['toLocalTimestamp', 13]
+      ])
+      if (deploymentOptions?.sortBy?.order === SortingOrder.ASCENDING) {
+        // Ascending
+        modifyQueryBasedOnResult = (result, builder) =>
+          this.setParamBasedOnResult<T>('fromLocalTimestamp', result, builder)
+      } else {
+        // Descending
+        modifyQueryBasedOnResult = (result, builder) =>
+          this.setParamBasedOnResult<T>('toLocalTimestamp', result, builder)
+      }
+    } else {
+      // We will use offset then
+      reservedParams = new Map([['offset', ContentClient.CHARS_LEFT_FOR_OFFSET]])
+      modifyQueryBasedOnResult = (result, queryBuilder) =>
+        queryBuilder.setParam('offset', result.pagination.limit + result.pagination.offset)
+    }
 
     yield* this.iterateThroughDeploymentsBasedOnResult<T>(
       queryParams,
       reservedParams,
+      modifyQueryBasedOnResult,
       deploymentOptions?.errorListener,
       withSomeDefaults
     )
@@ -275,11 +316,12 @@ export class ContentClient implements ContentAPI {
   >(
     queryParams: Map<string, string[]>,
     reservedParams: Map<string, number>,
+    modifyQueryBasedOnResult: (result: PartialDeploymentHistory<T>, builder: QueryBuilder) => void,
     errorListener?: (errorMessage: string) => void,
     options?: RequestOptions
   ): AsyncIterable<T> {
     // Split values into different queries
-    const queries = splitValuesIntoManyQueries({
+    const builders = splitValuesIntoManyQueryBuilders({
       baseUrl: this.contentUrl,
       path: '/deployments',
       queryParams,
@@ -289,9 +331,11 @@ export class ContentClient implements ContentAPI {
     // Perform the different queries
     const foundIds: Set<EntityId> = new Set()
     let exit = false
-    for (let i = 0; i < queries.length && !exit; i++) {
-      let url: string | undefined = queries[i]
-      while (url && !exit) {
+    for (let i = 0; i < builders.length && !exit; i++) {
+      const queryBuilder = builders[i]
+      let keepRetrievingHistory = true
+      while (keepRetrievingHistory && !exit) {
+        const url = queryBuilder.toString()
         try {
           const partialHistory: PartialDeploymentHistory<T> = await this.fetcher.fetchJson(url, options)
           for (const deployment of partialHistory.deployments) {
@@ -300,8 +344,8 @@ export class ContentClient implements ContentAPI {
               yield deployment
             }
           }
-          const nextRelative = partialHistory.pagination.next
-          url = nextRelative ? new URL(nextRelative, url).toString() : undefined
+          modifyQueryBasedOnResult(partialHistory, queryBuilder)
+          keepRetrievingHistory = partialHistory.pagination.moreData
         } catch (error) {
           if (errorListener) {
             errorListener(`${error}`)
@@ -309,6 +353,18 @@ export class ContentClient implements ContentAPI {
           exit = true
         }
       }
+    }
+  }
+
+  private setParamBasedOnResult<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
+    paramName: string,
+    result: PartialDeploymentHistory<T>,
+    builder: QueryBuilder
+  ) {
+    const lastDeployment = result.deployments[result.deployments.length - 1]
+    if (lastDeployment) {
+      // @ts-ignore
+      builder.setParam(paramName, lastDeployment.auditInfo.localTimestamp)
     }
   }
 
