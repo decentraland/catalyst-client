@@ -308,12 +308,13 @@ describe('ContentClient', () => {
     expect(result).toEqual([deployment])
   })
 
-  it('When fetching all deployments with offset pagination, then the result is as expected', async () => {
+  it('When fetching all deployments with pagination, then subsequent calls are made correctly', async () => {
     const [deployment1, deployment2] = [someDeployment(), someDeployment()]
+    const next = `?someName=value1&someName=value3`
     const requestResult1: PartialDeploymentHistory<Deployment> = {
       filters: {},
       deployments: [deployment1],
-      pagination: { offset: 0, limit: 1, moreData: true }
+      pagination: { next, offset: 0, limit: 1, moreData: true }
     }
     const requestResult2: PartialDeploymentHistory<Deployment> = {
       filters: {},
@@ -322,45 +323,11 @@ describe('ContentClient', () => {
     }
 
     const mockedFetcher: Fetcher = mock(Fetcher)
-    when(mockedFetcher.fetchJson(`${URL}/deployments?entityType=${EntityType.PROFILE}`, anything())).thenReturn(
-      Promise.resolve(requestResult1)
-    )
-    when(
-      mockedFetcher.fetchJson(`${URL}/deployments?entityType=${EntityType.PROFILE}&offset=1`, anything())
-    ).thenReturn(Promise.resolve(requestResult2))
-    const fetcher = instance(mockedFetcher)
-
-    const client = buildClient(URL, fetcher)
-    const result = await client.fetchAllDeployments({ filters: { entityTypes: [EntityType.PROFILE] } })
-
-    // We make sure that repeated deployments were ignored
-    expect(result).toEqual([deployment1, deployment2])
-  })
-
-  it('When fetching all deployments with local timestamp instead of offset, then the result is as expected', async () => {
-    const [deployment1, deployment2] = [someDeployment(), someDeployment()]
-    const requestResult1: PartialDeploymentHistory<Deployment> = {
-      filters: {},
-      deployments: [deployment1],
-      pagination: { offset: 0, limit: 1, moreData: true }
-    }
-    const requestResult2: PartialDeploymentHistory<Deployment> = {
-      filters: {},
-      deployments: [deployment2],
-      pagination: { offset: 1, limit: 2, moreData: false }
-    }
-
-    const mockedFetcher: Fetcher = mock(Fetcher)
     when(
       mockedFetcher.fetchJson(`${URL}/deployments?entityType=${EntityType.PROFILE}&fields=auditInfo`, anything())
     ).thenReturn(Promise.resolve(requestResult1))
 
-    when(
-      mockedFetcher.fetchJson(
-        `${URL}/deployments?entityType=${EntityType.PROFILE}&fields=auditInfo&toLocalTimestamp=${deployment1.auditInfo.localTimestamp}`,
-        anything()
-      )
-    ).thenReturn(Promise.resolve(requestResult2))
+    when(mockedFetcher.fetchJson(`${URL}/deployments${next}`, anything())).thenReturn(Promise.resolve(requestResult2))
     const fetcher = instance(mockedFetcher)
 
     const client = buildClient(URL, fetcher)
@@ -369,6 +336,7 @@ describe('ContentClient', () => {
       fields: DeploymentFields.AUDIT_INFO
     })
 
+    // We make sure that repeated deployments were ignored
     expect(result).toEqual([deployment1, deployment2])
   })
 
