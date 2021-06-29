@@ -61,17 +61,22 @@ export class ContentClient implements ContentAPI {
     type,
     pointers,
     hashesByKey,
-    metadata
+    metadata,
+    timestamp
   }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData> {
-    const result = await this.fetchContentStatus()
-    const timestamp = result.currentTime
-    return this.deploymentBuilderClass.buildEntityWithoutNewFiles(type, pointers, hashesByKey, metadata, timestamp)
+    const result = timestamp ?? (await this.fetchContentStatus()).currentTime
+    return this.deploymentBuilderClass.buildEntityWithoutNewFiles(type, pointers, hashesByKey, metadata, result)
   }
 
-  async buildEntity({ type, pointers, files, metadata }: BuildEntityOptions): Promise<DeploymentPreparationData> {
-    const result = await this.fetchContentStatus()
-    const timestamp = result.currentTime
-    return this.deploymentBuilderClass.buildEntity(type, pointers, files, metadata, timestamp)
+  async buildEntity({
+    type,
+    pointers,
+    files,
+    metadata,
+    timestamp
+  }: BuildEntityOptions): Promise<DeploymentPreparationData> {
+    const result = timestamp ?? (await this.fetchContentStatus()).currentTime
+    return this.deploymentBuilderClass.buildEntity(type, pointers, files, metadata, result)
   }
 
   async deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {
@@ -384,6 +389,7 @@ export interface BuildEntityOptions {
   pointers: Pointer[]
   files?: Map<string, Buffer>
   metadata?: EntityMetadata
+  timestamp?: Timestamp
 }
 
 export interface BuildEntityWithoutFilesOptions {
@@ -391,6 +397,7 @@ export interface BuildEntityWithoutFilesOptions {
   pointers: Pointer[]
   hashesByKey?: Map<string, ContentFileHash>
   metadata?: EntityMetadata
+  timestamp?: Timestamp
 }
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
