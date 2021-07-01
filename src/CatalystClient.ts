@@ -47,17 +47,12 @@ export class CatalystClient implements CatalystAPI {
     this.lambdasClient = new LambdasClient(this.catalystUrl + '/lambdas', fetcher)
   }
 
-  async buildEntity({ type, pointers, files, metadata }: BuildEntityOptions): Promise<DeploymentPreparationData> {
-    return this.contentClient.buildEntity({ type, pointers, files, metadata })
+  buildEntity(options: BuildEntityOptions): Promise<DeploymentPreparationData> {
+    return this.contentClient.buildEntity(options)
   }
 
-  async buildEntityWithoutNewFiles({
-    type,
-    pointers,
-    hashesByKey,
-    metadata
-  }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData> {
-    return this.contentClient.buildEntityWithoutNewFiles({ type, pointers, hashesByKey, metadata })
+  buildEntityWithoutNewFiles(options: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData> {
+    return this.contentClient.buildEntityWithoutNewFiles(options)
   }
 
   deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {
