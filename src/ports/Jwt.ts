@@ -27,3 +27,12 @@ export async function obtainJWT(fetcher: Fetcher, catalystUrl: string): Promise<
     return ''
   }
 }
+
+export function removedJWTCookie(response: Response) {
+  const setCookie = response.headers.get('Set-Cookie')
+  if (setCookie && setCookie.includes('JWT=')) {
+    const jwtCookie: string = setCookie.replace(/\s/g, '').split('JWT=')[1].split(';')[0]
+    return jwtCookie == ''
+  }
+  return false
+}
