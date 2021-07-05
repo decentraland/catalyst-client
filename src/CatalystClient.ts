@@ -25,6 +25,8 @@ import { LambdasClient } from './LambdasClient'
 import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
 import { WearablesFilters, OwnedWearables, ProfileOptions } from './LambdasAPI'
 import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
+import { PROOF_OF_WORK } from './utils'
+import { obtainJWT } from './ports/Jwt'
 
 export class CatalystClient implements CatalystAPI {
   private readonly contentClient: ContentClient
@@ -34,17 +36,18 @@ export class CatalystClient implements CatalystAPI {
   constructor(
     catalystUrl: string,
     origin: string, // The name or a description of the app that is using the client
-    fetcher?: Fetcher,
+    fetcher: Fetcher = new Fetcher({ headers: getHeadersWithUserAgent('catalyst-client') }),
     deploymentBuilderClass?: typeof DeploymentBuilder
   ) {
     this.catalystUrl = sanitizeUrl(catalystUrl)
-    fetcher =
-      fetcher ??
-      new Fetcher({
-        headers: getHeadersWithUserAgent('catalyst-client')
-      })
     this.contentClient = new ContentClient(this.catalystUrl + '/content', origin, fetcher, deploymentBuilderClass)
     this.lambdasClient = new LambdasClient(this.catalystUrl + '/lambdas', fetcher)
+    if (PROOF_OF_WORK) {
+      setImmediate(async () => {
+        const jwt = await obtainJWT(fetcher, this.catalystUrl)
+        fetcher.overrideDefaults({ cookies: { JWT: jwt } })
+      })
+    }
   }
 
   async buildEntity({ type, pointers, files, metadata }: BuildEntityOptions): Promise<DeploymentPreparationData> {
