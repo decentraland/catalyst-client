@@ -2,6 +2,7 @@ import { Fetcher } from 'dcl-catalyst-commons'
 import { isNode } from '../utils/Helper'
 import { generateNonceForChallenge } from '../utils/ProofOfWork'
 import NodeFormData from 'form-data'
+import cookie from 'cookie'
 
 export async function obtainJWT(fetcher: Fetcher, catalystUrl: string): Promise<string> {
   const response = await fetcher.fetchJson(catalystUrl + '/pow-auth/challenge')
@@ -28,11 +29,11 @@ export async function obtainJWT(fetcher: Fetcher, catalystUrl: string): Promise<
   }
 }
 
-export function removedJWTCookie(response: Response) {
+export function removedJWTCookie(response: Response): boolean {
   const setCookie = response.headers.get('Set-Cookie')
   if (setCookie && setCookie.includes('JWT=')) {
-    const jwtCookie: string = setCookie.replace(/\s/g, '').split('JWT=')[1].split(';')[0]
-    return jwtCookie == ''
+    const cookies = cookie.parse(setCookie)
+    return cookies.JWT == ''
   }
   return false
 }

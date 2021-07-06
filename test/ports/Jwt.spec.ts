@@ -1,5 +1,5 @@
 import { Fetcher } from 'dcl-catalyst-commons'
-import { obtainJWT } from '../../src/ports/Jwt'
+import { obtainJWT, removedJWTCookie } from '../../src/ports/Jwt'
 import * as pow from '../../src/utils/ProofOfWork'
 
 describe('Proof of Work: generate JWT', () => {
@@ -48,5 +48,36 @@ describe('Proof of Work: generate JWT', () => {
 
   it('should return the jwt as string', async () => {
     expect(jwt).toEqual('aJWT')
+  })
+})
+
+describe('removedJWTCookie', () => {
+  describe('No JWT is in cookie', () => {
+    const response: Response = new Response()
+    it('should return false', async () => {
+      const isRemoved = removedJWTCookie(response)
+
+      expect(isRemoved).toBeFalsy()
+    })
+  })
+  describe('JWT has a value', () => {
+    const response: Response = new Response()
+    response.headers.set('Set-Cookie', 'JWT=aValue;anotherCookie=value')
+
+    it('should return false', async () => {
+      const isRemoved = removedJWTCookie(response)
+
+      expect(isRemoved).toBeFalsy()
+    })
+  })
+  describe('JWT has empty string', () => {
+    const response: Response = new Response()
+    response.headers.set('Set-Cookie', 'JWT=;anotherCookie=value')
+
+    it('should return true', async () => {
+      const isRemoved = removedJWTCookie(response)
+
+      expect(isRemoved).toBeTruthy()
+    })
   })
 })
