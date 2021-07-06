@@ -27,7 +27,7 @@ describe('Proof of Work: generate JWT', () => {
   })
 
   beforeEach(async () => {
-    jwt = await obtainJWT(fetcher, catalystUrl)
+    jwt = (await obtainJWT(fetcher, catalystUrl)) || ''
   })
 
   it('should get a challenge from the pow-auth server', async () => {

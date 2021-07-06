@@ -26,7 +26,7 @@ import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
 import { WearablesFilters, OwnedWearables, ProfileOptions } from './LambdasAPI'
 import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
 import { PROOF_OF_WORK } from './utils'
-import { obtainJWT, removedJWTCookie } from './ports/Jwt'
+import { obtainJWT, obtainJWTWithRetry, removedJWTCookie } from './ports/Jwt'
 
 export class CatalystClient implements CatalystAPI {
   private readonly contentClient: ContentClient
@@ -44,12 +44,14 @@ export class CatalystClient implements CatalystAPI {
     this.lambdasClient = new LambdasClient(this.catalystUrl + '/lambdas', fetcher)
     if (PROOF_OF_WORK) {
       setImmediate(async () => {
-        const jwt = await obtainJWT(fetcher, this.catalystUrl)
+        const jwt = await obtainJWTWithRetry(fetcher, this.catalystUrl, 3)
         fetcher.overrideDefaults({ cookies: { JWT: jwt } })
         fetcher.overrideSetImmediate(async (response: Response) => {
           if (removedJWTCookie(response)) {
             const jwt = await obtainJWT(fetcher, this.catalystUrl)
-            fetcher.overrideDefaults({ cookies: { JWT: jwt } })
+            if (!!jwt) {
+              fetcher.overrideDefaults({ cookies: { JWT: jwt } })
+            }
           }
         })
       })

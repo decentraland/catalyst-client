@@ -4,7 +4,7 @@ import { generateNonceForChallenge } from '../utils/ProofOfWork'
 import NodeFormData from 'form-data'
 import cookie from 'cookie'
 
-export async function obtainJWT(fetcher: Fetcher, catalystUrl: string): Promise<string> {
+export async function obtainJWT(fetcher: Fetcher, catalystUrl: string): Promise<string | undefined> {
   const response = await fetcher.fetchJson(catalystUrl + '/pow-auth/challenge')
   const body = JSON.parse(response).body
 
@@ -26,6 +26,15 @@ export async function obtainJWT(fetcher: Fetcher, catalystUrl: string): Promise<
   const setCookie: string = jwtResponse.headers['Set-Cookie']
   const cookies = cookie.parse(setCookie || '')
   return cookies.JWT
+}
+
+export async function obtainJWTWithRetry(fetcher: Fetcher, catalystUrl: string, maxRetries: number): Promise<string> {
+  let jwt = await obtainJWT(fetcher, catalystUrl)
+  const retries = 0
+  while (!jwt && retries < maxRetries) {
+    jwt = await obtainJWT(fetcher, catalystUrl)
+  }
+  return jwt || ''
 }
 
 export function removedJWTCookie(response: Response): boolean {
