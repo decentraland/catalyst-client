@@ -22,11 +22,10 @@ export async function obtainJWT(fetcher: Fetcher, catalystUrl: string): Promise<
   form.append('nonce', nonce)
 
   const jwtResponse = await fetcher.postForm(catalystUrl + '/pow-auth/challenge', { body: form })
-  try {
-    return jwtResponse.headers['Set-Cookie'].replace(/\s/g, '').split('JWT=')[1].split(';')[0]
-  } catch (e) {
-    return ''
-  }
+
+  const setCookie: string = jwtResponse.headers['Set-Cookie']
+  const cookies = cookie.parse(setCookie || '')
+  return cookies.JWT
 }
 
 export function removedJWTCookie(response: Response): boolean {
