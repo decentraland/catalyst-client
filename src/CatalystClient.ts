@@ -44,11 +44,15 @@ export class CatalystClient implements CatalystAPI {
     this.lambdasClient = new LambdasClient(this.catalystUrl + '/lambdas', fetcher)
     if (PROOF_OF_WORK) {
       setImmediate(async () => {
+        console.log('OBTAINING JWT...')
         const jwt = await obtainJWTWithRetry(fetcher, this.catalystUrl, 3)
+        console.log(`JWT=${jwt}`)
         fetcher.overrideDefaults({ cookies: { JWT: jwt } })
         fetcher.overrideSetImmediate(async (response: Response) => {
           if (removedJWTCookie(response)) {
+            console.log('JWT INVALIDATE, OBTAINING NEW ONE')
             const jwt = await obtainJWT(fetcher, this.catalystUrl)
+            console.log(`JWT=${jwt}`)
             if (!!jwt) {
               fetcher.overrideDefaults({ cookies: { JWT: jwt } })
             }
