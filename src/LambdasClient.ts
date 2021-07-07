@@ -22,17 +22,18 @@ export class LambdasClient implements LambdasAPI {
   private readonly lambdasUrl: string
   private readonly fetcher: Fetcher
 
-  constructor(baseUrl: string, basePath: string, fetcher?: Fetcher) {
-    this.lambdasUrl = sanitizeUrl(baseUrl + basePath)
+  constructor(lambdasUrl: string, fetcher?: Fetcher) {
+    this.lambdasUrl = sanitizeUrl(lambdasUrl)
     this.fetcher =
-      fetcher ||
+      fetcher ??
       new Fetcher({
         headers: getHeadersWithUserAgent('lambdas-client')
       })
 
     if (PROOF_OF_WORK) {
       setImmediate(async () => {
-        await setJWTAsCookie(this.fetcher, baseUrl)
+        const powAuthBaseUrl = new URL(lambdasUrl).host
+        await setJWTAsCookie(this.fetcher, powAuthBaseUrl)
       })
     }
   }

@@ -428,6 +428,6 @@ describe('ContentClient', () => {
   }
 
   function buildClient(URL: string, fetcher?: Fetcher, deploymentBuilderClass?: typeof DeploymentBuilder) {
-    return new ContentClient(URL, '', 'origin', fetcher, deploymentBuilderClass)
+    return new ContentClient(URL, 'origin', fetcher, deploymentBuilderClass)
   }
 })

@@ -45,23 +45,23 @@ export class ContentClient implements ContentAPI {
   private readonly deploymentBuilderClass: typeof DeploymentBuilder
 
   constructor(
-    baseUrl: string,
-    basePath: string,
+    contentUrl: string,
     private readonly origin: string, // The name or a description of the app that is using the client
     fetcher?: Fetcher,
     deploymentBuilderClass?: typeof DeploymentBuilder
   ) {
-    this.contentUrl = sanitizeUrl(baseUrl + basePath)
+    this.contentUrl = sanitizeUrl(contentUrl)
     this.deploymentBuilderClass = deploymentBuilderClass ?? DeploymentBuilder
     this.fetcher =
-      fetcher ||
+      fetcher ??
       new Fetcher({
         headers: getHeadersWithUserAgent('content-client')
       })
 
     if (PROOF_OF_WORK) {
       setImmediate(async () => {
-        await setJWTAsCookie(this.fetcher, baseUrl)
+        const powAuthBaseUrl = new URL(contentUrl).host
+        await setJWTAsCookie(this.fetcher, powAuthBaseUrl)
       })
     }
   }

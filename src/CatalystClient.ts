@@ -40,9 +40,9 @@ export class CatalystClient implements CatalystAPI {
     deploymentBuilderClass?: typeof DeploymentBuilder
   ) {
     this.catalystUrl = sanitizeUrl(catalystUrl)
-    const fetcherToUse: Fetcher = fetcher || new Fetcher({ headers: getHeadersWithUserAgent('catalyst-client') })
-    this.contentClient = new ContentClient(this.catalystUrl, '/content', origin, fetcherToUse, deploymentBuilderClass)
-    this.lambdasClient = new LambdasClient(this.catalystUrl, '/lambdas', fetcherToUse)
+    const fetcherToUse: Fetcher = fetcher ?? new Fetcher({ headers: getHeadersWithUserAgent('catalyst-client') })
+    this.contentClient = new ContentClient(this.catalystUrl + '/content', origin, fetcherToUse, deploymentBuilderClass)
+    this.lambdasClient = new LambdasClient(this.catalystUrl + '/lambdas', fetcherToUse)
 
     if (PROOF_OF_WORK) {
       setImmediate(async () => {
