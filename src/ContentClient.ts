@@ -1,30 +1,34 @@
+import asyncToArray from 'async-iterator-to-array'
 import {
-  Timestamp,
-  Pointer,
-  EntityType,
+  applySomeDefaults,
+  AvailableContentResult,
+  ContentFileHash,
+  Deployment,
+  DeploymentBase,
+  DeploymentFilters,
+  DeploymentSorting,
+  DeploymentWithAuditInfo,
   Entity,
   EntityId,
-  ServerStatus,
-  ContentFileHash,
-  PartialDeploymentHistory,
-  applySomeDefaults,
-  retry,
+  EntityMetadata,
+  EntityType,
   Fetcher,
   Hashing,
-  DeploymentFilters,
-  Deployment,
-  AvailableContentResult,
-  DeploymentBase,
-  DeploymentWithAuditInfo,
   LegacyAuditInfo,
-  DeploymentSorting,
-  RequestOptions,
   mergeRequestOptions,
-  EntityMetadata
+  PartialDeploymentHistory,
+  Pointer,
+  RequestOptions,
+  retry,
+  ServerStatus,
+  Timestamp
 } from 'dcl-catalyst-commons'
-import asyncToArray from 'async-iterator-to-array'
+import NodeFormData from 'form-data'
 import { Readable } from 'stream'
 import { ContentAPI, DeploymentWithMetadataContentAndPointers } from './ContentAPI'
+import { setJWTAsCookie } from './ports/Jwt'
+import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
+import { PROOF_OF_WORK } from './utils/Environment'
 import {
   addModelToFormData,
   convertFiltersToQueryParams,
@@ -34,8 +38,6 @@ import {
   splitAndFetch,
   splitValuesIntoManyQueries
 } from './utils/Helper'
-import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
-import NodeFormData from 'form-data'
 
 export class ContentClient implements ContentAPI {
   private readonly contentUrl: string
@@ -43,18 +45,25 @@ export class ContentClient implements ContentAPI {
   private readonly deploymentBuilderClass: typeof DeploymentBuilder
 
   constructor(
-    contentUrl: string,
+    baseUrl: string,
+    basePath: string,
     private readonly origin: string, // The name or a description of the app that is using the client
     fetcher?: Fetcher,
     deploymentBuilderClass?: typeof DeploymentBuilder
   ) {
-    this.contentUrl = sanitizeUrl(contentUrl)
+    this.contentUrl = sanitizeUrl(baseUrl + basePath)
+    this.deploymentBuilderClass = deploymentBuilderClass ?? DeploymentBuilder
     this.fetcher =
-      fetcher ??
+      fetcher ||
       new Fetcher({
         headers: getHeadersWithUserAgent('content-client')
       })
-    this.deploymentBuilderClass = deploymentBuilderClass ?? DeploymentBuilder
+
+    if (PROOF_OF_WORK) {
+      setImmediate(async () => {
+        await setJWTAsCookie(this.fetcher, baseUrl)
+      })
+    }
   }
 
   async buildEntityWithoutNewFiles({

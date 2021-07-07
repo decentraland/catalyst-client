@@ -1,8 +1,8 @@
+import cookie from 'cookie'
 import { Fetcher } from 'dcl-catalyst-commons'
+import NodeFormData from 'form-data'
 import { isNode } from '../utils/Helper'
 import { generateNonceForChallenge } from '../utils/ProofOfWork'
-import NodeFormData from 'form-data'
-import cookie from 'cookie'
 
 export async function obtainJWT(fetcher: Fetcher, catalystUrl: string): Promise<string | undefined> {
   const response = await fetcher.fetchJson(catalystUrl + '/pow-auth/challenge')
@@ -44,4 +44,21 @@ export function removedJWTCookie(response: Response): boolean {
     return cookies.JWT == ''
   }
   return false
+}
+
+export async function setJWTAsCookie(fetcher: Fetcher, baseUrl: string): Promise<void> {
+  console.log('OBTAINING JWT...')
+  const jwt = await obtainJWTWithRetry(fetcher, baseUrl, 3)
+  console.log(`JWT=${jwt}`)
+  fetcher.overrideDefaults({ cookies: { JWT: jwt } })
+  fetcher.overrideSetImmediate(async (response: Response) => {
+    if (removedJWTCookie(response)) {
+      console.log('JWT INVALIDATE, OBTAINING NEW ONE')
+      const jwt = await obtainJWT(fetcher, baseUrl)
+      console.log(`JWT=${jwt}`)
+      if (!!jwt) {
+        fetcher.overrideDefaults({ cookies: { JWT: jwt } })
+      }
+    }
+  })
 }

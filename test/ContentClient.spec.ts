@@ -1,20 +1,20 @@
-import { mock, instance, when, anything, verify } from 'ts-mockito'
 import {
-  EntityType,
+  AvailableContentResult,
+  Deployment,
   Entity,
+  EntityType,
+  EntityVersion,
   Fetcher,
   Hashing,
-  AvailableContentResult,
   PartialDeploymentHistory,
-  Deployment,
-  EntityVersion,
   SortingField,
   SortingOrder
 } from 'dcl-catalyst-commons'
 import { Headers } from 'node-fetch'
-import { DeploymentBuilder } from '../src/utils'
+import { anything, instance, mock, verify, when } from 'ts-mockito'
 import { DeploymentWithMetadataContentAndPointers } from '../src/ContentAPI'
-import { DeploymentFields, ContentClient } from '../src/ContentClient'
+import { ContentClient, DeploymentFields } from '../src/ContentClient'
+import { DeploymentBuilder } from '../src/utils'
 
 describe('ContentClient', () => {
   const URL = 'https://url.com'
@@ -428,6 +428,6 @@ describe('ContentClient', () => {
   }
 
   function buildClient(URL: string, fetcher?: Fetcher, deploymentBuilderClass?: typeof DeploymentBuilder) {
-    return new ContentClient(URL, 'origin', fetcher, deploymentBuilderClass)
+    return new ContentClient(URL, '', 'origin', fetcher, deploymentBuilderClass)
   }
 })

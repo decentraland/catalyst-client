@@ -1,32 +1,32 @@
-import { EthAddress } from 'dcl-crypto'
 import {
-  Timestamp,
-  Pointer,
-  EntityType,
+  AvailableContentResult,
+  ContentFileHash,
+  DeploymentBase,
   Entity,
   EntityId,
-  ServerStatus,
-  ContentFileHash,
-  Profile,
+  EntityType,
   Fetcher,
-  AvailableContentResult,
-  DeploymentBase,
+  HealthStatus,
   LegacyAuditInfo,
+  Pointer,
+  Profile,
   RequestOptions,
   ServerMetadata,
-  HealthStatus
+  ServerStatus,
+  Timestamp
 } from 'dcl-catalyst-commons'
+import { EthAddress } from 'dcl-crypto'
 import { Readable } from 'stream'
 import { CatalystAPI } from './CatalystAPI'
+import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
+import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient, DeploymentOptions } from './ContentClient'
+import { OwnedWearables, ProfileOptions, WearablesFilters } from './LambdasAPI'
+import { LambdasClient } from './LambdasClient'
+import { setJWTAsCookie } from './ports/Jwt'
+import { PROOF_OF_WORK } from './utils'
+import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 import { getHeadersWithUserAgent, sanitizeUrl } from './utils/Helper'
-import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient, DeploymentOptions } from './ContentClient'
-import { LambdasClient } from './LambdasClient'
-import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
-import { WearablesFilters, OwnedWearables, ProfileOptions } from './LambdasAPI'
-import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
-import { PROOF_OF_WORK } from './utils'
-import { obtainJWT, obtainJWTWithRetry, removedJWTCookie } from './ports/Jwt'
 
 export class CatalystClient implements CatalystAPI {
   private readonly contentClient: ContentClient
@@ -36,28 +36,17 @@ export class CatalystClient implements CatalystAPI {
   constructor(
     catalystUrl: string,
     origin: string, // The name or a description of the app that is using the client
-    fetcher: Fetcher = new Fetcher({ headers: getHeadersWithUserAgent('catalyst-client') }),
+    fetcher?: Fetcher,
     deploymentBuilderClass?: typeof DeploymentBuilder
   ) {
     this.catalystUrl = sanitizeUrl(catalystUrl)
-    this.contentClient = new ContentClient(this.catalystUrl + '/content', origin, fetcher, deploymentBuilderClass)
-    this.lambdasClient = new LambdasClient(this.catalystUrl + '/lambdas', fetcher)
+    const fetcherToUse: Fetcher = fetcher || new Fetcher({ headers: getHeadersWithUserAgent('catalyst-client') })
+    this.contentClient = new ContentClient(this.catalystUrl, '/content', origin, fetcherToUse, deploymentBuilderClass)
+    this.lambdasClient = new LambdasClient(this.catalystUrl, '/lambdas', fetcherToUse)
+
     if (PROOF_OF_WORK) {
       setImmediate(async () => {
-        console.log('OBTAINING JWT...')
-        const jwt = await obtainJWTWithRetry(fetcher, this.catalystUrl, 3)
-        console.log(`JWT=${jwt}`)
-        fetcher.overrideDefaults({ cookies: { JWT: jwt } })
-        fetcher.overrideSetImmediate(async (response: Response) => {
-          if (removedJWTCookie(response)) {
-            console.log('JWT INVALIDATE, OBTAINING NEW ONE')
-            const jwt = await obtainJWT(fetcher, this.catalystUrl)
-            console.log(`JWT=${jwt}`)
-            if (!!jwt) {
-              fetcher.overrideDefaults({ cookies: { JWT: jwt } })
-            }
-          }
-        })
+        await setJWTAsCookie(fetcherToUse, this.catalystUrl)
       })
     }
   }

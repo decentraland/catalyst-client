@@ -1,5 +1,5 @@
-import { mock, instance, when, anything } from 'ts-mockito'
 import { Fetcher } from 'dcl-catalyst-commons'
+import { anything, instance, mock, when } from 'ts-mockito'
 import { LambdasClient, ProfileFields } from '../src/index'
 
 describe('LambdasClient', () => {
@@ -97,6 +97,6 @@ describe('LambdasClient', () => {
   }
 
   function buildClient(URL: string, fetcher: Fetcher) {
-    return new LambdasClient(URL, fetcher)
+    return new LambdasClient(URL, '', fetcher)
   }
 })
