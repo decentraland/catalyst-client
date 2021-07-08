@@ -9,8 +9,7 @@ import {
   EntityContentItemReference,
   EntityMetadata,
   ContentFileHash,
-  EntityId,
-  Fetcher
+  EntityId
 } from 'dcl-catalyst-commons'
 
 export class DeploymentBuilder {
@@ -67,7 +66,7 @@ export class DeploymentBuilder {
     }))
 
     // Calculate timestamp if necessary
-    const timestamp: Timestamp = options?.timestamp ?? (await DeploymentBuilder.calculateTimestamp())
+    const timestamp: Timestamp = options?.timestamp ?? Date.now()
 
     // Build entity file
     const { entity, entityFile } = await buildEntityAndFile(type, pointers, timestamp, entityContent, options?.metadata)
@@ -77,17 +76,6 @@ export class DeploymentBuilder {
     filesByHash.set(entity.id, entityFile)
 
     return { files: filesByHash, entityId: entity.id }
-  }
-
-  private static async calculateTimestamp(): Promise<Timestamp> {
-    // We will try to use a global time API, so if the local PC clock is off, it will still work
-    const fetcher = new Fetcher()
-    try {
-      const { datetime } = await fetcher.fetchJson('https://worldtimeapi.org/api/timezone/Etc/UTC')
-      return new Date(datetime).getTime()
-    } catch (e) {
-      return Date.now()
-    }
   }
 }
 
