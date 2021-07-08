@@ -96,10 +96,10 @@ export class ContentClient implements ContentAPI {
           // Node
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore
-          form.append(file.name, file.content, file.name)
+          form.append(fileHash, file.content, fileHash)
         } else {
           // Browser
-          form.append(file.name, new Blob([file.content.buffer]), file.name)
+          form.append(fileHash, new Blob([file.buffer]), fileHash)
         }
       }
     }

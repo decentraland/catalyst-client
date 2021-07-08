@@ -1,5 +1,5 @@
 import { DeploymentBuilder } from '../../src/utils/DeploymentBuilder'
-import { EntityType, Hashing, ENTITY_FILE_NAME } from 'dcl-catalyst-commons'
+import { EntityType, Hashing } from 'dcl-catalyst-commons'
 
 describe('Deployment Builder', () => {
   it('When an entity is built with no pointers, then an exception is thrown', async () => {
@@ -32,13 +32,11 @@ describe('Deployment Builder', () => {
     expect(files.size).toEqual(2)
 
     // Assert content file name and buffer
-    const { name: contentFileName, content: contentFileBuffer } = files.get(fileHash)!
-    expect(contentFileName).toEqual(fileId)
+    const contentFileBuffer = files.get(fileHash)!
     expect(contentFileBuffer).toEqual(fileContent)
 
     // Assert entity id and entity file name
-    const { name: entityFileName, content: entityFileBuffer } = files.get(entityId)!
-    expect(entityFileName).toEqual(ENTITY_FILE_NAME)
+    const entityFileBuffer = files.get(entityId)!
     expect(entityId).toEqual(await Hashing.calculateBufferHash(entityFileBuffer))
 
     // Assert entity file
