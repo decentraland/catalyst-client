@@ -60,7 +60,7 @@ export class ContentClient implements ContentAPI {
 
     if (PROOF_OF_WORK) {
       setImmediate(async () => {
-        const powAuthBaseUrl = new URL(contentUrl).host
+        const powAuthBaseUrl = new URL(this.contentUrl).host
         await setJWTAsCookie(this.fetcher, powAuthBaseUrl)
       })
     }
