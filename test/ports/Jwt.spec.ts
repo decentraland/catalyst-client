@@ -1,9 +1,10 @@
 import { Fetcher } from 'dcl-catalyst-commons'
 import { obtainJWT, removedJWTCookie } from '../../src/ports/Jwt'
+import { sanitizeUrl } from '../../src/utils/Helper'
 import * as pow from '../../src/utils/ProofOfWork'
 
 describe('Proof of Work: generate JWT', () => {
-  const catalystUrl = 'localhost'
+  const catalystUrl = sanitizeUrl('localhost')
 
   const fetcher = new Fetcher()
   let powSpy: jest.SpyInstance
@@ -17,10 +18,10 @@ describe('Proof of Work: generate JWT', () => {
   beforeAll(() => {
     jest
       .spyOn(fetcher, 'fetchJson')
-      .mockImplementation(() => Promise.resolve('{ "body": {  "challenge": "aChallenge", "complexity": 4}}'))
+      .mockImplementation(() => Promise.resolve({ complexity: 4, challenge: 'aChallenge' }))
 
     postFormSpy = jest.spyOn(fetcher, 'postForm')
-    postFormSpy.mockImplementation(() => Promise.resolve({ headers: { 'Set-Cookie': 'JWT=aJWT' } }))
+    postFormSpy.mockImplementation(() => Promise.resolve({ jwt: 'aJWT' }))
 
     powSpy = jest.spyOn(pow, 'generateNonceForChallenge')
     powSpy.mockImplementation(() => Promise.resolve('aNonce'))
@@ -31,7 +32,7 @@ describe('Proof of Work: generate JWT', () => {
   })
 
   it('should get a challenge from the pow-auth server', async () => {
-    expect(fetcher.fetchJson).toHaveBeenCalledWith('localhost/pow-auth/challenge')
+    expect(fetcher.fetchJson).toHaveBeenCalledWith('https://localhost/pow-auth/challenge')
   })
 
   it('should solve the challenge with the correct parameters', async () => {
@@ -40,10 +41,13 @@ describe('Proof of Work: generate JWT', () => {
   })
 
   it('should post the solved challenge', async () => {
-    const formParam = postFormSpy.mock.calls[0][1]
-    expect(formParam.body._streams).toContain('aChallenge')
-    expect(formParam.body._streams).toContain('4')
-    expect(formParam.body._streams).toContain('aNonce')
+    const bodyParam = postFormSpy.mock.calls[0][1]
+    const sentBody = JSON.parse(JSON.stringify(bodyParam))
+    const body = JSON.parse(sentBody.body)
+
+    expect(body.challenge).toEqual('aChallenge')
+    expect(body.complexity).toEqual(4)
+    expect(body.nonce).toEqual('aNonce')
   })
 
   it('should return the jwt as string', async () => {

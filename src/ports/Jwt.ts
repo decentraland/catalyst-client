@@ -6,13 +6,13 @@ export async function obtainJWT(fetcher: Fetcher, catalystUrl: string): Promise<
   const response = await fetcher.fetchJson(catalystUrl + '/pow-auth/challenge')
   const body = JSON.parse(JSON.stringify(response))
 
-  const challenge = body.challenge
-  const complexity = body.complexity
+  const challenge: string = body.challenge
+  const complexity: number = body.complexity
   const nonce: string = await generateNonceForChallenge(challenge, complexity)
 
-  const jwtResponse = await fetcher.postForm(new URL('/pow-auth/challenge', catalystUrl).href, {
-    body: JSON.stringify({ challenge: challenge, complexity: complexity, nonce: nonce })
-  })
+  const powAuthUrl = new URL('/pow-auth/challenge', catalystUrl).href
+  const challengeBody = JSON.stringify({ challenge: challenge, complexity: complexity, nonce: nonce })
+  const jwtResponse = await fetcher.postForm(powAuthUrl, { body: challengeBody })
 
   return jwtResponse.jwt
 }
