@@ -32,7 +32,7 @@ export class LambdasClient implements LambdasAPI {
 
     if (PROOF_OF_WORK) {
       setImmediate(async () => {
-        const powAuthBaseUrl = new URL(this.lambdasUrl).host
+        const powAuthBaseUrl = new URL(this.lambdasUrl).origin
         await setJWTAsCookie(this.fetcher, powAuthBaseUrl)
       })
     }

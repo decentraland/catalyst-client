@@ -1,31 +1,20 @@
 import cookie from 'cookie'
 import { Fetcher } from 'dcl-catalyst-commons'
-import NodeFormData from 'form-data'
-import { isNode } from '../utils/Helper'
 import { generateNonceForChallenge } from '../utils/ProofOfWork'
 
 export async function obtainJWT(fetcher: Fetcher, catalystUrl: string): Promise<string | undefined> {
   const response = await fetcher.fetchJson(catalystUrl + '/pow-auth/challenge')
-  const body = JSON.parse(response).body
+  const body = JSON.parse(JSON.stringify(response))
 
   const challenge = body.challenge
   const complexity = body.complexity
   const nonce: string = await generateNonceForChallenge(challenge, complexity)
 
-  // Check if we are running in node or browser
-  const areWeRunningInNode = isNode()
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  const form: FormData = areWeRunningInNode ? new NodeFormData() : new FormData()
-  form.append('challenge', challenge)
-  form.append('complexity', complexity)
-  form.append('nonce', nonce)
+  const jwtResponse = await fetcher.postForm(new URL('/pow-auth/challenge', catalystUrl).href, {
+    body: JSON.stringify({ challenge: challenge, complexity: complexity, nonce: nonce })
+  })
 
-  const jwtResponse = await fetcher.postForm(catalystUrl + '/pow-auth/challenge', { body: form })
-
-  const setCookie: string = jwtResponse.headers['Set-Cookie']
-  const cookies = cookie.parse(setCookie || '')
-  return cookies.JWT
+  return jwtResponse.jwt
 }
 
 export async function obtainJWTWithRetry(fetcher: Fetcher, catalystUrl: string, maxRetries: number): Promise<string> {
@@ -38,12 +27,19 @@ export async function obtainJWTWithRetry(fetcher: Fetcher, catalystUrl: string, 
 }
 
 export function removedJWTCookie(response: Response): boolean {
-  const setCookie = response.headers.get('Set-Cookie')
-  if (setCookie && setCookie.includes('JWT=')) {
-    const cookies = cookie.parse(setCookie)
-    return cookies.JWT == ''
+  try {
+    const headers = response.headers
+    if (headers) {
+      const setCookie = headers.get('Set-Cookie')
+      if (setCookie && setCookie.includes('JWT=')) {
+        const cookies = cookie.parse(setCookie)
+        return cookies.JWT == ''
+      }
+    }
+    return false
+  } catch {
+    return false
   }
-  return false
 }
 
 export async function setJWTAsCookie(fetcher: Fetcher, baseUrl: string): Promise<void> {
