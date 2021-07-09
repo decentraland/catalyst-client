@@ -43,15 +43,12 @@ export function removedJWTCookie(response: Response): boolean {
 }
 
 export async function setJWTAsCookie(fetcher: Fetcher, baseUrl: string): Promise<void> {
-  console.log('OBTAINING JWT...')
   const jwt = await obtainJWTWithRetry(fetcher, baseUrl, 3)
-  console.log(`JWT=${jwt}`)
+
   fetcher.overrideDefaults({ cookies: { JWT: jwt } })
   fetcher.overrideSetImmediate(async (response: Response) => {
     if (removedJWTCookie(response)) {
-      console.log('JWT INVALIDATE, OBTAINING NEW ONE')
       const jwt = await obtainJWT(fetcher, baseUrl)
-      console.log(`JWT=${jwt}`)
       if (!!jwt) {
         fetcher.overrideDefaults({ cookies: { JWT: jwt } })
       }
