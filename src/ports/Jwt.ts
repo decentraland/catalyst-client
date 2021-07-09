@@ -46,12 +46,13 @@ export async function setJWTAsCookie(fetcher: Fetcher, baseUrl: string): Promise
   const jwt = await obtainJWTWithRetry(fetcher, baseUrl, 3)
 
   fetcher.overrideDefaults({ cookies: { JWT: jwt } })
-  fetcher.overrideSetImmediate(async (response: Response) => {
+  fetcher.setResponseMiddleware(async (response: Response) => {
     if (removedJWTCookie(response)) {
       const jwt = await obtainJWT(fetcher, baseUrl)
       if (!!jwt) {
         fetcher.overrideDefaults({ cookies: { JWT: jwt } })
       }
     }
+    return response
   })
 }

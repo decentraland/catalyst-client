@@ -44,7 +44,7 @@ export class ContentClient implements ContentAPI {
   private readonly fetcher: Fetcher
   private readonly deploymentBuilderClass: typeof DeploymentBuilder
 
-  constructor(
+  private constructor(
     contentUrl: string,
     private readonly origin: string, // The name or a description of the app that is using the client
     fetcher?: Fetcher,
@@ -57,13 +57,22 @@ export class ContentClient implements ContentAPI {
       new Fetcher({
         headers: getHeadersWithUserAgent('content-client')
       })
+  }
+
+  static async createAsync(
+    contentUrl: string,
+    origin: string, // The name or a description of the app that is using the client
+    fetcher?: Fetcher,
+    deploymentBuilderClass?: typeof DeploymentBuilder
+  ): Promise<ContentClient> {
+    const contentClient = new ContentClient(contentUrl, origin, fetcher, deploymentBuilderClass)
 
     if (PROOF_OF_WORK) {
-      setImmediate(async () => {
-        const powAuthBaseUrl = new URL(this.contentUrl).origin
-        await setJWTAsCookie(this.fetcher, powAuthBaseUrl)
-      })
+      const powAuthBaseUrl = new URL(contentClient.contentUrl).origin
+      await setJWTAsCookie(contentClient.fetcher, powAuthBaseUrl)
     }
+
+    return contentClient
   }
 
   async buildEntityWithoutNewFiles({

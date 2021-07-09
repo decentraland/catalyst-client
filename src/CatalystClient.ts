@@ -27,20 +27,29 @@ import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './
 import { getHeadersWithUserAgent, sanitizeUrl } from './utils/Helper'
 
 export class CatalystClient implements CatalystAPI {
-  private readonly contentClient: ContentClient
-  private readonly lambdasClient: LambdasClient
-  private readonly catalystUrl: string
+  private constructor(
+    private readonly catalystUrl: string,
+    private readonly contentClient: ContentClient,
+    private readonly lambdasClient: LambdasClient
+  ) {}
 
-  constructor(
+  static async createAsync(
     catalystUrl: string,
     origin: string, // The name or a description of the app that is using the client
     fetcher?: Fetcher,
     deploymentBuilderClass?: typeof DeploymentBuilder
-  ) {
-    this.catalystUrl = sanitizeUrl(catalystUrl)
+  ): Promise<CatalystClient> {
+    catalystUrl = sanitizeUrl(catalystUrl)
     const fetcherToUse: Fetcher = fetcher ?? new Fetcher({ headers: getHeadersWithUserAgent('catalyst-client') })
-    this.contentClient = new ContentClient(this.catalystUrl + '/content', origin, fetcherToUse, deploymentBuilderClass)
-    this.lambdasClient = new LambdasClient(this.catalystUrl + '/lambdas', fetcherToUse)
+    const contentClient = await ContentClient.createAsync(
+      catalystUrl + '/content',
+      origin,
+      fetcherToUse,
+      deploymentBuilderClass
+    )
+    const lambdasClient = await LambdasClient.CreateAsync(catalystUrl + '/lambdas', fetcherToUse)
+
+    return new CatalystClient(catalystUrl, contentClient, lambdasClient)
   }
 
   buildEntity(options: BuildEntityOptions): Promise<DeploymentPreparationData> {
