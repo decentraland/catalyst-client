@@ -5,12 +5,10 @@ import {
   buildEntityAndFile,
   EntityType,
   Pointer,
-  ContentFile,
   EntityContentItemReference,
   EntityMetadata,
   ContentFileHash,
-  EntityId,
-  Fetcher
+  EntityId
 } from 'dcl-catalyst-commons'
 
 export class DeploymentBuilder {
@@ -26,12 +24,17 @@ export class DeploymentBuilder {
     timestamp?: Timestamp
   ): Promise<DeploymentPreparationData> {
     // Reorder input
-    const contentFiles: ContentFile[] = Array.from(files.entries()).map(([name, content]) => ({ name, content }))
+    const contentFiles: { key: string; content: Buffer }[] = Array.from(files.entries()).map(([key, content]) => ({
+      key,
+      content
+    }))
 
     // Calculate hashes
-    const hashes = await Hashing.calculateHashes(contentFiles)
-    const hashesByKey: Map<string, ContentFileHash> = new Map(hashes.map(({ hash, file }) => [file.name, hash]))
-    const filesByHash: Map<ContentFileHash, ContentFile> = new Map(hashes.map(({ hash, file }) => [hash, file]))
+    const allInfo = await Promise.all(
+      contentFiles.map(async ({ key, content }) => ({ key, content, hash: await Hashing.calculateBufferHash(content) }))
+    )
+    const hashesByKey: Map<string, ContentFileHash> = new Map(allInfo.map(({ hash, key }) => [key, hash]))
+    const filesByHash: Map<ContentFileHash, Buffer> = new Map(allInfo.map(({ hash, content }) => [hash, content]))
 
     return DeploymentBuilder.buildEntityInternal(type, pointers, { hashesByKey, filesByHash, metadata, timestamp })
   }
@@ -67,33 +70,22 @@ export class DeploymentBuilder {
     }))
 
     // Calculate timestamp if necessary
-    const timestamp: Timestamp = options?.timestamp ?? (await DeploymentBuilder.calculateTimestamp())
+    const timestamp: Timestamp = options?.timestamp ?? Date.now()
 
     // Build entity file
     const { entity, entityFile } = await buildEntityAndFile(type, pointers, timestamp, entityContent, options?.metadata)
 
     // Add entity file to content files
-    const filesByHash: Map<ContentFileHash, ContentFile> = options?.filesByHash ?? new Map()
+    const filesByHash: Map<ContentFileHash, Buffer> = options?.filesByHash ?? new Map()
     filesByHash.set(entity.id, entityFile)
 
     return { files: filesByHash, entityId: entity.id }
-  }
-
-  private static async calculateTimestamp(): Promise<Timestamp> {
-    // We will try to use a global time API, so if the local PC clock is off, it will still work
-    const fetcher = new Fetcher()
-    try {
-      const { datetime } = await fetcher.fetchJson('https://worldtimeapi.org/api/timezone/Etc/UTC')
-      return new Date(datetime).getTime()
-    } catch (e) {
-      return Date.now()
-    }
   }
 }
 
 type BuildEntityInternalOptions = {
   hashesByKey?: Map<string, ContentFileHash>
-  filesByHash?: Map<ContentFileHash, ContentFile>
+  filesByHash?: Map<ContentFileHash, Buffer>
   metadata?: EntityMetadata
   timestamp?: Timestamp
 }
@@ -101,7 +93,7 @@ type BuildEntityInternalOptions = {
 /** This data contains everything necessary for the user to sign, so that then a deployment can be executed */
 export type DeploymentPreparationData = {
   entityId: EntityId
-  files: Map<ContentFileHash, ContentFile>
+  files: Map<ContentFileHash, Buffer>
 }
 
 export type DeploymentData = DeploymentPreparationData & {
