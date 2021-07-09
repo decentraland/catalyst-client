@@ -1,5 +1,5 @@
 import { getMainnetCatalysts, getRopstenCatalysts } from 'dcl-catalyst-commons'
-import { CatalystClient } from '../CatalystClient'
+import { createCatalystClient } from '../CatalystClientFactory'
 import CatalystsList from '../CatalystsList'
 import { shuffleArray } from './common'
 
@@ -91,7 +91,7 @@ function calculateIntersection(lists: string[][]): string[] {
 }
 
 async function fetchCatalystsApprovedByDAO(catalystUrl: string, origin: string): Promise<string[] | undefined> {
-  const client = await CatalystClient.createAsync(catalystUrl, origin)
+  const client = await createCatalystClient(catalystUrl, origin)
   try {
     const servers = await client.fetchCatalystsApprovedByDAO({ timeout: '10s' })
     return servers.map(({ address }) => address)
