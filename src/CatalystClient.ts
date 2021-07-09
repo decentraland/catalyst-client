@@ -5,7 +5,6 @@ import {
   Entity,
   EntityId,
   EntityType,
-  Fetcher,
   HealthStatus,
   LegacyAuditInfo,
   Pointer,
@@ -23,34 +22,14 @@ import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient, Depl
 import { OwnedWearables, ProfileOptions, WearablesFilters } from './LambdasAPI'
 import { LambdasClient } from './LambdasClient'
 import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
-import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
-import { getHeadersWithUserAgent, sanitizeUrl } from './utils/Helper'
+import { DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 
 export class CatalystClient implements CatalystAPI {
-  private constructor(
+  constructor(
     private readonly catalystUrl: string,
     private readonly contentClient: ContentClient,
     private readonly lambdasClient: LambdasClient
   ) {}
-
-  static async createAsync(
-    catalystUrl: string,
-    origin: string, // The name or a description of the app that is using the client
-    fetcher?: Fetcher,
-    deploymentBuilderClass?: typeof DeploymentBuilder
-  ): Promise<CatalystClient> {
-    catalystUrl = sanitizeUrl(catalystUrl)
-    const fetcherToUse: Fetcher = fetcher ?? new Fetcher({ headers: getHeadersWithUserAgent('catalyst-client') })
-    const contentClient = await ContentClient.createAsync(
-      catalystUrl + '/content',
-      origin,
-      fetcherToUse,
-      deploymentBuilderClass
-    )
-    const lambdasClient = await LambdasClient.CreateAsync(catalystUrl + '/lambdas', fetcherToUse)
-
-    return new CatalystClient(catalystUrl, contentClient, lambdasClient)
-  }
 
   buildEntity(options: BuildEntityOptions): Promise<DeploymentPreparationData> {
     return this.contentClient.buildEntity(options)
