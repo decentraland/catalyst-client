@@ -22,8 +22,6 @@ import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
 import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient, DeploymentOptions } from './ContentClient'
 import { OwnedWearables, ProfileOptions, WearablesFilters } from './LambdasAPI'
 import { LambdasClient } from './LambdasClient'
-import { setJWTAsCookie } from './ports/Jwt'
-import { PROOF_OF_WORK } from './utils'
 import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 import { getHeadersWithUserAgent, sanitizeUrl } from './utils/Helper'
@@ -43,12 +41,6 @@ export class CatalystClient implements CatalystAPI {
     const fetcherToUse: Fetcher = fetcher ?? new Fetcher({ headers: getHeadersWithUserAgent('catalyst-client') })
     this.contentClient = new ContentClient(this.catalystUrl + '/content', origin, fetcherToUse, deploymentBuilderClass)
     this.lambdasClient = new LambdasClient(this.catalystUrl + '/lambdas', fetcherToUse)
-
-    if (PROOF_OF_WORK) {
-      setImmediate(async () => {
-        await setJWTAsCookie(fetcherToUse, this.catalystUrl)
-      })
-    }
   }
 
   buildEntity(options: BuildEntityOptions): Promise<DeploymentPreparationData> {
