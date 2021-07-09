@@ -28,7 +28,7 @@ export async function clientConnectedToCatalystIn(
   const shuffled = shuffleArray(list)
 
   for (const catalystUrl of shuffled) {
-    const client = new CatalystClient(catalystUrl, origin)
+    const client = await CatalystClient.createAsync(catalystUrl, origin)
 
     const isUp = await isServerUp(client)
     if (isUp) {
