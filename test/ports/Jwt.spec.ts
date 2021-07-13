@@ -1,5 +1,5 @@
-import { Fetcher } from 'dcl-catalyst-commons'
-import { obtainJWT, removedJWTCookie } from '../../src/ports/Jwt'
+import { CrossFetchRequest, Fetcher } from 'dcl-catalyst-commons'
+import { noJWTinCookie, obtainJWT, removedJWTCookie } from '../../src/ports/Jwt'
 import { sanitizeUrl } from '../../src/utils/Helper'
 import * as pow from '../../src/utils/ProofOfWork'
 
@@ -82,6 +82,41 @@ describe('removedJWTCookie', () => {
       const isRemoved = removedJWTCookie(response)
 
       expect(isRemoved).toBeTruthy()
+    })
+  })
+})
+
+describe('noJWTinCookie', () => {
+  describe('No JWT is in cookie', () => {
+    const request: CrossFetchRequest = { requestInfo: '/bla', requestInit: { headers: {} } }
+    it('should return true', async () => {
+      const notJWTCookie = noJWTinCookie(request)
+
+      expect(notJWTCookie).toBeTruthy()
+    })
+  })
+  describe('JWT has a value', () => {
+    const request: CrossFetchRequest = {
+      requestInfo: '/bla',
+      requestInit: { headers: { Cookie: 'JWT=aValue;anotherCookie=value' } }
+    }
+
+    it('should return false', async () => {
+      const notJWTCookie = noJWTinCookie(request)
+
+      expect(notJWTCookie).toBeFalsy()
+    })
+  })
+  describe('JWT has empty string', () => {
+    const request: CrossFetchRequest = {
+      requestInfo: '/bla',
+      requestInit: { headers: { Cookie: 'JWT=;anotherCookie=value' } }
+    }
+
+    it('should return true', async () => {
+      const notJWTCookie = noJWTinCookie(request)
+
+      expect(notJWTCookie).toBeTruthy()
     })
   })
 })
