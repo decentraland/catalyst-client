@@ -72,12 +72,14 @@ export async function setJWTAsCookie(fetcher: Fetcher, baseUrl: string): Promise
   if (!!jwt) {
     fetcher.overrideDefaults({ cookies: { JWT: jwt } })
   }
-  let lastFailedPowEndpointTimestamp = 0
-  let minutesToAdd = 5
+  let lastFailedPowEndpointTimestamp: number = 0
+  let minutesToAdd: number = 5
+  let isRequestingJWT: boolean = false
   fetcher.setMiddleware({
     requestMiddleware: async (request: CrossFetchRequest) => {
-      if (noJWTinCookie(request)) {
+      if (noJWTinCookie(request) && !isRequestingJWT) {
         if (lastFailedPowEndpointTimestamp + minutesToAdd * 60000 < Date.now()) {
+          isRequestingJWT = true
           const jwt = await obtainJWT(fetcher, baseUrl)
           if (!!jwt) {
             fetcher.overrideDefaults({ cookies: { JWT: jwt } })
@@ -87,6 +89,7 @@ export async function setJWTAsCookie(fetcher: Fetcher, baseUrl: string): Promise
             lastFailedPowEndpointTimestamp = Date.now()
             minutesToAdd = 2 * minutesToAdd
           }
+          isRequestingJWT = false
         }
       }
       return request
