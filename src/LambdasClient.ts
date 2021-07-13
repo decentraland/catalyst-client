@@ -1,12 +1,5 @@
+import { EntityMetadata, Fetcher, HealthStatus, Profile, RequestOptions, ServerMetadata } from 'dcl-catalyst-commons'
 import { EthAddress } from 'dcl-crypto'
-import { Profile, Fetcher, RequestOptions, EntityMetadata, ServerMetadata, HealthStatus } from 'dcl-catalyst-commons'
-import {
-  convertFiltersToQueryParams,
-  getHeadersWithUserAgent,
-  sanitizeUrl,
-  splitAndFetch,
-  splitAndFetchPaginated
-} from './utils/Helper'
 import {
   LambdasAPI,
   OwnedWearables,
@@ -15,18 +8,38 @@ import {
   ProfileOptions,
   WearablesFilters
 } from './LambdasAPI'
+import { setJWTAsCookie } from './ports/Jwt'
+import { PROOF_OF_WORK } from './utils/Environment'
+import {
+  convertFiltersToQueryParams,
+  getHeadersWithUserAgent,
+  sanitizeUrl,
+  splitAndFetch,
+  splitAndFetchPaginated
+} from './utils/Helper'
 
 export class LambdasClient implements LambdasAPI {
   private readonly lambdasUrl: string
   private readonly fetcher: Fetcher
 
-  constructor(lambdasUrl: string, fetcher?: Fetcher) {
+  private constructor(lambdasUrl: string, fetcher?: Fetcher) {
     this.lambdasUrl = sanitizeUrl(lambdasUrl)
     this.fetcher =
       fetcher ??
       new Fetcher({
         headers: getHeadersWithUserAgent('lambdas-client')
       })
+  }
+
+  static async CreateAsync(lambdasUrl: string, fetcher?: Fetcher): Promise<LambdasClient> {
+    const lambdasClient = new LambdasClient(lambdasUrl, fetcher)
+
+    if (PROOF_OF_WORK) {
+      const powAuthBaseUrl = new URL(lambdasClient.lambdasUrl).origin
+      await setJWTAsCookie(lambdasClient.fetcher, powAuthBaseUrl)
+    }
+
+    return lambdasClient
   }
 
   fetchProfiles(

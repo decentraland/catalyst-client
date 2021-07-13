@@ -1,30 +1,34 @@
+import asyncToArray from 'async-iterator-to-array'
 import {
-  Timestamp,
-  Pointer,
-  EntityType,
+  applySomeDefaults,
+  AvailableContentResult,
+  ContentFileHash,
+  Deployment,
+  DeploymentBase,
+  DeploymentFilters,
+  DeploymentSorting,
+  DeploymentWithAuditInfo,
   Entity,
   EntityId,
-  ServerStatus,
-  ContentFileHash,
-  PartialDeploymentHistory,
-  applySomeDefaults,
-  retry,
+  EntityMetadata,
+  EntityType,
   Fetcher,
   Hashing,
-  DeploymentFilters,
-  Deployment,
-  AvailableContentResult,
-  DeploymentBase,
-  DeploymentWithAuditInfo,
   LegacyAuditInfo,
-  DeploymentSorting,
-  RequestOptions,
   mergeRequestOptions,
-  EntityMetadata
+  PartialDeploymentHistory,
+  Pointer,
+  RequestOptions,
+  retry,
+  ServerStatus,
+  Timestamp
 } from 'dcl-catalyst-commons'
-import asyncToArray from 'async-iterator-to-array'
+import NodeFormData from 'form-data'
 import { Readable } from 'stream'
 import { ContentAPI, DeploymentWithMetadataContentAndPointers } from './ContentAPI'
+import { setJWTAsCookie } from './ports/Jwt'
+import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
+import { PROOF_OF_WORK } from './utils/Environment'
 import {
   addModelToFormData,
   convertFiltersToQueryParams,
@@ -34,27 +38,41 @@ import {
   splitAndFetch,
   splitValuesIntoManyQueries
 } from './utils/Helper'
-import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
-import NodeFormData from 'form-data'
 
 export class ContentClient implements ContentAPI {
   private readonly contentUrl: string
   private readonly fetcher: Fetcher
   private readonly deploymentBuilderClass: typeof DeploymentBuilder
 
-  constructor(
+  private constructor(
     contentUrl: string,
     private readonly origin: string, // The name or a description of the app that is using the client
     fetcher?: Fetcher,
     deploymentBuilderClass?: typeof DeploymentBuilder
   ) {
     this.contentUrl = sanitizeUrl(contentUrl)
+    this.deploymentBuilderClass = deploymentBuilderClass ?? DeploymentBuilder
     this.fetcher =
       fetcher ??
       new Fetcher({
         headers: getHeadersWithUserAgent('content-client')
       })
-    this.deploymentBuilderClass = deploymentBuilderClass ?? DeploymentBuilder
+  }
+
+  static async createAsync(
+    contentUrl: string,
+    origin: string, // The name or a description of the app that is using the client
+    fetcher?: Fetcher,
+    deploymentBuilderClass?: typeof DeploymentBuilder
+  ): Promise<ContentClient> {
+    const contentClient = new ContentClient(contentUrl, origin, fetcher, deploymentBuilderClass)
+
+    if (PROOF_OF_WORK) {
+      const powAuthBaseUrl = new URL(contentClient.contentUrl).origin
+      await setJWTAsCookie(contentClient.fetcher, powAuthBaseUrl)
+    }
+
+    return contentClient
   }
 
   async buildEntityWithoutNewFiles({

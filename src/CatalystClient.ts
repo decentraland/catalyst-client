@@ -1,51 +1,35 @@
-import { EthAddress } from 'dcl-crypto'
 import {
-  Timestamp,
-  Pointer,
-  EntityType,
+  AvailableContentResult,
+  ContentFileHash,
+  DeploymentBase,
   Entity,
   EntityId,
-  ServerStatus,
-  ContentFileHash,
-  Profile,
-  Fetcher,
-  AvailableContentResult,
-  DeploymentBase,
+  EntityType,
+  HealthStatus,
   LegacyAuditInfo,
+  Pointer,
+  Profile,
   RequestOptions,
   ServerMetadata,
-  HealthStatus
+  ServerStatus,
+  Timestamp
 } from 'dcl-catalyst-commons'
+import { EthAddress } from 'dcl-crypto'
 import { Readable } from 'stream'
 import { CatalystAPI } from './CatalystAPI'
-import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
-import { getHeadersWithUserAgent, sanitizeUrl } from './utils/Helper'
-import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient, DeploymentOptions } from './ContentClient'
-import { LambdasClient } from './LambdasClient'
 import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
-import { WearablesFilters, OwnedWearables, ProfileOptions } from './LambdasAPI'
+import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient, DeploymentOptions } from './ContentClient'
+import { OwnedWearables, ProfileOptions, WearablesFilters } from './LambdasAPI'
+import { LambdasClient } from './LambdasClient'
 import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
+import { DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 
 export class CatalystClient implements CatalystAPI {
-  private readonly contentClient: ContentClient
-  private readonly lambdasClient: LambdasClient
-  private readonly catalystUrl: string
-
   constructor(
-    catalystUrl: string,
-    origin: string, // The name or a description of the app that is using the client
-    fetcher?: Fetcher,
-    deploymentBuilderClass?: typeof DeploymentBuilder
-  ) {
-    this.catalystUrl = sanitizeUrl(catalystUrl)
-    fetcher =
-      fetcher ??
-      new Fetcher({
-        headers: getHeadersWithUserAgent('catalyst-client')
-      })
-    this.contentClient = new ContentClient(this.catalystUrl + '/content', origin, fetcher, deploymentBuilderClass)
-    this.lambdasClient = new LambdasClient(this.catalystUrl + '/lambdas', fetcher)
-  }
+    private readonly catalystUrl: string,
+    private readonly contentClient: ContentClient,
+    private readonly lambdasClient: LambdasClient
+  ) {}
 
   buildEntity(options: BuildEntityOptions): Promise<DeploymentPreparationData> {
     return this.contentClient.buildEntity(options)
