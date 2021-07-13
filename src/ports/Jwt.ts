@@ -1,6 +1,9 @@
 import cookie from 'cookie'
 import { CrossFetchRequest, Fetcher } from 'dcl-catalyst-commons'
+import log4js from 'log4js'
 import { generateNonceForChallenge } from '../utils/ProofOfWork'
+
+const LOGGER = log4js.getLogger('JWTPort')
 
 export async function obtainJWT(fetcher: Fetcher, catalystUrl: string): Promise<string | undefined> {
   try {
@@ -15,8 +18,12 @@ export async function obtainJWT(fetcher: Fetcher, catalystUrl: string): Promise<
     const challengeBody = JSON.stringify({ challenge: challenge, complexity: complexity, nonce: nonce })
     const jwtResponse = await fetcher.postForm(powAuthUrl, { body: challengeBody })
 
+    if (!jwtResponse.jwt) {
+      LOGGER.warn('[POW] Could not get a JWT from Pow Auth Server.')
+    }
     return jwtResponse.jwt
-  } catch {
+  } catch (error) {
+    LOGGER.warn(`[POW] Could not get a JWT from Pow Auth Server, due to: ${error}`)
     return ''
   }
 }
@@ -65,22 +72,29 @@ export async function setJWTAsCookie(fetcher: Fetcher, baseUrl: string): Promise
   if (!!jwt) {
     fetcher.overrideDefaults({ cookies: { JWT: jwt } })
   }
+  let lastFailedPowEndpointTimestamp = 0
+  let minutesToAdd = 5
   fetcher.setMiddleware({
     requestMiddleware: async (request: CrossFetchRequest) => {
       if (noJWTinCookie(request)) {
-        const jwt = await obtainJWT(fetcher, baseUrl)
-        if (!!jwt) {
-          fetcher.overrideDefaults({ cookies: { JWT: jwt } })
+        if (lastFailedPowEndpointTimestamp + minutesToAdd * 60000 < Date.now()) {
+          const jwt = await obtainJWT(fetcher, baseUrl)
+          if (!!jwt) {
+            fetcher.overrideDefaults({ cookies: { JWT: jwt } })
+            lastFailedPowEndpointTimestamp = 0
+            minutesToAdd = 5
+          } else {
+            lastFailedPowEndpointTimestamp = Date.now()
+            minutesToAdd = 2 * minutesToAdd
+          }
         }
       }
       return request
     },
     responseMiddleware: async (response: Response) => {
       if (removedJWTCookie(response)) {
-        const jwt = await obtainJWT(fetcher, baseUrl)
-        if (!!jwt) {
-          fetcher.overrideDefaults({ cookies: { JWT: jwt } })
-        }
+        // When executing the requestMiddleware it will get the new JWT
+        fetcher.overrideDefaults({ cookies: { JWT: '' } })
       }
       return response
     }
