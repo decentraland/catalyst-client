@@ -1,6 +1,7 @@
 import cookie from 'cookie'
 import { CrossFetchRequest, Fetcher } from 'dcl-catalyst-commons'
 import log4js from 'log4js'
+import ms from 'ms'
 import { generateNonceForChallenge } from '../utils/ProofOfWork'
 
 const LOGGER = log4js.getLogger('JWTPort')
@@ -28,14 +29,14 @@ export async function obtainJWT(fetcher: Fetcher, catalystUrl: string): Promise<
   }
 }
 
-export function removedJWTCookie(response: Response): boolean {
+export function isJWTCookieRemoved(response: Response): boolean {
   try {
     const headers = response.headers
     if (headers) {
       const setCookie = headers.get('Set-Cookie')
       if (setCookie && setCookie.includes('JWT=')) {
         const cookies = cookie.parse(setCookie)
-        return cookies.JWT == ''
+        return cookies.JWT === ''
       }
     }
     return false
@@ -44,7 +45,7 @@ export function removedJWTCookie(response: Response): boolean {
   }
 }
 
-export function noJWTinCookie(request: CrossFetchRequest): boolean {
+export function missingJWTInRequest(request: CrossFetchRequest): boolean {
   const headers: Headers | string[][] | Record<string, string> | undefined = request.requestInit?.headers
 
   if (!!headers) {
@@ -64,23 +65,23 @@ export function noJWTinCookie(request: CrossFetchRequest): boolean {
 
 function hasJWTCookie(cookieValue: string): boolean {
   const cookies = cookie.parse(cookieValue)
-  return cookies.JWT ?? '' != ''
+  return cookies.JWT ?? '' !== ''
 }
 
-export function setJWTAsCookie(fetcher: Fetcher, baseUrl: string): void {
+export function configureJWTMiddlewares(fetcher: Fetcher, baseUrl: string): void {
   let lastFailedPowEndpointTimestamp: number = 0
-  let minutesToAdd: number = 5
+  let minutesToAdd: number = ms('5m')
   let isRequestingJWT: boolean = false
   fetcher.overrideDefaults({
     requestMiddleware: async (request: CrossFetchRequest) => {
-      if (noJWTinCookie(request) && !isRequestingJWT) {
-        if (lastFailedPowEndpointTimestamp + minutesToAdd * 60000 < Date.now()) {
+      if (missingJWTInRequest(request) && !isRequestingJWT) {
+        if (lastFailedPowEndpointTimestamp + minutesToAdd < Date.now()) {
           isRequestingJWT = true
           const jwt = await obtainJWT(fetcher, baseUrl)
           if (!!jwt) {
             fetcher.overrideDefaults({ cookies: { JWT: jwt } })
             lastFailedPowEndpointTimestamp = 0
-            minutesToAdd = 5
+            minutesToAdd = ms('5m')
           } else {
             lastFailedPowEndpointTimestamp = Date.now()
             minutesToAdd = 2 * minutesToAdd
@@ -91,7 +92,7 @@ export function setJWTAsCookie(fetcher: Fetcher, baseUrl: string): void {
       return request
     },
     responseMiddleware: async (response: Response) => {
-      if (removedJWTCookie(response)) {
+      if (isJWTCookieRemoved(response)) {
         // When executing the requestMiddleware it will get the new JWT
         fetcher.overrideDefaults({ cookies: { JWT: '' } })
       }

@@ -97,6 +97,6 @@ describe('LambdasClient', () => {
   }
 
   function buildClient(URL: string, fetcher: Fetcher): LambdasClient {
-    return new LambdasClient({ lambdasUrl: URL, proofOfWorkEnabled: true, fetcher: fetcher })
+    return new LambdasClient({ lambdasUrl: URL, fetcher: fetcher })
   }
 })

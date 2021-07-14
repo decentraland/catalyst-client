@@ -56,7 +56,7 @@ describe('clientConnectedToCatalystIn', () => {
     })
 
     it('should use get the approved list from the DAO', async () => {
-      await clientConnectedToCatalystIn({ network: 'mainnet', origin: '', proofOfWorkEnabled: true })
+      await clientConnectedToCatalystIn({ network: 'mainnet', origin: '' })
       expect(shuffleArraySpy).toHaveBeenCalledTimes(1)
       expect(shuffleArraySpy).toHaveBeenCalledWith(mockedServerList)
     })
@@ -75,7 +75,7 @@ describe('clientConnectedToCatalystIn', () => {
       getUpdatedApprovedListWithoutQueryingContractSpy.mockReturnValue(Promise.resolve(mockedServerList))
       getApprovedListFromContractSpy.mockReturnValue(Promise.resolve(undefined))
 
-      result = await clientConnectedToCatalystIn({ network: 'mainnet', origin: '', proofOfWorkEnabled: true })
+      result = await clientConnectedToCatalystIn({ network: 'mainnet', origin: '' })
     })
 
     afterEach(() => {

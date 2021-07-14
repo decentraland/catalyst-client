@@ -1,5 +1,5 @@
 import { CrossFetchRequest, Fetcher } from 'dcl-catalyst-commons'
-import { noJWTinCookie, obtainJWT, removedJWTCookie } from '../../src/ports/Jwt'
+import { isJWTCookieRemoved, missingJWTInRequest, obtainJWT } from '../../src/ports/Jwt'
 import { sanitizeUrl } from '../../src/utils/Helper'
 import * as pow from '../../src/utils/ProofOfWork'
 
@@ -59,7 +59,7 @@ describe('removedJWTCookie', () => {
   describe('No JWT is in cookie', () => {
     const response: Response = new Response()
     it('should return false', async () => {
-      const isRemoved = removedJWTCookie(response)
+      const isRemoved = isJWTCookieRemoved(response)
 
       expect(isRemoved).toBeFalsy()
     })
@@ -69,7 +69,7 @@ describe('removedJWTCookie', () => {
     response.headers.set('Set-Cookie', 'JWT=aValue;anotherCookie=value')
 
     it('should return false', async () => {
-      const isRemoved = removedJWTCookie(response)
+      const isRemoved = isJWTCookieRemoved(response)
 
       expect(isRemoved).toBeFalsy()
     })
@@ -79,7 +79,7 @@ describe('removedJWTCookie', () => {
     response.headers.set('Set-Cookie', 'JWT=;anotherCookie=value')
 
     it('should return true', async () => {
-      const isRemoved = removedJWTCookie(response)
+      const isRemoved = isJWTCookieRemoved(response)
 
       expect(isRemoved).toBeTruthy()
     })
@@ -90,7 +90,7 @@ describe('noJWTinCookie', () => {
   describe('No JWT is in cookie', () => {
     const request: CrossFetchRequest = { requestInfo: '/bla', requestInit: { headers: {} } }
     it('should return true', async () => {
-      const notJWTCookie = noJWTinCookie(request)
+      const notJWTCookie = missingJWTInRequest(request)
 
       expect(notJWTCookie).toBeTruthy()
     })
@@ -102,7 +102,7 @@ describe('noJWTinCookie', () => {
     }
 
     it('should return false', async () => {
-      const notJWTCookie = noJWTinCookie(request)
+      const notJWTCookie = missingJWTInRequest(request)
 
       expect(notJWTCookie).toBeFalsy()
     })
@@ -114,7 +114,7 @@ describe('noJWTinCookie', () => {
     }
 
     it('should return true', async () => {
-      const notJWTCookie = noJWTinCookie(request)
+      const notJWTCookie = missingJWTInRequest(request)
 
       expect(notJWTCookie).toBeTruthy()
     })

@@ -29,7 +29,7 @@ import { getHeadersWithUserAgent, sanitizeUrl } from './utils/Helper'
 export type CatalystClientOptions = {
   catalystUrl: string
   origin: string // The name or a description of the app that is using the client
-  proofOfWorkEnabled: boolean
+  proofOfWorkEnabled?: boolean
   fetcher?: Fetcher
   deploymentBuilderClass?: typeof DeploymentBuilder
 }
@@ -173,5 +173,5 @@ export class CatalystClient implements CatalystAPI {
 export type CatalystConnectOptions = {
   network: 'mainnet' | 'ropsten'
   origin: string
-  proofOfWorkEnabled: boolean
+  proofOfWorkEnabled?: boolean
 }

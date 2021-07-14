@@ -26,7 +26,7 @@ import {
 import NodeFormData from 'form-data'
 import { Readable } from 'stream'
 import { ContentAPI, DeploymentWithMetadataContentAndPointers } from './ContentAPI'
-import { setJWTAsCookie } from './ports/Jwt'
+import { configureJWTMiddlewares } from './ports/Jwt'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 import {
   addModelToFormData,
@@ -41,7 +41,7 @@ import {
 export type ContentClientOptions = {
   contentUrl: string
   origin: string // The name or a description of the app that is using the client
-  proofOfWorkEnabled: boolean
+  proofOfWorkEnabled?: boolean
   fetcher?: Fetcher
   deploymentBuilderClass?: typeof DeploymentBuilder
 }
@@ -61,9 +61,9 @@ export class ContentClient implements ContentAPI {
     this.deploymentBuilderClass = options.deploymentBuilderClass ?? DeploymentBuilder
     this.origin = options.origin
 
-    if (options.proofOfWorkEnabled) {
+    if (options.proofOfWorkEnabled ?? false) {
       const powAuthBaseUrl = new URL(this.contentUrl).origin
-      setJWTAsCookie(this.fetcher, powAuthBaseUrl)
+      configureJWTMiddlewares(this.fetcher, powAuthBaseUrl)
     }
   }
 

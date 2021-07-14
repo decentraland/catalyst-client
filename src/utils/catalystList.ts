@@ -19,7 +19,7 @@ const REQUIRED_LISTS = 3
 export type KnownServersOptions = {
   preKnownServers: { list: { address: string }[] } | { network: 'mainnet' | 'ropsten' }
   origin: string
-  proofOfWorkEnabled: boolean
+  proofOfWorkEnabled?: boolean
   requiredLists?: number
   fetchApprovedCatalysts?: (catalystUrl: string, origin: string) => Promise<string[] | undefined>
 }
@@ -94,7 +94,7 @@ function calculateIntersection(lists: string[][]): string[] {
 async function fetchCatalystsApprovedByDAO(
   catalystUrl: string,
   origin: string,
-  proofOfWorkEnabled: boolean
+  proofOfWorkEnabled?: boolean
 ): Promise<string[] | undefined> {
   const client: CatalystClient = new CatalystClient({
     catalystUrl,

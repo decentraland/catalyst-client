@@ -8,7 +8,7 @@ import {
   ProfileOptions,
   WearablesFilters
 } from './LambdasAPI'
-import { setJWTAsCookie } from './ports/Jwt'
+import { configureJWTMiddlewares } from './ports/Jwt'
 import {
   convertFiltersToQueryParams,
   getHeadersWithUserAgent,
@@ -19,7 +19,7 @@ import {
 
 export type LambdasClientOptions = {
   lambdasUrl: string
-  proofOfWorkEnabled: boolean
+  proofOfWorkEnabled?: boolean
   fetcher?: Fetcher
 }
 export class LambdasClient implements LambdasAPI {
@@ -34,9 +34,9 @@ export class LambdasClient implements LambdasAPI {
         headers: getHeadersWithUserAgent('lambdas-client')
       })
 
-    if (options.proofOfWorkEnabled) {
+    if (options.proofOfWorkEnabled ?? false) {
       const powAuthBaseUrl = new URL(this.lambdasUrl).origin
-      setJWTAsCookie(this.fetcher, powAuthBaseUrl)
+      configureJWTMiddlewares(this.fetcher, powAuthBaseUrl)
     }
   }
 
