@@ -34,7 +34,7 @@ export class LambdasClient implements LambdasAPI {
         headers: getHeadersWithUserAgent('lambdas-client')
       })
 
-    if (options.proofOfWorkEnabled ?? false) {
+    if (options.proofOfWorkEnabled) {
       const powAuthBaseUrl = new URL(this.lambdasUrl).origin
       configureJWTMiddlewares(this.fetcher, powAuthBaseUrl)
     }

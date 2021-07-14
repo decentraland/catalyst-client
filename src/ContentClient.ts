@@ -61,7 +61,7 @@ export class ContentClient implements ContentAPI {
     this.deploymentBuilderClass = options.deploymentBuilderClass ?? DeploymentBuilder
     this.origin = options.origin
 
-    if (options.proofOfWorkEnabled ?? false) {
+    if (options.proofOfWorkEnabled) {
       const powAuthBaseUrl = new URL(this.contentUrl).origin
       configureJWTMiddlewares(this.fetcher, powAuthBaseUrl)
     }
