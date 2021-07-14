@@ -97,6 +97,6 @@ describe('LambdasClient', () => {
   }
 
   async function buildClient(URL: string, fetcher: Fetcher): Promise<LambdasClient> {
-    return await LambdasClient.CreateAsync(URL, fetcher)
+    return new LambdasClient({ lambdasUrl: URL, proofOfWorkEnabled: true, fetcher: fetcher })
   }
 })

@@ -67,15 +67,11 @@ function hasJWTCookie(cookieValue: string): boolean {
   return cookies.JWT ?? '' != ''
 }
 
-export async function setJWTAsCookie(fetcher: Fetcher, baseUrl: string): Promise<void> {
-  const jwt = await obtainJWT(fetcher, baseUrl)
-  if (!!jwt) {
-    fetcher.overrideDefaults({ cookies: { JWT: jwt } })
-  }
+export function setJWTAsCookie(fetcher: Fetcher, baseUrl: string): void {
   let lastFailedPowEndpointTimestamp: number = 0
   let minutesToAdd: number = 5
   let isRequestingJWT: boolean = false
-  fetcher.setMiddleware({
+  fetcher.overrideDefaults({
     requestMiddleware: async (request: CrossFetchRequest) => {
       if (noJWTinCookie(request) && !isRequestingJWT) {
         if (lastFailedPowEndpointTimestamp + minutesToAdd * 60000 < Date.now()) {

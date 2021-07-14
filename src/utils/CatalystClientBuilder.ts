@@ -6,16 +6,20 @@ import { shuffleArray } from './common'
 
 const FETCH_HEALTH_TIMEOUT = '10s'
 
+export type CatalystConnectOptions = {
+  network: 'mainnet' | 'ropsten'
+  origin: string
+  proofOfWorkEnabled: boolean
+}
+
 /**
  * Returns a CatalystClient connected to one of the catalysts in the given network
  */
-export async function clientConnectedToCatalystIn(
-  network: 'mainnet' | 'ropsten',
-  origin: string
-): Promise<CatalystClient> {
+export async function clientConnectedToCatalystIn(options: CatalystConnectOptions): Promise<CatalystClient> {
   const noContractList = await getUpdatedApprovedListWithoutQueryingContract({
-    preKnownServers: { network },
-    origin
+    preKnownServers: { network: options.network },
+    origin: options.origin,
+    proofOfWorkEnabled: options.proofOfWorkEnabled
   })
 
   let list: string[]
@@ -23,13 +27,17 @@ export async function clientConnectedToCatalystIn(
     list = noContractList
   } else {
     console.warn('Falling back to the smart contract to get an updated list of active servers')
-    list = await getApprovedListFromContract(network)
+    list = await getApprovedListFromContract(options.network)
   }
 
   const shuffled = shuffleArray(list)
 
   for (const catalystUrl of shuffled) {
-    const client = await createCatalystClient(catalystUrl, origin)
+    const client = await createCatalystClient({
+      catalystUrl: catalystUrl,
+      origin: options.origin,
+      proofOfWorkEnabled: options.proofOfWorkEnabled
+    })
 
     const isUp = await isServerUp(client)
     if (isUp) {
@@ -37,7 +45,7 @@ export async function clientConnectedToCatalystIn(
     }
   }
 
-  throw new Error(`Couldn't find a server on the ${network} network that was up`)
+  throw new Error(`Couldn't find a server on the ${options.network} network that was up`)
 }
 
 async function isServerUp(client: CatalystClient): Promise<boolean> {

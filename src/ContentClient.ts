@@ -28,7 +28,6 @@ import { Readable } from 'stream'
 import { ContentAPI, DeploymentWithMetadataContentAndPointers } from './ContentAPI'
 import { setJWTAsCookie } from './ports/Jwt'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
-import { PROOF_OF_WORK } from './utils/Environment'
 import {
   addModelToFormData,
   convertFiltersToQueryParams,
@@ -39,40 +38,32 @@ import {
   splitValuesIntoManyQueries
 } from './utils/Helper'
 
+export type ContentClientOptions = {
+  contentUrl: string
+  origin: string // The name or a description of the app that is using the client
+  proofOfWorkEnabled: boolean
+  fetcher?: Fetcher
+  deploymentBuilderClass?: typeof DeploymentBuilder
+}
 export class ContentClient implements ContentAPI {
   private readonly contentUrl: string
   private readonly fetcher: Fetcher
   private readonly deploymentBuilderClass: typeof DeploymentBuilder
+  private readonly origin: string
 
-  private constructor(
-    contentUrl: string,
-    private readonly origin: string, // The name or a description of the app that is using the client
-    fetcher?: Fetcher,
-    deploymentBuilderClass?: typeof DeploymentBuilder
-  ) {
-    this.contentUrl = sanitizeUrl(contentUrl)
-    this.deploymentBuilderClass = deploymentBuilderClass ?? DeploymentBuilder
+  constructor(contentClientOptions: ContentClientOptions) {
+    this.contentUrl = sanitizeUrl(contentClientOptions.contentUrl)
     this.fetcher =
-      fetcher ??
+      contentClientOptions.fetcher ??
       new Fetcher({
         headers: getHeadersWithUserAgent('content-client')
       })
-  }
+    this.deploymentBuilderClass = contentClientOptions.deploymentBuilderClass ?? DeploymentBuilder
 
-  static async createAsync(
-    contentUrl: string,
-    origin: string, // The name or a description of the app that is using the client
-    fetcher?: Fetcher,
-    deploymentBuilderClass?: typeof DeploymentBuilder
-  ): Promise<ContentClient> {
-    const contentClient = new ContentClient(contentUrl, origin, fetcher, deploymentBuilderClass)
-
-    if (PROOF_OF_WORK) {
-      const powAuthBaseUrl = new URL(contentClient.contentUrl).origin
-      await setJWTAsCookie(contentClient.fetcher, powAuthBaseUrl)
+    if (contentClientOptions.proofOfWorkEnabled) {
+      const powAuthBaseUrl = new URL(this.contentUrl).origin
+      setJWTAsCookie(this.fetcher, powAuthBaseUrl)
     }
-
-    return contentClient
   }
 
   async buildEntityWithoutNewFiles({

@@ -94,6 +94,7 @@ describe('Catalyst Client Builder', () => {
         origin: ORIGIN,
         requiredLists: REQUIRED_LISTS,
         preKnownServers: { list },
+        proofOfWorkEnabled: true,
         fetchApprovedCatalysts
       })
     }

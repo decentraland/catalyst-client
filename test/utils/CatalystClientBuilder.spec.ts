@@ -1,7 +1,7 @@
+import { HealthStatus } from 'dcl-catalyst-commons'
+import { CatalystClient } from '../../src/CatalystClient'
 import { clientConnectedToCatalystIn } from '../../src/utils/CatalystClientBuilder'
 import * as catalystList from '../../src/utils/catalystList'
-import { CatalystClient } from '../../src/CatalystClient'
-import { HealthStatus } from 'dcl-catalyst-commons'
 import * as common from '../../src/utils/common'
 
 const server1 = 'server1'
@@ -56,7 +56,7 @@ describe('clientConnectedToCatalystIn', () => {
     })
 
     it('should use get the approved list from the DAO', async () => {
-      await clientConnectedToCatalystIn('mainnet', '')
+      await clientConnectedToCatalystIn({ network: 'mainnet', origin: '', proofOfWorkEnabled: true })
       expect(shuffleArraySpy).toHaveBeenCalledTimes(1)
       expect(shuffleArraySpy).toHaveBeenCalledWith(mockedServerList)
     })
@@ -75,7 +75,7 @@ describe('clientConnectedToCatalystIn', () => {
       getUpdatedApprovedListWithoutQueryingContractSpy.mockReturnValue(Promise.resolve(mockedServerList))
       getApprovedListFromContractSpy.mockReturnValue(Promise.resolve(undefined))
 
-      result = await clientConnectedToCatalystIn('mainnet', '')
+      result = await clientConnectedToCatalystIn({ network: 'mainnet', origin: '', proofOfWorkEnabled: true })
     })
 
     afterEach(() => {

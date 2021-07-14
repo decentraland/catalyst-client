@@ -432,6 +432,12 @@ describe('ContentClient', () => {
     fetcher?: Fetcher,
     deploymentBuilderClass?: typeof DeploymentBuilder
   ): Promise<ContentClient> {
-    return await ContentClient.createAsync(URL, 'origin', fetcher, deploymentBuilderClass)
+    return new ContentClient({
+      contentUrl: URL,
+      origin: 'origin',
+      proofOfWorkEnabled: true,
+      fetcher: fetcher,
+      deploymentBuilderClass: deploymentBuilderClass
+    })
   }
 })

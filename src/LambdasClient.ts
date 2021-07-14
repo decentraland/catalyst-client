@@ -9,7 +9,6 @@ import {
   WearablesFilters
 } from './LambdasAPI'
 import { setJWTAsCookie } from './ports/Jwt'
-import { PROOF_OF_WORK } from './utils/Environment'
 import {
   convertFiltersToQueryParams,
   getHeadersWithUserAgent,
@@ -18,28 +17,27 @@ import {
   splitAndFetchPaginated
 } from './utils/Helper'
 
+export type LambdasClientOptions = {
+  lambdasUrl: string
+  proofOfWorkEnabled: boolean
+  fetcher?: Fetcher
+}
 export class LambdasClient implements LambdasAPI {
   private readonly lambdasUrl: string
   private readonly fetcher: Fetcher
 
-  private constructor(lambdasUrl: string, fetcher?: Fetcher) {
-    this.lambdasUrl = sanitizeUrl(lambdasUrl)
+  constructor(options: LambdasClientOptions) {
+    this.lambdasUrl = sanitizeUrl(options.lambdasUrl)
     this.fetcher =
-      fetcher ??
+      options.fetcher ??
       new Fetcher({
         headers: getHeadersWithUserAgent('lambdas-client')
       })
-  }
 
-  static async CreateAsync(lambdasUrl: string, fetcher?: Fetcher): Promise<LambdasClient> {
-    const lambdasClient = new LambdasClient(lambdasUrl, fetcher)
-
-    if (PROOF_OF_WORK) {
-      const powAuthBaseUrl = new URL(lambdasClient.lambdasUrl).origin
-      await setJWTAsCookie(lambdasClient.fetcher, powAuthBaseUrl)
+    if (options.proofOfWorkEnabled) {
+      const powAuthBaseUrl = new URL(this.lambdasUrl).origin
+      setJWTAsCookie(this.fetcher, powAuthBaseUrl)
     }
-
-    return lambdasClient
   }
 
   fetchProfiles(
