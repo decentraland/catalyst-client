@@ -1,15 +1,9 @@
 import { HealthStatus } from 'dcl-catalyst-commons'
-import { CatalystClient } from '../CatalystClient'
+import { CatalystClient, CatalystConnectOptions } from '../CatalystClient'
 import { getApprovedListFromContract, getUpdatedApprovedListWithoutQueryingContract } from './catalystList'
 import { shuffleArray } from './common'
 
 const FETCH_HEALTH_TIMEOUT = '10s'
-
-export type CatalystConnectOptions = {
-  network: 'mainnet' | 'ropsten'
-  origin: string
-  proofOfWorkEnabled: boolean
-}
 
 /**
  * Returns a CatalystClient connected to one of the catalysts in the given network

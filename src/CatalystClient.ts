@@ -165,11 +165,13 @@ export class CatalystClient implements CatalystAPI {
     return this.lambdasClient.getLambdasUrl()
   }
 
-  public static connectedToCatalystIn(
-    network: 'mainnet' | 'ropsten',
-    origin: string,
-    proofOfWorkEnabled: boolean
-  ): Promise<CatalystClient> {
-    return clientConnectedToCatalystIn({ network, origin, proofOfWorkEnabled: proofOfWorkEnabled })
+  public static connectedToCatalystIn(options: CatalystConnectOptions): Promise<CatalystClient> {
+    return clientConnectedToCatalystIn(options)
   }
+}
+
+export type CatalystConnectOptions = {
+  network: 'mainnet' | 'ropsten'
+  origin: string
+  proofOfWorkEnabled: boolean
 }

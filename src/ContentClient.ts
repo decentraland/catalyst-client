@@ -51,16 +51,17 @@ export class ContentClient implements ContentAPI {
   private readonly deploymentBuilderClass: typeof DeploymentBuilder
   private readonly origin: string
 
-  constructor(contentClientOptions: ContentClientOptions) {
-    this.contentUrl = sanitizeUrl(contentClientOptions.contentUrl)
+  constructor(options: ContentClientOptions) {
+    this.contentUrl = sanitizeUrl(options.contentUrl)
     this.fetcher =
-      contentClientOptions.fetcher ??
+      options.fetcher ??
       new Fetcher({
         headers: getHeadersWithUserAgent('content-client')
       })
-    this.deploymentBuilderClass = contentClientOptions.deploymentBuilderClass ?? DeploymentBuilder
+    this.deploymentBuilderClass = options.deploymentBuilderClass ?? DeploymentBuilder
+    this.origin = options.origin
 
-    if (contentClientOptions.proofOfWorkEnabled) {
+    if (options.proofOfWorkEnabled) {
       const powAuthBaseUrl = new URL(this.contentUrl).origin
       setJWTAsCookie(this.fetcher, powAuthBaseUrl)
     }

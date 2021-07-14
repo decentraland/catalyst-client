@@ -10,7 +10,7 @@ describe('LambdasClient', () => {
     const [ethAddress1, ethAddress2] = ['ethAddress1', 'ethAddress2']
     const { instance: fetcher } = mockFetcherJson(`/profiles?id=${ethAddress1}&id=${ethAddress2}`, requestResult)
 
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
     const result = await client.fetchProfiles([ethAddress1, ethAddress2])
 
     expect(result).toEqual(requestResult)
@@ -24,7 +24,7 @@ describe('LambdasClient', () => {
       requestResult
     )
 
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
     const result = await client.fetchProfiles([ethAddress1, ethAddress2], { fields: ProfileFields.ONLY_SNAPSHOTS })
 
     expect(result).toEqual(requestResult)
@@ -41,7 +41,7 @@ describe('LambdasClient', () => {
       requestResult
     )
 
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
     const result = await client.fetchWearables({ wearableIds: ['id1', 'id2'], textSearch: 'text' })
 
     expect(result).toEqual(wearables)
@@ -55,7 +55,7 @@ describe('LambdasClient', () => {
       requestResult
     )
 
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
     const result = await client.fetchOwnedWearables(ethAddress, false)
 
     expect(result).toEqual(requestResult)
@@ -69,7 +69,7 @@ describe('LambdasClient', () => {
       requestResult
     )
 
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
     const result = await client.fetchOwnedWearables(ethAddress, true)
 
     expect(result).toEqual(requestResult)
@@ -96,7 +96,7 @@ describe('LambdasClient', () => {
     return { mock: mockedFetcher, instance: instance(mockedFetcher) }
   }
 
-  async function buildClient(URL: string, fetcher: Fetcher): Promise<LambdasClient> {
+  function buildClient(URL: string, fetcher: Fetcher): LambdasClient {
     return new LambdasClient({ lambdasUrl: URL, proofOfWorkEnabled: true, fetcher: fetcher })
   }
 })

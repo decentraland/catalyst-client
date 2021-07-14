@@ -36,7 +36,7 @@ describe('ContentClient', () => {
 
       when(deploymentBuilderClassMock.buildEntity(type, pointers, hashesByKey, metadata, currentTime)).thenResolve()
 
-      const client = await buildClient(URL, fetcher, instance(deploymentBuilderClassMock))
+      const client = buildClient(URL, fetcher, instance(deploymentBuilderClassMock))
       await client.buildEntityWithoutNewFiles({ type, pointers, hashesByKey, metadata })
     })
 
@@ -68,7 +68,7 @@ describe('ContentClient', () => {
 
       when(deploymentBuilderClassMock.buildEntity(type, pointers, files, metadata, currentTime)).thenResolve()
 
-      const client = await buildClient(URL, fetcher, instance(deploymentBuilderClassMock))
+      const client = buildClient(URL, fetcher, instance(deploymentBuilderClassMock))
       await client.buildEntity({ type, pointers, files, metadata })
     })
 
@@ -86,16 +86,16 @@ describe('ContentClient', () => {
     const pointer = 'P'
     const { instance: fetcher } = mockFetcherJson(`/entities/profile?pointer=${pointer}`, requestResult)
 
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
     const result = await client.fetchEntitiesByPointers(EntityType.PROFILE, [pointer])
 
     expect(result).toEqual(requestResult)
   })
 
-  it('When fetching by pointers, if none is set, then an error is thrown', async () => {
+  it('When fetching by pointers, if none is set, then an error is thrown', () => {
     const { mock: mocked, instance: fetcher } = mockFetcherJson()
 
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
     const result = client.fetchEntitiesByPointers(EntityType.PROFILE, [])
 
     expect(result).rejects.toEqual(`You must set at least one pointer.`)
@@ -107,16 +107,16 @@ describe('ContentClient', () => {
     const pointer = 'P'
     const { instance: fetcher } = mockFetcherJson(`/entities/profile?pointer=${pointer}`, requestResult)
 
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
     const result = await client.fetchEntitiesByPointers(EntityType.PROFILE, [pointer])
 
     expect(result).toEqual(requestResult)
   })
 
-  it('When fetching by ids, if none is set, then an error is thrown', async () => {
+  it('When fetching by ids, if none is set, then an error is thrown', () => {
     const { mock: mocked, instance: fetcher } = mockFetcherJson()
 
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
     const result = client.fetchEntitiesByIds(EntityType.PROFILE, [])
 
     expect(result).rejects.toEqual(`You must set at least one id.`)
@@ -128,7 +128,7 @@ describe('ContentClient', () => {
     const id = 'Id'
     const { instance: fetcher } = mockFetcherJson(`/entities/profile?id=${id}`, requestResult)
 
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
     const result = await client.fetchEntitiesByIds(EntityType.PROFILE, [id])
 
     expect(result).toEqual(requestResult)
@@ -138,7 +138,7 @@ describe('ContentClient', () => {
     const id = 'Id'
     const { instance: fetcher } = mockFetcherJson(`/entities/profile?id=${id}`, [])
 
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
 
     await expect(client.fetchEntityById(EntityType.PROFILE, id)).rejects.toEqual(
       `Failed to find an entity with type '${EntityType.PROFILE}' and id '${id}'.`
@@ -151,7 +151,7 @@ describe('ContentClient', () => {
     const id = 'Id'
     const { instance: fetcher } = mockFetcherJson(`/entities/profile?id=${id}`, requestResult)
 
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
     const result = await client.fetchEntityById(EntityType.PROFILE, id)
 
     expect(result).toEqual(entity)
@@ -170,7 +170,7 @@ describe('ContentClient', () => {
     )
     const fetcher = instance(mockedFetcher)
 
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
     const result = await client.downloadContent(fileHash, { waitTime: '20' })
 
     // Assert that the correct buffer is returned, and that there was a retry attempt
@@ -187,7 +187,7 @@ describe('ContentClient', () => {
     when(mockedFetcher.fetchBuffer(`${URL}/contents/${fileHash}`, anything())).thenReturn(Promise.resolve(failBuffer))
     const fetcher = instance(mockedFetcher)
 
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
 
     // Assert that the request failed, and that the client tried many times as expected
     await expect(client.downloadContent(fileHash, { attempts: 2, waitTime: '20' })).rejects.toEqual(
@@ -205,7 +205,7 @@ describe('ContentClient', () => {
     ]
     const { instance: fetcher } = mockFetcherJson(`/available-content?cid=${hash1}&cid=${hash2}`, requestResult)
 
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
     const result = await client.isContentAvailable([hash1, hash2])
 
     expect(result).toEqual(requestResult)
@@ -214,7 +214,7 @@ describe('ContentClient', () => {
   it('When checking if content is available, if none is set, then an error is thrown', async () => {
     const { mock: mocked, instance: fetcher } = mockFetcherJson()
 
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
 
     await expect(client.isContentAvailable([])).rejects.toEqual(`You must set at least one cid.`)
     verify(mocked.fetchJson(anything())).never()
@@ -241,7 +241,7 @@ describe('ContentClient', () => {
       requestResult
     )
 
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
     const result = await client.fetchAllDeployments({ filters: filters })
 
     expect(result).toEqual([deployment])
@@ -260,7 +260,7 @@ describe('ContentClient', () => {
       requestResult
     )
 
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
     const result = await client.fetchAllDeployments({
       filters: { entityTypes: [EntityType.PROFILE] },
       fields: DeploymentFields.POINTERS_CONTENT_AND_METADATA
@@ -270,7 +270,7 @@ describe('ContentClient', () => {
   })
 
   it('When fetching all deployments with no filters, then an error is thrown', async () => {
-    const client = await buildClient(URL)
+    const client = buildClient(URL)
 
     await expect(
       client.fetchAllDeployments({
@@ -299,7 +299,7 @@ describe('ContentClient', () => {
       requestResult
     )
 
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
     const result = await client.fetchAllDeployments({
       filters: { entityTypes: [EntityType.PROFILE] },
       sortBy: { field: SortingField.ENTITY_TIMESTAMP, order: SortingOrder.ASCENDING }
@@ -330,7 +330,7 @@ describe('ContentClient', () => {
     when(mockedFetcher.fetchJson(`${URL}/deployments${next}`, anything())).thenReturn(Promise.resolve(requestResult2))
     const fetcher = instance(mockedFetcher)
 
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
     const result = await client.fetchAllDeployments({
       filters: { entityTypes: [EntityType.PROFILE] },
       fields: DeploymentFields.AUDIT_INFO
@@ -344,7 +344,7 @@ describe('ContentClient', () => {
     const contentHash = 'abc123'
     const mockedResponse = instance(mock<ReadableStream>())
     const { instance: fetcher } = mockPipeFetcher(new Headers())
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
 
     const result = await client.pipeContent(contentHash, mockedResponse)
 
@@ -357,7 +357,7 @@ describe('ContentClient', () => {
     const headers: Headers = new Headers()
     headers.set('invalid', 'val')
     const { instance: fetcher } = mockPipeFetcher(headers)
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
 
     const result = await client.pipeContent(contentHash, mockedResponse)
 
@@ -371,7 +371,7 @@ describe('ContentClient', () => {
     headers.set('invalid', 'val')
     headers.set('content-length', '200')
     const { instance: fetcher } = mockPipeFetcher(headers)
-    const client = await buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
 
     const result = await client.pipeContent(contentHash, mockedResponse)
 
@@ -427,11 +427,11 @@ describe('ContentClient', () => {
     return { mock: mockedFetcher, instance: instance(mockedFetcher) }
   }
 
-  async function buildClient(
+  function buildClient(
     URL: string,
     fetcher?: Fetcher,
     deploymentBuilderClass?: typeof DeploymentBuilder
-  ): Promise<ContentClient> {
+  ): ContentClient {
     return new ContentClient({
       contentUrl: URL,
       origin: 'origin',
