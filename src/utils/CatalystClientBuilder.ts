@@ -1,6 +1,5 @@
 import { HealthStatus } from 'dcl-catalyst-commons'
 import { CatalystClient } from '../CatalystClient'
-import { createCatalystClient } from '../CatalystClientFactory'
 import { getApprovedListFromContract, getUpdatedApprovedListWithoutQueryingContract } from './catalystList'
 import { shuffleArray } from './common'
 
@@ -33,7 +32,7 @@ export async function clientConnectedToCatalystIn(options: CatalystConnectOption
   const shuffled = shuffleArray(list)
 
   for (const catalystUrl of shuffled) {
-    const client = await createCatalystClient({
+    const client = new CatalystClient({
       catalystUrl: catalystUrl,
       origin: options.origin,
       proofOfWorkEnabled: options.proofOfWorkEnabled

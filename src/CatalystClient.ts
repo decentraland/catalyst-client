@@ -5,6 +5,7 @@ import {
   Entity,
   EntityId,
   EntityType,
+  Fetcher,
   HealthStatus,
   LegacyAuditInfo,
   Pointer,
@@ -22,14 +23,41 @@ import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient, Depl
 import { OwnedWearables, ProfileOptions, WearablesFilters } from './LambdasAPI'
 import { LambdasClient } from './LambdasClient'
 import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
-import { DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
+import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
+import { getHeadersWithUserAgent, sanitizeUrl } from './utils/Helper'
 
+export type CatalystClientOptions = {
+  catalystUrl: string
+  origin: string // The name or a description of the app that is using the client
+  proofOfWorkEnabled: boolean
+  fetcher?: Fetcher
+  deploymentBuilderClass?: typeof DeploymentBuilder
+}
 export class CatalystClient implements CatalystAPI {
-  constructor(
-    private readonly catalystUrl: string,
-    private readonly contentClient: ContentClient,
-    private readonly lambdasClient: LambdasClient
-  ) {}
+  private readonly contentClient: ContentClient
+  private readonly lambdasClient: LambdasClient
+  private readonly catalystUrl: string
+
+  constructor(options: CatalystClientOptions) {
+    this.catalystUrl = sanitizeUrl(options.catalystUrl)
+    const fetcher =
+      options.fetcher ??
+      new Fetcher({
+        headers: getHeadersWithUserAgent('catalyst-client')
+      })
+    this.contentClient = new ContentClient({
+      contentUrl: this.catalystUrl + '/content',
+      origin: options.origin,
+      proofOfWorkEnabled: options.proofOfWorkEnabled,
+      fetcher: fetcher,
+      deploymentBuilderClass: options.deploymentBuilderClass
+    })
+    this.lambdasClient = new LambdasClient({
+      lambdasUrl: this.catalystUrl + '/lambdas',
+      fetcher: fetcher,
+      proofOfWorkEnabled: options.proofOfWorkEnabled
+    })
+  }
 
   buildEntity(options: BuildEntityOptions): Promise<DeploymentPreparationData> {
     return this.contentClient.buildEntity(options)
@@ -137,7 +165,11 @@ export class CatalystClient implements CatalystAPI {
     return this.lambdasClient.getLambdasUrl()
   }
 
-  public static connectedToCatalystIn(network: 'mainnet' | 'ropsten', origin: string): Promise<CatalystClient> {
-    return clientConnectedToCatalystIn(network, origin)
+  public static connectedToCatalystIn(
+    network: 'mainnet' | 'ropsten',
+    origin: string,
+    proofOfWorkEnabled: boolean
+  ): Promise<CatalystClient> {
+    return clientConnectedToCatalystIn({ network, origin, proofOfWorkEnabled: proofOfWorkEnabled })
   }
 }

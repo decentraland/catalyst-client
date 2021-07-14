@@ -1,5 +1,5 @@
 import { getMainnetCatalysts, getRopstenCatalysts } from 'dcl-catalyst-commons'
-import { createCatalystClient } from '../CatalystClientFactory'
+import { CatalystClient } from '../CatalystClient'
 import CatalystsList from '../CatalystsList'
 import { shuffleArray } from './common'
 
@@ -96,7 +96,7 @@ async function fetchCatalystsApprovedByDAO(
   origin: string,
   proofOfWorkEnabled: boolean
 ): Promise<string[] | undefined> {
-  const client = await createCatalystClient({
+  const client: CatalystClient = new CatalystClient({
     catalystUrl,
     origin,
     proofOfWorkEnabled
