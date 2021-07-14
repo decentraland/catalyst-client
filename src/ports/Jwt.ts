@@ -77,16 +77,20 @@ export function configureJWTMiddlewares(fetcher: Fetcher, baseUrl: string): void
       if (missingJWTInRequest(request) && !isRequestingJWT) {
         if (lastFailedPowEndpointTimestamp + minutesToAdd < Date.now()) {
           isRequestingJWT = true
-          const jwt = await obtainJWT(fetcher, baseUrl)
-          if (!!jwt) {
-            fetcher.overrideDefaults({ cookies: { JWT: jwt } })
-            lastFailedPowEndpointTimestamp = 0
-            minutesToAdd = ms('5m')
-          } else {
-            lastFailedPowEndpointTimestamp = Date.now()
-            minutesToAdd = 2 * minutesToAdd
+          try {
+            const jwt = await obtainJWT(fetcher, baseUrl)
+            if (!!jwt) {
+              fetcher.overrideDefaults({ cookies: { JWT: jwt } })
+              lastFailedPowEndpointTimestamp = 0
+              minutesToAdd = ms('5m')
+            } else {
+              lastFailedPowEndpointTimestamp = Date.now()
+              minutesToAdd = 2 * minutesToAdd
+            }
+          } catch {
+          } finally {
+            isRequestingJWT = false
           }
-          isRequestingJWT = false
         }
       }
       return request

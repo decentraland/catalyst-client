@@ -55,7 +55,7 @@ describe('Proof of Work: generate JWT', () => {
   })
 })
 
-describe('removedJWTCookie', () => {
+describe('isJWTCookieRemoved', () => {
   describe('No JWT is in cookie', () => {
     const response: Response = new Response()
     it('should return false', async () => {
@@ -86,7 +86,7 @@ describe('removedJWTCookie', () => {
   })
 })
 
-describe('noJWTinCookie', () => {
+describe('missingJWTInRequest', () => {
   describe('No JWT is in cookie', () => {
     const request: CrossFetchRequest = { requestInfo: '/bla', requestInit: { headers: {} } }
     it('should return true', async () => {
