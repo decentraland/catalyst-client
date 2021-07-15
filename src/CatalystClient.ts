@@ -1,50 +1,62 @@
-import { EthAddress } from 'dcl-crypto'
 import {
-  Timestamp,
-  Pointer,
-  EntityType,
+  AvailableContentResult,
+  ContentFileHash,
+  DeploymentBase,
   Entity,
   EntityId,
-  ServerStatus,
-  ContentFileHash,
-  Profile,
+  EntityType,
   Fetcher,
-  AvailableContentResult,
-  DeploymentBase,
+  HealthStatus,
   LegacyAuditInfo,
+  Pointer,
+  Profile,
   RequestOptions,
   ServerMetadata,
-  HealthStatus
+  ServerStatus,
+  Timestamp
 } from 'dcl-catalyst-commons'
+import { EthAddress } from 'dcl-crypto'
 import { Readable } from 'stream'
 import { CatalystAPI } from './CatalystAPI'
+import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
+import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient, DeploymentOptions } from './ContentClient'
+import { OwnedWearables, ProfileOptions, WearablesFilters } from './LambdasAPI'
+import { LambdasClient } from './LambdasClient'
+import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 import { getHeadersWithUserAgent, sanitizeUrl } from './utils/Helper'
-import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient, DeploymentOptions } from './ContentClient'
-import { LambdasClient } from './LambdasClient'
-import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
-import { WearablesFilters, OwnedWearables, ProfileOptions } from './LambdasAPI'
-import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
 
+export type CatalystClientOptions = {
+  catalystUrl: string
+  origin: string // The name or a description of the app that is using the client
+  proofOfWorkEnabled?: boolean
+  fetcher?: Fetcher
+  deploymentBuilderClass?: typeof DeploymentBuilder
+}
 export class CatalystClient implements CatalystAPI {
   private readonly contentClient: ContentClient
   private readonly lambdasClient: LambdasClient
   private readonly catalystUrl: string
 
-  constructor(
-    catalystUrl: string,
-    origin: string, // The name or a description of the app that is using the client
-    fetcher?: Fetcher,
-    deploymentBuilderClass?: typeof DeploymentBuilder
-  ) {
-    this.catalystUrl = sanitizeUrl(catalystUrl)
-    fetcher =
-      fetcher ??
+  constructor(options: CatalystClientOptions) {
+    this.catalystUrl = sanitizeUrl(options.catalystUrl)
+    const fetcher =
+      options.fetcher ??
       new Fetcher({
         headers: getHeadersWithUserAgent('catalyst-client')
       })
-    this.contentClient = new ContentClient(this.catalystUrl + '/content', origin, fetcher, deploymentBuilderClass)
-    this.lambdasClient = new LambdasClient(this.catalystUrl + '/lambdas', fetcher)
+    this.contentClient = new ContentClient({
+      contentUrl: this.catalystUrl + '/content',
+      origin: options.origin,
+      proofOfWorkEnabled: options.proofOfWorkEnabled,
+      fetcher: fetcher,
+      deploymentBuilderClass: options.deploymentBuilderClass
+    })
+    this.lambdasClient = new LambdasClient({
+      lambdasUrl: this.catalystUrl + '/lambdas',
+      fetcher: fetcher,
+      proofOfWorkEnabled: options.proofOfWorkEnabled
+    })
   }
 
   buildEntity(options: BuildEntityOptions): Promise<DeploymentPreparationData> {
@@ -153,7 +165,13 @@ export class CatalystClient implements CatalystAPI {
     return this.lambdasClient.getLambdasUrl()
   }
 
-  public static connectedToCatalystIn(network: 'mainnet' | 'ropsten', origin: string): Promise<CatalystClient> {
-    return clientConnectedToCatalystIn(network, origin)
+  public static connectedToCatalystIn(options: CatalystConnectOptions): Promise<CatalystClient> {
+    return clientConnectedToCatalystIn(options)
   }
+}
+
+export type CatalystConnectOptions = {
+  network: 'mainnet' | 'ropsten'
+  origin: string
+  proofOfWorkEnabled?: boolean
 }

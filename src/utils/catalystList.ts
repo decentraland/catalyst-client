@@ -1,6 +1,6 @@
+import { getMainnetCatalysts, getRopstenCatalysts } from 'dcl-catalyst-commons'
 import { CatalystClient } from '../CatalystClient'
 import CatalystsList from '../CatalystsList'
-import { getMainnetCatalysts, getRopstenCatalysts } from 'dcl-catalyst-commons'
 import { shuffleArray } from './common'
 
 export async function getApprovedListFromContract(network: 'mainnet' | 'ropsten'): Promise<string[]> {
@@ -16,24 +16,25 @@ export async function getApprovedListFromContract(network: 'mainnet' | 'ropsten'
  * N lists as the updated list.
  */
 const REQUIRED_LISTS = 3
-export async function getUpdatedApprovedListWithoutQueryingContract({
-  preKnownServers,
-  origin,
-  requiredLists,
-  fetchApprovedCatalysts
-}: {
+export type KnownServersOptions = {
   preKnownServers: { list: { address: string }[] } | { network: 'mainnet' | 'ropsten' }
   origin: string
+  proofOfWorkEnabled?: boolean
   requiredLists?: number
   fetchApprovedCatalysts?: (catalystUrl: string, origin: string) => Promise<string[] | undefined>
-}): Promise<string[] | undefined> {
+}
+export async function getUpdatedApprovedListWithoutQueryingContract(
+  options: KnownServersOptions
+): Promise<string[] | undefined> {
   // Set defaults if needed
   const catalystListFetch =
-    fetchApprovedCatalysts ?? ((catalystUrl, origin) => fetchCatalystsApprovedByDAO(catalystUrl, origin))
-  const requiredAmountOfLists = requiredLists ?? REQUIRED_LISTS
+    options.fetchApprovedCatalysts ??
+    ((catalystUrl, origin) => fetchCatalystsApprovedByDAO(catalystUrl, origin, options.proofOfWorkEnabled))
+  const requiredAmountOfLists = options.requiredLists ?? REQUIRED_LISTS
 
   // Get the list of known servers
-  const knownServers = 'list' in preKnownServers ? preKnownServers.list : CatalystsList[preKnownServers.network]
+  const knownServers =
+    'list' in options.preKnownServers ? options.preKnownServers.list : CatalystsList[options.preKnownServers.network]
 
   // If I don't know enough servers, then it doesn't make sense to continue
   if (knownServers.length < requiredAmountOfLists) {
@@ -48,7 +49,7 @@ export async function getUpdatedApprovedListWithoutQueryingContract({
     shuffledPreKnownServers
       .slice(0, requiredAmountOfLists + 3)
       .map((server) => server.address)
-      .map((address) => catalystListFetch(address, origin))
+      .map((address) => catalystListFetch(address, options.origin))
   )
 
   // Removed any failures
@@ -90,8 +91,16 @@ function calculateIntersection(lists: string[][]): string[] {
     .map(([element]) => element)
 }
 
-async function fetchCatalystsApprovedByDAO(catalystUrl: string, origin: string): Promise<string[] | undefined> {
-  const client = new CatalystClient(catalystUrl, origin)
+async function fetchCatalystsApprovedByDAO(
+  catalystUrl: string,
+  origin: string,
+  proofOfWorkEnabled?: boolean
+): Promise<string[] | undefined> {
+  const client: CatalystClient = new CatalystClient({
+    catalystUrl,
+    origin,
+    proofOfWorkEnabled
+  })
   try {
     const servers = await client.fetchCatalystsApprovedByDAO({ timeout: '10s' })
     return servers.map(({ address }) => address)
