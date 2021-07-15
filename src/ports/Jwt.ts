@@ -9,10 +9,9 @@ const LOGGER = log4js.getLogger('JWTPort')
 export async function obtainJWT(fetcher: Fetcher, catalystUrl: string): Promise<string | undefined> {
   try {
     const response = await fetcher.fetchJson(catalystUrl + '/pow-auth/challenge')
-    const body = JSON.parse(JSON.stringify(response))
 
-    const challenge: string = body.challenge
-    const complexity: number = body.complexity
+    const challenge: string = response.challenge
+    const complexity: number = response.complexity
     const nonce: string = await generateNonceForChallenge(challenge, complexity)
 
     const powAuthUrl = new URL('/pow-auth/challenge', catalystUrl).href
@@ -88,6 +87,7 @@ export function configureJWTMiddlewares(fetcher: Fetcher, baseUrl: string): void
               minutesToAdd = 2 * minutesToAdd
             }
           } catch {
+            LOGGER.warn('[POW] Could not configure Middleware to set JWT.')
           } finally {
             isRequestingJWT = false
           }
