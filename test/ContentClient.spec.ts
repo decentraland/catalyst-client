@@ -434,7 +434,6 @@ describe('ContentClient', () => {
   ): ContentClient {
     return new ContentClient({
       contentUrl: URL,
-      origin: 'origin',
       fetcher: fetcher,
       deploymentBuilderClass: deploymentBuilderClass
     })

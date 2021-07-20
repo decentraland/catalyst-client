@@ -18,10 +18,9 @@ export async function getApprovedListFromContract(network: 'mainnet' | 'ropsten'
 const REQUIRED_LISTS = 3
 export type KnownServersOptions = {
   preKnownServers: { list: { address: string }[] } | { network: 'mainnet' | 'ropsten' }
-  origin: string
   proofOfWorkEnabled?: boolean
   requiredLists?: number
-  fetchApprovedCatalysts?: (catalystUrl: string, origin: string) => Promise<string[] | undefined>
+  fetchApprovedCatalysts?: (catalystUrl: string) => Promise<string[] | undefined>
 }
 export async function getUpdatedApprovedListWithoutQueryingContract(
   options: KnownServersOptions
@@ -29,7 +28,7 @@ export async function getUpdatedApprovedListWithoutQueryingContract(
   // Set defaults if needed
   const catalystListFetch =
     options.fetchApprovedCatalysts ??
-    ((catalystUrl, origin) => fetchCatalystsApprovedByDAO(catalystUrl, origin, options.proofOfWorkEnabled))
+    ((catalystUrl) => fetchCatalystsApprovedByDAO(catalystUrl, options.proofOfWorkEnabled))
   const requiredAmountOfLists = options.requiredLists ?? REQUIRED_LISTS
 
   // Get the list of known servers
@@ -49,7 +48,7 @@ export async function getUpdatedApprovedListWithoutQueryingContract(
     shuffledPreKnownServers
       .slice(0, requiredAmountOfLists + 3)
       .map((server) => server.address)
-      .map((address) => catalystListFetch(address, options.origin))
+      .map((address) => catalystListFetch(address))
   )
 
   // Removed any failures
@@ -60,7 +59,7 @@ export async function getUpdatedApprovedListWithoutQueryingContract(
   // Check if we need to ask for anyone else's list
   let i = requiredAmountOfLists + 3
   while (i < shuffledPreKnownServers.length && allLists.length < requiredAmountOfLists) {
-    const list = await catalystListFetch(shuffledPreKnownServers[i].address, origin)
+    const list = await catalystListFetch(shuffledPreKnownServers[i].address)
     if (list) {
       allLists.push(list)
     }
@@ -93,12 +92,10 @@ function calculateIntersection(lists: string[][]): string[] {
 
 async function fetchCatalystsApprovedByDAO(
   catalystUrl: string,
-  origin: string,
   proofOfWorkEnabled?: boolean
 ): Promise<string[] | undefined> {
   const client: CatalystClient = new CatalystClient({
     catalystUrl,
-    origin,
     proofOfWorkEnabled
   })
   try {

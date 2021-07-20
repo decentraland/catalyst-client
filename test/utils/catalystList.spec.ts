@@ -2,7 +2,6 @@ import { getUpdatedApprovedListWithoutQueryingContract } from '../../src/utils/c
 
 describe('Catalyst Client Builder', () => {
   describe('getUpdatedApprovedListWithoutQueryingContract', () => {
-    const ORIGIN = 'origin'
     const REQUIRED_LISTS = 2
     const [ADDRESS1, ADDRESS2, ADDRESS3] = ['http://test1.com', 'http://test2.com', 'http://test3.com']
 
@@ -91,7 +90,6 @@ describe('Catalyst Client Builder', () => {
       fetchApprovedCatalysts: (catalystUrl: string) => Promise<string[] | undefined>
     }) {
       return getUpdatedApprovedListWithoutQueryingContract({
-        origin: ORIGIN,
         requiredLists: REQUIRED_LISTS,
         preKnownServers: { list },
         fetchApprovedCatalysts
