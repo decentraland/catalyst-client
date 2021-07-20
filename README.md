@@ -34,8 +34,7 @@ const { signature, address } = await sign(entityId)
 const authChain = Authenticator.createSimpleAuthChain(entityId, address, signature)
 
 // Build the client
-const origin = 'name_of_my_app'
-const catalyst = await CatalystClient.connectedToCatalystIn('mainnet', origin)
+const catalyst = await CatalystClient.connectedToCatalystIn('mainnet')
 // Note: this operation is expensive, so try to store the created catalyst client somewhere, instead of re-building for each every request
 
 // Build entity and group all files

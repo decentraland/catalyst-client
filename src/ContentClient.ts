@@ -40,7 +40,6 @@ import {
 
 export type ContentClientOptions = {
   contentUrl: string
-  origin: string // The name or a description of the app that is using the client
   proofOfWorkEnabled?: boolean
   fetcher?: Fetcher
   deploymentBuilderClass?: typeof DeploymentBuilder
@@ -49,7 +48,6 @@ export class ContentClient implements ContentAPI {
   private readonly contentUrl: string
   private readonly fetcher: Fetcher
   private readonly deploymentBuilderClass: typeof DeploymentBuilder
-  private readonly origin: string
 
   constructor(options: ContentClientOptions) {
     this.contentUrl = sanitizeUrl(options.contentUrl)
@@ -59,7 +57,6 @@ export class ContentClient implements ContentAPI {
         headers: getHeadersWithUserAgent('content-client')
       })
     this.deploymentBuilderClass = options.deploymentBuilderClass ?? DeploymentBuilder
-    this.origin = options.origin
 
     if (options.proofOfWorkEnabled) {
       const powAuthBaseUrl = new URL(this.contentUrl).origin
@@ -116,7 +113,6 @@ export class ContentClient implements ContentAPI {
 
     const requestOptions = mergeRequestOptions(options ?? {}, {
       body: form,
-      headers: { 'x-upload-origin': this.origin }
     })
 
     const { creationTimestamp } = await this.fetcher.postForm(
