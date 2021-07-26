@@ -1,27 +1,32 @@
 import {
-  Timestamp,
-  ContentFileHash,
-  ServerStatus,
-  EntityType,
-  Pointer,
-  EntityId,
-  Entity,
   AvailableContentResult,
+  ContentFileHash,
   DeploymentBase,
-  DeploymentWithMetadata,
   DeploymentWithContent,
+  DeploymentWithMetadata,
   DeploymentWithPointers,
+  Entity,
+  EntityId,
+  EntityType,
   LegacyAuditInfo,
-  RequestOptions
+  Pointer,
+  RequestOptions,
+  ServerStatus,
+  Timestamp
 } from 'dcl-catalyst-commons'
+import { AuthChain } from 'dcl-crypto'
 import { Readable } from 'stream'
-import { DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 import { BuildEntityOptions, BuildEntityWithoutFilesOptions, DeploymentOptions } from './ContentClient'
 
 export interface ContentAPI {
   /** Build entities */
   buildEntity({ type, pointers, files, metadata }: BuildEntityOptions): Promise<DeploymentPreparationData>
-  buildEntityWithoutNewFiles({ type, pointers, hashesByKey, metadata }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData>
+  buildEntityWithoutNewFiles({
+    type,
+    pointers,
+    hashesByKey,
+    metadata
+  }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData>
 
   /** Retrieve / Download */
   fetchEntitiesByPointers(type: EntityType, pointers: Pointer[], options?: RequestOptions): Promise<Entity[]>
@@ -55,3 +60,13 @@ export interface ContentAPI {
 export type DeploymentWithMetadataContentAndPointers = DeploymentWithMetadata &
   DeploymentWithContent &
   DeploymentWithPointers
+
+/** This data contains everything necessary for the user to sign, so that then a deployment can be executed */
+export type DeploymentPreparationData = {
+  entityId: EntityId
+  files: Map<ContentFileHash, Buffer>
+}
+
+export type DeploymentData = DeploymentPreparationData & {
+  authChain: AuthChain
+}
