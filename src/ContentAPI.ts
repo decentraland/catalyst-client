@@ -1,32 +1,27 @@
 import {
-  AvailableContentResult,
+  Timestamp,
   ContentFileHash,
-  DeploymentBase,
-  DeploymentWithContent,
-  DeploymentWithMetadata,
-  DeploymentWithPointers,
-  Entity,
-  EntityId,
-  EntityType,
-  LegacyAuditInfo,
-  Pointer,
-  RequestOptions,
   ServerStatus,
-  Timestamp
+  EntityType,
+  Pointer,
+  EntityId,
+  Entity,
+  AvailableContentResult,
+  DeploymentBase,
+  DeploymentWithMetadata,
+  DeploymentWithContent,
+  DeploymentWithPointers,
+  LegacyAuditInfo,
+  RequestOptions
 } from 'dcl-catalyst-commons'
 import { Readable } from 'stream'
-import { BuildEntityOptions, BuildEntityWithoutFilesOptions, DeploymentOptions } from './ContentClient'
 import { DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
+import { BuildEntityOptions, BuildEntityWithoutFilesOptions, DeploymentOptions } from './ContentClient'
 
 export interface ContentAPI {
   /** Build entities */
   buildEntity({ type, pointers, files, metadata }: BuildEntityOptions): Promise<DeploymentPreparationData>
-  buildEntityWithoutNewFiles({
-    type,
-    pointers,
-    hashesByKey,
-    metadata
-  }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData>
+  buildEntityWithoutNewFiles({ type, pointers, hashesByKey, metadata }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData>
 
   /** Retrieve / Download */
   fetchEntitiesByPointers(type: EntityType, pointers: Pointer[], options?: RequestOptions): Promise<Entity[]>
