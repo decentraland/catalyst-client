@@ -71,8 +71,16 @@ export class ContentClient implements ContentAPI {
     metadata,
     timestamp
   }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData> {
-    const result = timestamp ?? (await this.fetchContentStatus()).currentTime
-    return this.deploymentBuilderClass.buildEntityWithoutNewFiles(type, pointers, hashesByKey, metadata, result)
+    const status = await this.fetchContentStatus()
+    const result = timestamp ?? status.currentTime
+    return this.deploymentBuilderClass.buildEntityWithoutNewFiles({
+      version: status.version,
+      type,
+      pointers,
+      hashesByKey,
+      metadata,
+      timestamp: result
+    })
   }
 
   async buildEntity({
@@ -82,8 +90,16 @@ export class ContentClient implements ContentAPI {
     metadata,
     timestamp
   }: BuildEntityOptions): Promise<DeploymentPreparationData> {
-    const result = timestamp ?? (await this.fetchContentStatus()).currentTime
-    return this.deploymentBuilderClass.buildEntity(type, pointers, files, metadata, result)
+    const status = await this.fetchContentStatus()
+    const result = timestamp ?? status.currentTime
+    return this.deploymentBuilderClass.buildEntity({
+      version: status.version,
+      type,
+      pointers,
+      files,
+      metadata,
+      timestamp: result
+    })
   }
 
   async deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {
@@ -112,7 +128,7 @@ export class ContentClient implements ContentAPI {
     }
 
     const requestOptions = mergeRequestOptions(options ?? {}, {
-      body: form,
+      body: form
     })
 
     const { creationTimestamp } = await this.fetcher.postForm(
