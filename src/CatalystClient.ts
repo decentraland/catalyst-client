@@ -18,12 +18,12 @@ import {
 import { EthAddress } from 'dcl-crypto'
 import { Readable } from 'stream'
 import { CatalystAPI } from './CatalystAPI'
-import { DeploymentData, DeploymentPreparationData, DeploymentWithMetadataContentAndPointers } from './ContentAPI'
+import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
 import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient, DeploymentOptions } from './ContentClient'
 import { OwnedWearables, ProfileOptions, WearablesFilters } from './LambdasAPI'
 import { LambdasClient } from './LambdasClient'
 import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
-import { DeploymentBuilder } from './utils/DeploymentBuilder'
+import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 import { getHeadersWithUserAgent, sanitizeUrl } from './utils/Helper'
 
 export type CatalystClientOptions = {

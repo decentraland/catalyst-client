@@ -2,6 +2,7 @@ import {
   buildEntityAndFile,
   ContentFileHash,
   EntityContentItemReference,
+  EntityId,
   EntityMetadata,
   EntityType,
   EntityVersion,
@@ -9,7 +10,7 @@ import {
   Pointer,
   Timestamp
 } from 'dcl-catalyst-commons'
-import { DeploymentPreparationData } from './../ContentAPI'
+import { AuthChain } from 'dcl-crypto'
 
 export class DeploymentBuilder {
   /**
@@ -120,4 +121,14 @@ type BuildEntityInternalOptions = {
   filesByHash?: Map<ContentFileHash, Buffer>
   metadata?: EntityMetadata
   timestamp?: Timestamp
+}
+
+/** This data contains everything necessary for the user to sign, so that then a deployment can be executed */
+export type DeploymentPreparationData = {
+  entityId: EntityId
+  files: Map<ContentFileHash, Buffer>
+}
+
+export type DeploymentData = DeploymentPreparationData & {
+  authChain: AuthChain
 }

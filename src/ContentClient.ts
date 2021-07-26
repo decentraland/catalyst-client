@@ -25,9 +25,9 @@ import {
 } from 'dcl-catalyst-commons'
 import NodeFormData from 'form-data'
 import { Readable } from 'stream'
-import { ContentAPI, DeploymentData, DeploymentPreparationData, DeploymentWithMetadataContentAndPointers } from './ContentAPI'
+import { ContentAPI, DeploymentWithMetadataContentAndPointers } from './ContentAPI'
 import { configureJWTMiddlewares } from './ports/Jwt'
-import { DeploymentBuilder } from './utils/DeploymentBuilder'
+import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 import {
   addModelToFormData,
   convertFiltersToQueryParams,
