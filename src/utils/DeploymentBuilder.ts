@@ -1,58 +1,84 @@
-import { AuthChain } from 'dcl-crypto'
 import {
-  Hashing,
-  Timestamp,
   buildEntityAndFile,
-  EntityType,
-  Pointer,
-  EntityContentItemReference,
-  EntityMetadata,
   ContentFileHash,
-  EntityId
+  EntityContentItemReference,
+  EntityId,
+  EntityMetadata,
+  EntityType,
+  EntityVersion,
+  Hashing,
+  Pointer,
+  Timestamp
 } from 'dcl-catalyst-commons'
+import { AuthChain } from 'dcl-crypto'
 
 export class DeploymentBuilder {
   /**
    * As part of the deployment process, an entity has to be built. In this method, we are building it, based on the data provided.
    * After the entity is built, the user will have to sign the entity id, to prove they are actually who they say they are.
    */
-  static async buildEntity(
-    type: EntityType,
-    pointers: Pointer[],
-    files: Map<string, Buffer> = new Map(),
-    metadata?: EntityMetadata,
+  static async buildEntity({
+    version,
+    type,
+    pointers,
+    files,
+    metadata,
+    timestamp
+  }: {
+    version: EntityVersion
+    type: EntityType
+    pointers: Pointer[]
+    files?: Map<string, Buffer>
+    metadata?: EntityMetadata
     timestamp?: Timestamp
-  ): Promise<DeploymentPreparationData> {
+  }): Promise<DeploymentPreparationData> {
     // Reorder input
-    const contentFiles: { key: string; content: Buffer }[] = Array.from(files.entries()).map(([key, content]) => ({
-      key,
-      content
-    }))
+    const contentFiles: { key: string; content: Buffer }[] = Array.from(files ?? new Map().entries()).map(
+      ([key, content]) => ({
+        key,
+        content
+      })
+    )
 
     // Calculate hashes
+    const hashing = version === EntityVersion.V3 ? Hashing.calculateBufferHash : Hashing.calculateIPFSHash
     const allInfo = await Promise.all(
-      contentFiles.map(async ({ key, content }) => ({ key, content, hash: await Hashing.calculateBufferHash(content) }))
+      contentFiles.map(async ({ key, content }) => ({ key, content, hash: await hashing(content) }))
     )
     const hashesByKey: Map<string, ContentFileHash> = new Map(allInfo.map(({ hash, key }) => [key, hash]))
     const filesByHash: Map<ContentFileHash, Buffer> = new Map(allInfo.map(({ hash, content }) => [hash, content]))
 
-    return DeploymentBuilder.buildEntityInternal(type, pointers, { hashesByKey, filesByHash, metadata, timestamp })
+    return DeploymentBuilder.buildEntityInternal(version, type, pointers, {
+      hashesByKey,
+      filesByHash,
+      metadata,
+      timestamp
+    })
   }
 
   /**
    * In cases where we don't need upload content files, we can simply generate the new entity. We can still use already uploaded hashes on this new entity.
    */
-  static async buildEntityWithoutNewFiles(
-    type: EntityType,
-    pointers: Pointer[],
-    hashesByKey?: Map<string, ContentFileHash>,
-    metadata?: EntityMetadata,
+  static async buildEntityWithoutNewFiles({
+    version,
+    type,
+    pointers,
+    hashesByKey,
+    metadata,
+    timestamp
+  }: {
+    version: EntityVersion
+    type: EntityType
+    pointers: Pointer[]
+    hashesByKey?: Map<string, ContentFileHash>
+    metadata?: EntityMetadata
     timestamp?: Timestamp
-  ): Promise<DeploymentPreparationData> {
-    return DeploymentBuilder.buildEntityInternal(type, pointers, { hashesByKey, metadata, timestamp })
+  }): Promise<DeploymentPreparationData> {
+    return DeploymentBuilder.buildEntityInternal(version, type, pointers, { hashesByKey, metadata, timestamp })
   }
 
   private static async buildEntityInternal(
+    version: EntityVersion,
     type: EntityType,
     pointers: Pointer[],
     options?: BuildEntityInternalOptions
@@ -73,7 +99,14 @@ export class DeploymentBuilder {
     const timestamp: Timestamp = options?.timestamp ?? Date.now()
 
     // Build entity file
-    const { entity, entityFile } = await buildEntityAndFile(type, pointers, timestamp, entityContent, options?.metadata)
+    const { entity, entityFile } = await buildEntityAndFile({
+      version,
+      type,
+      pointers,
+      timestamp,
+      content: entityContent,
+      metadata: options?.metadata
+    })
 
     // Add entity file to content files
     const filesByHash: Map<ContentFileHash, Buffer> = options?.filesByHash ?? new Map()
