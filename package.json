@@ -12,8 +12,8 @@
     "watch": "tsc --watch --project tsconfig-build.json",
     "test": "jest --forceExit --detectOpenHandles --coverage --verbose",
     "commit-msg": "validate-commit-msg",
-    "lint:fix": "yarn eslint '**/*.{js,ts,tsx}' --quiet --fix",
-    "lint:check": "yarn eslint '**/*.{js,ts,tsx}' --quiet"
+    "lint:fix": "eslint '**/*.{js,ts,tsx}' --quiet --fix",
+    "lint:check": "eslint '**/*.{js,ts,tsx}' --quiet"
   },
   "nyc": {
     "all": true,

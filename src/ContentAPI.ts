@@ -21,7 +21,12 @@ import { BuildEntityOptions, BuildEntityWithoutFilesOptions, DeploymentOptions }
 export interface ContentAPI {
   /** Build entities */
   buildEntity({ type, pointers, files, metadata }: BuildEntityOptions): Promise<DeploymentPreparationData>
-  buildEntityWithoutNewFiles({ type, pointers, hashesByKey, metadata }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData>
+  buildEntityWithoutNewFiles({
+    type,
+    pointers,
+    hashesByKey,
+    metadata
+  }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData>
 
   /** Retrieve / Download */
   fetchEntitiesByPointers(type: EntityType, pointers: Pointer[], options?: RequestOptions): Promise<Entity[]>
