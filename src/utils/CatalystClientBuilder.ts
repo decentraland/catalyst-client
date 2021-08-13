@@ -11,7 +11,6 @@ const FETCH_HEALTH_TIMEOUT = '10s'
 export async function clientConnectedToCatalystIn(options: CatalystConnectOptions): Promise<CatalystClient> {
   const noContractList = await getUpdatedApprovedListWithoutQueryingContract({
     preKnownServers: { network: options.network },
-    origin: options.origin,
     proofOfWorkEnabled: options.proofOfWorkEnabled
   })
 
@@ -28,7 +27,6 @@ export async function clientConnectedToCatalystIn(options: CatalystConnectOption
   for (const catalystUrl of shuffled) {
     const client = new CatalystClient({
       catalystUrl: catalystUrl,
-      origin: options.origin,
       proofOfWorkEnabled: options.proofOfWorkEnabled
     })
 

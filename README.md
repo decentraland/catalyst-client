@@ -34,8 +34,7 @@ const { signature, address } = await sign(entityId)
 const authChain = Authenticator.createSimpleAuthChain(entityId, address, signature)
 
 // Build the client
-const origin = 'name_of_my_app'
-const catalyst = await CatalystClient.connectedToCatalystIn('mainnet', origin)
+const catalyst = await CatalystClient.connectedToCatalystIn('mainnet')
 // Note: this operation is expensive, so try to store the created catalyst client somewhere, instead of re-building for each every request
 
 // Build entity and group all files
@@ -71,4 +70,4 @@ Every commit to `master` branch triggers a NPM Publish with the beta version fol
 
 #### Tag Releases
 
-If you need to publish a NPM package in a work in progress commit, then you can create a Github Tag, and that will trigger an automatically NPM publish following the convention `NEXT_MAJOR.NEXT_MINOR.NEXT_PATCH-TIMESTAMP.commit-COMMIT_SHA` and tagging it on NPM with your custom tag: `tag-CUSTOM_TAG`.
+If you need to publish a NPM package in a work in progress commit, then you can create a git tag, and that will trigger an automatically NPM publish following the convention `NEXT_MAJOR.NEXT_MINOR.NEXT_PATCH-TIMESTAMP.commit-COMMIT_SHA` and tagging it on NPM with your custom tag: `tag-CUSTOM_TAG`.

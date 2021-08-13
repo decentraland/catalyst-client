@@ -1,11 +1,11 @@
+import { EntityType, EntityVersion, Hashing } from 'dcl-catalyst-commons'
 import { DeploymentBuilder } from '../../src/utils/DeploymentBuilder'
-import { EntityType, Hashing } from 'dcl-catalyst-commons'
 
 describe('Deployment Builder', () => {
   it('When an entity is built with no pointers, then an exception is thrown', async () => {
-    await expect(DeploymentBuilder.buildEntity(EntityType.PROFILE, [])).rejects.toEqual(
-      new Error('All entities must have at least one pointer.')
-    )
+    await expect(
+      DeploymentBuilder.buildEntity({ version: EntityVersion.V3, type: EntityType.PROFILE, pointers: [] })
+    ).rejects.toEqual(new Error('All entities must have at least one pointer.'))
   })
 
   it('When an entity is built, then the result is the expected', async () => {
@@ -20,13 +20,14 @@ describe('Deployment Builder', () => {
     const contentFiles = new Map([[fileId, fileContent]])
     const date = 100
 
-    const { entityId, files } = await DeploymentBuilder.buildEntity(
-      EntityType.PROFILE,
-      [pointer],
-      contentFiles,
-      someMetadata,
-      date
-    )
+    const { entityId, files } = await DeploymentBuilder.buildEntity({
+      version: EntityVersion.V3,
+      type: EntityType.PROFILE,
+      pointers: [pointer],
+      files: contentFiles,
+      metadata: someMetadata,
+      timestamp: date
+    })
 
     // Assertions
     expect(files.size).toEqual(2)

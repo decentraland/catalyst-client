@@ -11,10 +11,10 @@ import {
   SortingOrder
 } from 'dcl-catalyst-commons'
 import { Headers } from 'node-fetch'
-import { anything, instance, mock, verify, when } from 'ts-mockito'
+import { anything, deepEqual, instance, mock, verify, when } from 'ts-mockito'
 import { DeploymentWithMetadataContentAndPointers } from '../src/ContentAPI'
 import { ContentClient, DeploymentFields } from '../src/ContentClient'
-import { DeploymentBuilder } from '../src/utils'
+import { DeploymentBuilder } from '../src/utils/DeploymentBuilder'
 
 describe('ContentClient', () => {
   const URL = 'https://url.com'
@@ -30,11 +30,20 @@ describe('ContentClient', () => {
     let deploymentBuilderClassMock: typeof DeploymentBuilder
 
     beforeEach(async () => {
-      ;({ mock: mocked, instance: fetcher } = mockFetcherJson('/status', { currentTime }))
+      ;({ mock: mocked, instance: fetcher } = mockFetcherJson('/status', { currentTime, version: EntityVersion.V3 }))
 
       deploymentBuilderClassMock = mock<typeof DeploymentBuilder>(DeploymentBuilder)
 
-      when(deploymentBuilderClassMock.buildEntity(type, pointers, hashesByKey, metadata, currentTime)).thenResolve()
+      when(
+        deploymentBuilderClassMock.buildEntityWithoutNewFiles({
+          version: EntityVersion.V3,
+          type,
+          pointers,
+          hashesByKey,
+          metadata,
+          timestamp: currentTime
+        })
+      ).thenResolve()
 
       const client = buildClient(URL, fetcher, instance(deploymentBuilderClassMock))
       await client.buildEntityWithoutNewFiles({ type, pointers, hashesByKey, metadata })
@@ -46,7 +55,16 @@ describe('ContentClient', () => {
 
     it('should call the deployer builder with the expected parameters', () => {
       verify(
-        deploymentBuilderClassMock.buildEntityWithoutNewFiles(type, pointers, hashesByKey, metadata, currentTime)
+        deploymentBuilderClassMock.buildEntityWithoutNewFiles(
+          deepEqual({
+            version: EntityVersion.V3,
+            type,
+            pointers,
+            hashesByKey,
+            metadata,
+            timestamp: currentTime
+          })
+        )
       ).once()
     })
   })
@@ -62,11 +80,20 @@ describe('ContentClient', () => {
     let deploymentBuilderClassMock: typeof DeploymentBuilder
 
     beforeEach(async () => {
-      ;({ mock: mocked, instance: fetcher } = mockFetcherJson('/status', { currentTime }))
+      ;({ mock: mocked, instance: fetcher } = mockFetcherJson('/status', { currentTime, version: EntityVersion.V3 }))
 
       deploymentBuilderClassMock = mock<typeof DeploymentBuilder>(DeploymentBuilder)
 
-      when(deploymentBuilderClassMock.buildEntity(type, pointers, files, metadata, currentTime)).thenResolve()
+      when(
+        deploymentBuilderClassMock.buildEntity({
+          version: EntityVersion.V3,
+          type,
+          pointers,
+          files,
+          metadata,
+          timestamp: currentTime
+        })
+      ).thenResolve()
 
       const client = buildClient(URL, fetcher, instance(deploymentBuilderClassMock))
       await client.buildEntity({ type, pointers, files, metadata })
@@ -77,7 +104,18 @@ describe('ContentClient', () => {
     })
 
     it('should call the deployer builder with the expected parameters', () => {
-      verify(deploymentBuilderClassMock.buildEntity(type, pointers, files, metadata, currentTime)).once()
+      verify(
+        deploymentBuilderClassMock.buildEntity(
+          deepEqual({
+            version: EntityVersion.V3,
+            type,
+            pointers,
+            files,
+            metadata,
+            timestamp: currentTime
+          })
+        )
+      ).once()
     })
   })
 
@@ -380,6 +418,7 @@ describe('ContentClient', () => {
 
   function someDeployment(): Deployment {
     return {
+      entityVersion: EntityVersion.V3,
       entityId: `entityId${Math.random()}`,
       entityType: EntityType.PROFILE,
       entityTimestamp: 10,
@@ -395,6 +434,7 @@ describe('ContentClient', () => {
 
   function someEntity(): Entity {
     return {
+      version: EntityVersion.V3,
       id: 'some-id',
       type: EntityType.PROFILE,
       pointers: ['Pointer'],
@@ -434,7 +474,6 @@ describe('ContentClient', () => {
   ): ContentClient {
     return new ContentClient({
       contentUrl: URL,
-      origin: 'origin',
       fetcher: fetcher,
       deploymentBuilderClass: deploymentBuilderClass
     })

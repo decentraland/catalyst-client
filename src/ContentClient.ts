@@ -40,7 +40,6 @@ import {
 
 export type ContentClientOptions = {
   contentUrl: string
-  origin: string // The name or a description of the app that is using the client
   proofOfWorkEnabled?: boolean
   fetcher?: Fetcher
   deploymentBuilderClass?: typeof DeploymentBuilder
@@ -49,7 +48,6 @@ export class ContentClient implements ContentAPI {
   private readonly contentUrl: string
   private readonly fetcher: Fetcher
   private readonly deploymentBuilderClass: typeof DeploymentBuilder
-  private readonly origin: string
 
   constructor(options: ContentClientOptions) {
     this.contentUrl = sanitizeUrl(options.contentUrl)
@@ -59,7 +57,6 @@ export class ContentClient implements ContentAPI {
         headers: getHeadersWithUserAgent('content-client')
       })
     this.deploymentBuilderClass = options.deploymentBuilderClass ?? DeploymentBuilder
-    this.origin = options.origin
 
     if (options.proofOfWorkEnabled) {
       const powAuthBaseUrl = new URL(this.contentUrl).origin
@@ -74,8 +71,16 @@ export class ContentClient implements ContentAPI {
     metadata,
     timestamp
   }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData> {
-    const result = timestamp ?? (await this.fetchContentStatus()).currentTime
-    return this.deploymentBuilderClass.buildEntityWithoutNewFiles(type, pointers, hashesByKey, metadata, result)
+    const status = await this.fetchContentStatus()
+    const result = timestamp ?? status.currentTime
+    return this.deploymentBuilderClass.buildEntityWithoutNewFiles({
+      version: status.version,
+      type,
+      pointers,
+      hashesByKey,
+      metadata,
+      timestamp: result
+    })
   }
 
   async buildEntity({
@@ -85,8 +90,16 @@ export class ContentClient implements ContentAPI {
     metadata,
     timestamp
   }: BuildEntityOptions): Promise<DeploymentPreparationData> {
-    const result = timestamp ?? (await this.fetchContentStatus()).currentTime
-    return this.deploymentBuilderClass.buildEntity(type, pointers, files, metadata, result)
+    const status = await this.fetchContentStatus()
+    const result = timestamp ?? status.currentTime
+    return this.deploymentBuilderClass.buildEntity({
+      version: status.version,
+      type,
+      pointers,
+      files,
+      metadata,
+      timestamp: result
+    })
   }
 
   async deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {
@@ -115,8 +128,7 @@ export class ContentClient implements ContentAPI {
     }
 
     const requestOptions = mergeRequestOptions(options ?? {}, {
-      body: form,
-      headers: { 'x-upload-origin': this.origin }
+      body: form
     })
 
     const { creationTimestamp } = await this.fetcher.postForm(
