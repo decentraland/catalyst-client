@@ -190,8 +190,11 @@ export class ContentClient implements ContentAPI {
 
     return retry(
       async () => {
+        console.log(`About to fetch the endpoint: ${this.contentUrl}/contents/${contentHash}`)
         const content = await this.fetcher.fetchBuffer(`${this.contentUrl}/contents/${contentHash}`, timeout)
+        console.log(`Calculating hash`)
         const downloadedHash = await Hashing.calculateBufferHash(content)
+        console.log(`Hash is ${downloadedHash}`)
         // Sometimes, the downloaded file is not complete, so the hash turns out to be different.
         // So we will check the hash before considering the download successful.
         if (downloadedHash === contentHash) {
