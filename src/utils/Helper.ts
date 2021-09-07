@@ -109,10 +109,11 @@ export function splitValuesIntoManyQueryBuilders({
   path,
   reservedParams
 }: SplitIntoQueriesParams): QueryBuilder[] {
+  // WHY?
   const queryParamsMap: Map<string, string[]> =
     'name' in queryParams ? new Map([[queryParams.name, queryParams.values]]) : queryParams
 
-  // Check that it makes sent to apply the algorithm
+  // Check that it makes sense to apply the algorithm
   if (queryParamsMap.size === 0) {
     return [new QueryBuilder(baseUrl + path, queryParamsMap, reservedParams)]
   }
@@ -129,6 +130,7 @@ export function splitValuesIntoManyQueryBuilders({
   )
 
   // Add all params (except the last one that is the one with the most values) into the url
+  // WHY?
   const defaultQueryBuilder = new QueryBuilder(baseUrl + path, new Map(), reservedParams)
   for (let i = 0; i < sortedByValues.length - 1; i++) {
     const [paramName, paramValues] = sortedByValues[i]
