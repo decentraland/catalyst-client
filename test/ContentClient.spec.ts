@@ -275,7 +275,7 @@ describe('ContentClient', () => {
       deployments: [deployment],
       pagination: { offset: 10, limit: 10, moreData: false }
     }
-    const { instance: fetcher } = mockFetcherJson(
+    const { instance: fetcher } = mockFetcherJsonDeployments(
       `/deployments?fromLocalTimestamp=20&toLocalTimestamp=30&onlyCurrentlyPointed=true&deployedBy=eth1&deployedBy=eth2&entityType=profile&entityType=scene&entityId=id1&entityId=id2&pointer=p1&pointer=p2`,
       requestResult
     )
@@ -294,7 +294,7 @@ describe('ContentClient', () => {
       deployments: [deploymentWithoutAuditInfo],
       pagination: { offset: 10, limit: 10, moreData: false }
     }
-    const { instance: fetcher } = mockFetcherJson(
+    const { instance: fetcher } = mockFetcherJsonDeployments(
       `/deployments?entityType=${EntityType.PROFILE}&fields=pointers,content,metadata`,
       requestResult
     )
@@ -310,7 +310,7 @@ describe('ContentClient', () => {
 
   it('When fetching all deployments with no filters, then an error is thrown', async () => {
     const client = buildClient(URL)
-
+    expect.assertions(1)
     await expect(
       client.fetchAllDeployments({
         filters: {
@@ -333,7 +333,7 @@ describe('ContentClient', () => {
       deployments: [deployment],
       pagination: { offset: 10, limit: 10, moreData: false }
     }
-    const { instance: fetcher } = mockFetcherJson(
+    const { instance: fetcher } = mockFetcherJsonDeployments(
       `/deployments?entityType=${EntityType.PROFILE}&sortingField=entity_timestamp&sortingOrder=ASC`,
       requestResult
     )
@@ -362,11 +362,17 @@ describe('ContentClient', () => {
     }
 
     const mockedFetcher: Fetcher = mock(Fetcher)
-    when(
-      mockedFetcher.fetchJson(`${URL}/deployments?entityType=${EntityType.PROFILE}&fields=auditInfo`, anything())
-    ).thenReturn(Promise.resolve(requestResult1))
 
-    when(mockedFetcher.fetchJson(`${URL}/deployments${next}`, anything())).thenReturn(Promise.resolve(requestResult2))
+    when(mockedFetcher.fetch(anything(), anything())).thenCall((url, _) => {
+      if (url == `${URL}/deployments?entityType=${EntityType.PROFILE}&fields=auditInfo`) {
+        return Promise.resolve(new Response(JSON.stringify(requestResult1)))
+      }
+      if (url == `${URL}/deployments${next}`) {
+        return Promise.resolve(new Response(JSON.stringify(requestResult2)))
+      }
+      throw new Error(`Mock not ready for ${url}`)
+    })
+
     const fetcher = instance(mockedFetcher)
 
     const client = buildClient(URL, fetcher)
@@ -441,6 +447,21 @@ describe('ContentClient', () => {
       pointers: ['Pointer'],
       timestamp: 10
     }
+  }
+
+  function mockFetcherJsonDeployments<T>(path?: string, result?: T): { mock: Fetcher; instance: Fetcher } {
+    // Create mock
+    const mockedFetcher: Fetcher = mock(Fetcher)
+
+    if (path) {
+      when(mockedFetcher.fetch(anything(), anything())).thenCall((url, _) => {
+        expect(url).toEqual(`${URL}${path}`)
+        return Promise.resolve(new Response(JSON.stringify(result)))
+      })
+    }
+
+    // Getting instance from mock
+    return { mock: mockedFetcher, instance: instance(mockedFetcher) }
   }
 
   function mockFetcherJson<T>(path?: string, result?: T): { mock: Fetcher; instance: Fetcher } {

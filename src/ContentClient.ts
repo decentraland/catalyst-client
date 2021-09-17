@@ -1,4 +1,3 @@
-import asyncToArray from 'async-iterator-to-array'
 import {
   applySomeDefaults,
   AvailableContentResult,
@@ -241,11 +240,15 @@ export class ContentClient implements ContentAPI {
    *  In that case, we will internally make the necessary requests,
    *  but then the order of the deployments is not guaranteed.
    */
-  fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
+  async fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
     deploymentOptions: DeploymentOptions<T>,
     options?: RequestOptions
   ): Promise<T[]> {
-    return asyncToArray(this.iterateThroughDeployments(deploymentOptions, options))
+    const ret: T[] = []
+    for await (const it of this.iterateThroughDeployments(deploymentOptions, options)) {
+      ret.push(it)
+    }
+    return ret
   }
 
   /**
