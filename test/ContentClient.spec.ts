@@ -11,6 +11,7 @@ import {
   SortingOrder
 } from 'dcl-catalyst-commons'
 import { Headers } from 'node-fetch'
+import { Readable } from 'stream'
 import { anything, deepEqual, instance, mock, verify, when } from 'ts-mockito'
 import { DeploymentWithMetadataContentAndPointers } from '../src/ContentAPI'
 import { ContentClient, DeploymentFields } from '../src/ContentClient'
@@ -380,7 +381,7 @@ describe('ContentClient', () => {
 
   it('When a fetch is piped without headers then none is returned', async () => {
     const contentHash = 'abc123'
-    const mockedResponse = instance(mock<ReadableStream>())
+    const mockedResponse = instance(mock<Readable>())
     const { instance: fetcher } = mockPipeFetcher(new Headers())
     const client = buildClient(URL, fetcher)
 
@@ -391,7 +392,7 @@ describe('ContentClient', () => {
 
   it('When a fetch is piped with a non recognized header then none is returned', async () => {
     const contentHash = 'abc123'
-    const mockedResponse = instance(mock<ReadableStream>())
+    const mockedResponse = instance(mock<Readable>())
     const headers: Headers = new Headers()
     headers.set('invalid', 'val')
     const { instance: fetcher } = mockPipeFetcher(headers)
@@ -404,7 +405,7 @@ describe('ContentClient', () => {
 
   it('When a fetch is piped then only sanitized headers of the response are returned', async () => {
     const contentHash = 'abc123'
-    const mockedResponse = instance(mock<ReadableStream>())
+    const mockedResponse = instance(mock<Readable>())
     const headers: Headers = new Headers()
     headers.set('invalid', 'val')
     headers.set('content-length', '200')

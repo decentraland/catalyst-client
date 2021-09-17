@@ -23,8 +23,8 @@ import {
   ServerStatus,
   Timestamp
 } from 'dcl-catalyst-commons'
-import NodeFormData from 'form-data'
-import { Readable } from 'stream'
+import FormData from 'form-data'
+import { Writable, Readable } from 'stream'
 import { ContentAPI, DeploymentWithMetadataContentAndPointers } from './ContentAPI'
 import { configureJWTMiddlewares } from './ports/Jwt'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
@@ -106,9 +106,7 @@ export class ContentClient implements ContentAPI {
     // Check if we are running in node or browser
     const areWeRunningInNode = isNode()
 
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    const form: FormData = areWeRunningInNode ? new NodeFormData() : new FormData()
+    const form = new FormData()
     form.append('entityId', deployData.entityId)
     addModelToFormData(deployData.authChain, form, 'authChain')
 
@@ -117,8 +115,6 @@ export class ContentClient implements ContentAPI {
       if (!alreadyUploadedHashes.has(fileHash) || fileHash === deployData.entityId) {
         if (areWeRunningInNode) {
           // Node
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
           form.append(fileHash, file, fileHash)
         } else {
           // Browser
@@ -206,7 +202,7 @@ export class ContentClient implements ContentAPI {
 
   async pipeContent(
     contentHash: ContentFileHash,
-    writeTo: ReadableStream<Uint8Array>,
+    writeTo: any,
     options?: Partial<RequestOptions>
   ): Promise<Map<string, string>> {
     return this.onlyKnownHeaders(
@@ -252,6 +248,9 @@ export class ContentClient implements ContentAPI {
     return asyncToArray(this.iterateThroughDeployments(deploymentOptions, options))
   }
 
+  /**
+   * @deprecated use iterateThroughDeployments instead
+   */
   streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
     deploymentOptions: DeploymentOptions<T>,
     options?: RequestOptions
@@ -259,7 +258,7 @@ export class ContentClient implements ContentAPI {
     return Readable.from(this.iterateThroughDeployments(deploymentOptions, options))
   }
 
-  private async *iterateThroughDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
+  iterateThroughDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
     deploymentOptions?: DeploymentOptions<T>,
     options?: RequestOptions
   ): AsyncIterable<T> {
@@ -289,7 +288,7 @@ export class ContentClient implements ContentAPI {
       ['to', 13]
     ])
 
-    yield* this.iterateThroughDeploymentsBasedOnResult<T>(
+    return this.iterateThroughDeploymentsBasedOnResult<T>(
       queryParams,
       reservedParams,
       deploymentOptions?.errorListener,
@@ -297,9 +296,7 @@ export class ContentClient implements ContentAPI {
     )
   }
 
-  private async *iterateThroughDeploymentsBasedOnResult<
-    T extends DeploymentBase = DeploymentWithMetadataContentAndPointers
-  >(
+  async *iterateThroughDeploymentsBasedOnResult<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
     queryParams: Map<string, string[]>,
     reservedParams: Map<string, number>,
     errorListener?: (errorMessage: string) => void,
@@ -332,8 +329,10 @@ export class ContentClient implements ContentAPI {
         } catch (error) {
           if (errorListener) {
             errorListener(`${error}`)
+            exit = true
+          } else {
+            throw error
           }
-          exit = true
         }
       }
     }
