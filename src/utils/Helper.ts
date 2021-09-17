@@ -1,4 +1,5 @@
 import { Fetcher, RequestOptions } from 'dcl-catalyst-commons'
+import FormData from 'form-data'
 import { RUNNING_VERSION } from './Environment'
 
 export function addModelToFormData(model: any, form: FormData, namespace = ''): FormData {
@@ -47,7 +48,7 @@ export async function splitAndFetch<E>({
   const results: Map<any, E> = new Map()
   for (const query of queries) {
     // Perform the different queries
-    const elements: E[] = await fetcher.fetchJson(query, options)
+    const elements: E[] = (await fetcher.fetchJson(query, options)) as any
 
     // Group by unique property (if set), or add all of them to the map
     elements.forEach((element) => results.set(uniqueBy ? element[uniqueBy] : results.size, element))
@@ -89,7 +90,7 @@ export async function splitAndFetchPaginated<E>({
       try {
         const response: {
           pagination: { limit: number; next?: string }
-        } = await fetcher.fetchJson(url, options)
+        } = (await fetcher.fetchJson(url, options)) as any
         const elements: E[] = response[elementsProperty]
         elements.forEach((element) => foundElements.set(element[uniqueBy], element))
         const nextRelative = response.pagination.next

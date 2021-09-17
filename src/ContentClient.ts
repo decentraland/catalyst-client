@@ -24,7 +24,7 @@ import {
   Timestamp
 } from 'dcl-catalyst-commons'
 import FormData from 'form-data'
-import { Writable, Readable } from 'stream'
+import { Readable } from 'stream'
 import { ContentAPI, DeploymentWithMetadataContentAndPointers } from './ContentAPI'
 import { configureJWTMiddlewares } from './ports/Jwt'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
@@ -124,13 +124,13 @@ export class ContentClient implements ContentAPI {
     }
 
     const requestOptions = mergeRequestOptions(options ?? {}, {
-      body: form
+      body: form as any
     })
 
-    const { creationTimestamp } = await this.fetcher.postForm(
+    const { creationTimestamp } = (await this.fetcher.postForm(
       `${this.contentUrl}/entities${fix ? '?fix=true' : ''}`,
       requestOptions
-    )
+    )) as any
     return creationTimestamp
   }
 
@@ -300,7 +300,7 @@ export class ContentClient implements ContentAPI {
     queryParams: Map<string, string[]>,
     reservedParams: Map<string, number>,
     errorListener?: (errorMessage: string) => void,
-    options?: RequestOptions
+    options: RequestOptions = {}
   ): AsyncIterable<T> {
     // Split values into different queries
     const queries = splitValuesIntoManyQueries({
@@ -317,7 +317,18 @@ export class ContentClient implements ContentAPI {
       let url: string | undefined = queries[i]
       while (url && !exit) {
         try {
-          const partialHistory: PartialDeploymentHistory<T> = await this.fetcher.fetchJson(url, options)
+          const res = await this.fetcher.fetch(url, options)
+          if (!res.ok) {
+            throw new Error(
+              'Error while requesting deployments to the url ' +
+                url +
+                '. Status code was: ' +
+                res.status +
+                ' Response text was: ' +
+                JSON.stringify(await res.text())
+            )
+          }
+          const partialHistory: PartialDeploymentHistory<T> = await res.json()
           for (const deployment of partialHistory.deployments) {
             if (!foundIds.has(deployment.entityId)) {
               foundIds.add(deployment.entityId)

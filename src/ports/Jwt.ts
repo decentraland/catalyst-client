@@ -8,7 +8,7 @@ const LOGGER = log4js.getLogger('JWTPort')
 
 export async function obtainJWT(fetcher: Fetcher, catalystUrl: string): Promise<string | undefined> {
   try {
-    const response = await fetcher.fetchJson(catalystUrl + '/pow-auth/challenge')
+    const response = (await fetcher.fetchJson(catalystUrl + '/pow-auth/challenge')) as any
 
     const challenge: string = response.challenge
     const complexity: number = response.complexity
@@ -16,7 +16,7 @@ export async function obtainJWT(fetcher: Fetcher, catalystUrl: string): Promise<
 
     const powAuthUrl = new URL('/pow-auth/challenge', catalystUrl).href
     const challengeBody = JSON.stringify({ challenge: challenge, complexity: complexity, nonce: nonce })
-    const jwtResponse = await fetcher.postForm(powAuthUrl, { body: challengeBody })
+    const jwtResponse = (await fetcher.postForm(powAuthUrl, { body: challengeBody })) as any
 
     if (!jwtResponse.jwt) {
       LOGGER.warn('[POW] Could not get a JWT from Pow Auth Server.')
