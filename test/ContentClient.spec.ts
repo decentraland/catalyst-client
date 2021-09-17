@@ -385,6 +385,84 @@ describe('ContentClient', () => {
     expect(result).toEqual([deployment1, deployment2])
   })
 
+  it('When fetching all deployments with pagination, if a request fails due to network it stops the iterator', async () => {
+    const [deployment1, deployment2] = [someDeployment(), someDeployment()]
+    const next = `?someName=value1&someName=value3`
+    const requestResult1: PartialDeploymentHistory<Deployment> = {
+      filters: {},
+      deployments: [deployment1, deployment2],
+      pagination: { next, offset: 0, limit: 1, moreData: true }
+    }
+
+    const mockedFetcher: Fetcher = mock(Fetcher)
+
+    when(mockedFetcher.fetch(anything(), anything())).thenCall((url, _) => {
+      if (url == `${URL}/deployments?entityType=${EntityType.PROFILE}&fields=auditInfo`) {
+        return Promise.resolve(new Response(JSON.stringify(requestResult1)))
+      }
+      throw new Error(`ECONNECTION this is a network error.`)
+    })
+
+    const fetcher = instance(mockedFetcher)
+
+    const client = buildClient(URL, fetcher)
+    const iterator = client.iterateThroughDeployments({
+      filters: { entityTypes: [EntityType.PROFILE] },
+      fields: DeploymentFields.AUDIT_INFO
+    })
+
+    const deployments: any[] = []
+
+    await expect(async () => {
+      for await (const it of iterator) {
+        deployments.push(it)
+      }
+    }).rejects.toEqual(new Error(`ECONNECTION this is a network error.`))
+
+    expect(deployments).toEqual([deployment1, deployment2])
+  })
+
+  it('When fetching all deployments with pagination, if a request fails due to http server error, it stops the iterator', async () => {
+    const [deployment1, deployment2] = [someDeployment(), someDeployment()]
+    const next = `?someName=value1&someName=value3`
+    const requestResult1: PartialDeploymentHistory<Deployment> = {
+      filters: {},
+      deployments: [deployment1, deployment2],
+      pagination: { next, offset: 0, limit: 1, moreData: true }
+    }
+
+    const mockedFetcher: Fetcher = mock(Fetcher)
+
+    when(mockedFetcher.fetch(anything(), anything())).thenCall((url, _) => {
+      if (url == `${URL}/deployments?entityType=${EntityType.PROFILE}&fields=auditInfo`) {
+        return Promise.resolve(new Response(JSON.stringify(requestResult1)))
+      }
+      return Promise.resolve(new Response('Service unavailable', { status: 502 }))
+    })
+
+    const fetcher = instance(mockedFetcher)
+
+    const client = buildClient(URL, fetcher)
+    const iterator = client.iterateThroughDeployments({
+      filters: { entityTypes: [EntityType.PROFILE] },
+      fields: DeploymentFields.AUDIT_INFO
+    })
+
+    const deployments: any[] = []
+
+    await expect(async () => {
+      for await (const it of iterator) {
+        deployments.push(it)
+      }
+    }).rejects.toEqual(
+      new Error(
+        `Error while requesting deployments to the url https://url.com/deployments?someName=value1&someName=value3. Status code was: 502 Response text was: "Service unavailable"`
+      )
+    )
+
+    expect(deployments).toEqual([deployment1, deployment2])
+  })
+
   it('When a fetch is piped without headers then none is returned', async () => {
     const contentHash = 'abc123'
     const mockedResponse = instance(mock<Readable>())
