@@ -193,22 +193,13 @@ export function convertFiltersToQueryParams(filters?: Record<string, any>): Map<
 }
 
 export function isNode() {
-  return typeof window === 'undefined' || !isBlobAvailable()
+  return Object.prototype.toString.call(typeof process !== 'undefined' ? process : 0) === '[object process]'
 }
 
 export function getHeadersWithUserAgent(client: string) {
   return isNode()
     ? { 'User-Agent': `${client}/${RUNNING_VERSION} (+https://github.com/decentraland/catalyst-client)` }
     : undefined
-}
-
-function isBlobAvailable(): boolean {
-  try {
-    new Blob()
-    return true
-  } catch {
-    return false
-  }
 }
 
 function isValidQueryParamValue(value: any): boolean {
