@@ -391,13 +391,13 @@ describe('ContentClient', () => {
     const requestResult1: PartialDeploymentHistory<Deployment> = {
       filters: {},
       deployments: [deployment1, deployment2],
-      pagination: { next, offset: 0, limit: 1, moreData: true }
+      pagination: { next, offset: 0, limit: 987, moreData: true }
     }
 
     const mockedFetcher: Fetcher = mock(Fetcher)
 
     when(mockedFetcher.fetch(anything(), anything())).thenCall((url, _) => {
-      if (url == `${URL}/deployments?entityType=${EntityType.PROFILE}&fields=auditInfo`) {
+      if (url == `${URL}/deployments?entityType=${EntityType.PROFILE}&fields=auditInfo&limit=987`) {
         return Promise.resolve(new Response(JSON.stringify(requestResult1)))
       }
       throw new Error(`ECONNECTION this is a network error.`)
@@ -408,7 +408,8 @@ describe('ContentClient', () => {
     const client = buildClient(URL, fetcher)
     const iterator = client.iterateThroughDeployments({
       filters: { entityTypes: [EntityType.PROFILE] },
-      fields: DeploymentFields.AUDIT_INFO
+      fields: DeploymentFields.AUDIT_INFO,
+      limit: 987
     })
 
     const deployments: any[] = []
