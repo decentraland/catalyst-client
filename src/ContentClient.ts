@@ -285,6 +285,10 @@ export class ContentClient implements ContentAPI {
       queryParams.set('fields', [fieldsValue])
     }
 
+    if (deploymentOptions?.limit) {
+      queryParams.set('limit', [deploymentOptions?.limit.toFixed()])
+    }
+
     // Reserve space in the url for possible pagination
     const reservedParams: Map<string, number> = new Map([
       ['from', 13],
@@ -416,7 +420,14 @@ export type DeploymentOptions<T> = {
   filters: DeploymentFilters
   sortBy?: DeploymentSorting
   fields?: DeploymentFields<T>
+  /**
+   * @deprecated please use try-catch and iterators instead
+   */
   errorListener?: (errorMessage: string) => void
+  /**
+   * Amount of elements per page
+   */
+  limit?: number
 }
 
 export interface BuildEntityOptions {
