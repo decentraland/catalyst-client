@@ -1,5 +1,6 @@
 import {
   AvailableContentResult,
+  CompleteRequestOptions,
   ContentFileHash,
   DeploymentBase,
   Entity,
@@ -16,7 +17,7 @@ import {
   Timestamp
 } from 'dcl-catalyst-commons'
 import { EthAddress } from 'dcl-crypto'
-import { Readable } from 'stream'
+import { Readable, Writable } from 'stream'
 import { CatalystAPI } from './CatalystAPI'
 import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
 import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient, DeploymentOptions } from './ContentClient'
@@ -55,6 +56,13 @@ export class CatalystClient implements CatalystAPI {
       fetcher: fetcher,
       proofOfWorkEnabled: options.proofOfWorkEnabled
     })
+  }
+
+  iterateThroughDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
+    deploymentOptions?: DeploymentOptions<T>,
+    options?: Partial<CompleteRequestOptions>
+  ): AsyncIterable<T> {
+    return this.contentClient.iterateThroughDeployments(deploymentOptions, options)
   }
 
   buildEntity(options: BuildEntityOptions): Promise<DeploymentPreparationData> {
@@ -111,11 +119,7 @@ export class CatalystClient implements CatalystAPI {
     return this.contentClient.downloadContent(contentHash, options)
   }
 
-  pipeContent(
-    contentHash: ContentFileHash,
-    writeTo: ReadableStream<Uint8Array>,
-    options?: RequestOptions
-  ): Promise<Map<string, string>> {
+  pipeContent(contentHash: ContentFileHash, writeTo: Writable, options?: RequestOptions): Promise<Map<string, string>> {
     return this.contentClient.pipeContent(contentHash, writeTo, options)
   }
 

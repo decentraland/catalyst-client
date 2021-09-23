@@ -1,4 +1,3 @@
-import asyncToArray from 'async-iterator-to-array'
 import {
   applySomeDefaults,
   AvailableContentResult,
@@ -23,7 +22,7 @@ import {
   ServerStatus,
   Timestamp
 } from 'dcl-catalyst-commons'
-import NodeFormData from 'form-data'
+import FormData from 'form-data'
 import { Readable } from 'stream'
 import { ContentAPI, DeploymentWithMetadataContentAndPointers } from './ContentAPI'
 import { configureJWTMiddlewares } from './ports/Jwt'
@@ -106,9 +105,7 @@ export class ContentClient implements ContentAPI {
     // Check if we are running in node or browser
     const areWeRunningInNode = isNode()
 
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    const form: FormData = areWeRunningInNode ? new NodeFormData() : new FormData()
+    const form = new FormData()
     form.append('entityId', deployData.entityId)
     addModelToFormData(deployData.authChain, form, 'authChain')
 
@@ -117,8 +114,6 @@ export class ContentClient implements ContentAPI {
       if (!alreadyUploadedHashes.has(fileHash) || fileHash === deployData.entityId) {
         if (areWeRunningInNode) {
           // Node
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
           form.append(fileHash, file, fileHash)
         } else {
           // Browser
@@ -128,13 +123,13 @@ export class ContentClient implements ContentAPI {
     }
 
     const requestOptions = mergeRequestOptions(options ?? {}, {
-      body: form
+      body: form as any
     })
 
-    const { creationTimestamp } = await this.fetcher.postForm(
+    const { creationTimestamp } = (await this.fetcher.postForm(
       `${this.contentUrl}/entities${fix ? '?fix=true' : ''}`,
       requestOptions
-    )
+    )) as any
     return creationTimestamp
   }
 
@@ -206,7 +201,7 @@ export class ContentClient implements ContentAPI {
 
   async pipeContent(
     contentHash: ContentFileHash,
-    writeTo: ReadableStream<Uint8Array>,
+    writeTo: any,
     options?: Partial<RequestOptions>
   ): Promise<Map<string, string>> {
     return this.onlyKnownHeaders(
@@ -245,13 +240,20 @@ export class ContentClient implements ContentAPI {
    *  In that case, we will internally make the necessary requests,
    *  but then the order of the deployments is not guaranteed.
    */
-  fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
+  async fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
     deploymentOptions: DeploymentOptions<T>,
     options?: RequestOptions
   ): Promise<T[]> {
-    return asyncToArray(this.iterateThroughDeployments(deploymentOptions, options))
+    const ret: T[] = []
+    for await (const it of this.iterateThroughDeployments(deploymentOptions, options)) {
+      ret.push(it)
+    }
+    return ret
   }
 
+  /**
+   * @deprecated use iterateThroughDeployments instead
+   */
   streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
     deploymentOptions: DeploymentOptions<T>,
     options?: RequestOptions
@@ -259,7 +261,7 @@ export class ContentClient implements ContentAPI {
     return Readable.from(this.iterateThroughDeployments(deploymentOptions, options))
   }
 
-  private async *iterateThroughDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
+  iterateThroughDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
     deploymentOptions?: DeploymentOptions<T>,
     options?: RequestOptions
   ): AsyncIterable<T> {
@@ -283,13 +285,17 @@ export class ContentClient implements ContentAPI {
       queryParams.set('fields', [fieldsValue])
     }
 
+    if (deploymentOptions?.limit) {
+      queryParams.set('limit', [deploymentOptions?.limit.toFixed()])
+    }
+
     // Reserve space in the url for possible pagination
     const reservedParams: Map<string, number> = new Map([
       ['from', 13],
       ['to', 13]
     ])
 
-    yield* this.iterateThroughDeploymentsBasedOnResult<T>(
+    return this.iterateThroughDeploymentsBasedOnResult<T>(
       queryParams,
       reservedParams,
       deploymentOptions?.errorListener,
@@ -297,13 +303,11 @@ export class ContentClient implements ContentAPI {
     )
   }
 
-  private async *iterateThroughDeploymentsBasedOnResult<
-    T extends DeploymentBase = DeploymentWithMetadataContentAndPointers
-  >(
+  async *iterateThroughDeploymentsBasedOnResult<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
     queryParams: Map<string, string[]>,
     reservedParams: Map<string, number>,
     errorListener?: (errorMessage: string) => void,
-    options?: RequestOptions
+    options: RequestOptions = {}
   ): AsyncIterable<T> {
     // Split values into different queries
     const queries = splitValuesIntoManyQueries({
@@ -320,7 +324,18 @@ export class ContentClient implements ContentAPI {
       let url: string | undefined = queries[i]
       while (url && !exit) {
         try {
-          const partialHistory: PartialDeploymentHistory<T> = await this.fetcher.fetchJson(url, options)
+          const res = await this.fetcher.fetch(url, options)
+          if (!res.ok) {
+            throw new Error(
+              'Error while requesting deployments to the url ' +
+                url +
+                '. Status code was: ' +
+                res.status +
+                ' Response text was: ' +
+                JSON.stringify(await res.text())
+            )
+          }
+          const partialHistory: PartialDeploymentHistory<T> = await res.json()
           for (const deployment of partialHistory.deployments) {
             if (!foundIds.has(deployment.entityId)) {
               foundIds.add(deployment.entityId)
@@ -332,8 +347,10 @@ export class ContentClient implements ContentAPI {
         } catch (error) {
           if (errorListener) {
             errorListener(`${error}`)
+            exit = true
+          } else {
+            throw error
           }
-          exit = true
         }
       }
     }
@@ -403,7 +420,14 @@ export type DeploymentOptions<T> = {
   filters: DeploymentFilters
   sortBy?: DeploymentSorting
   fields?: DeploymentFields<T>
+  /**
+   * @deprecated please use try-catch and iterators instead
+   */
   errorListener?: (errorMessage: string) => void
+  /**
+   * Amount of elements per page
+   */
+  limit?: number
 }
 
 export interface BuildEntityOptions {

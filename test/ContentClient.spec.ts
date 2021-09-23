@@ -11,6 +11,7 @@ import {
   SortingOrder
 } from 'dcl-catalyst-commons'
 import { Headers } from 'node-fetch'
+import { Readable } from 'stream'
 import { anything, deepEqual, instance, mock, verify, when } from 'ts-mockito'
 import { DeploymentWithMetadataContentAndPointers } from '../src/ContentAPI'
 import { ContentClient, DeploymentFields } from '../src/ContentClient'
@@ -274,7 +275,7 @@ describe('ContentClient', () => {
       deployments: [deployment],
       pagination: { offset: 10, limit: 10, moreData: false }
     }
-    const { instance: fetcher } = mockFetcherJson(
+    const { instance: fetcher } = mockFetcherJsonDeployments(
       `/deployments?fromLocalTimestamp=20&toLocalTimestamp=30&onlyCurrentlyPointed=true&deployedBy=eth1&deployedBy=eth2&entityType=profile&entityType=scene&entityId=id1&entityId=id2&pointer=p1&pointer=p2`,
       requestResult
     )
@@ -293,7 +294,7 @@ describe('ContentClient', () => {
       deployments: [deploymentWithoutAuditInfo],
       pagination: { offset: 10, limit: 10, moreData: false }
     }
-    const { instance: fetcher } = mockFetcherJson(
+    const { instance: fetcher } = mockFetcherJsonDeployments(
       `/deployments?entityType=${EntityType.PROFILE}&fields=pointers,content,metadata`,
       requestResult
     )
@@ -309,7 +310,7 @@ describe('ContentClient', () => {
 
   it('When fetching all deployments with no filters, then an error is thrown', async () => {
     const client = buildClient(URL)
-
+    expect.assertions(1)
     await expect(
       client.fetchAllDeployments({
         filters: {
@@ -332,7 +333,7 @@ describe('ContentClient', () => {
       deployments: [deployment],
       pagination: { offset: 10, limit: 10, moreData: false }
     }
-    const { instance: fetcher } = mockFetcherJson(
+    const { instance: fetcher } = mockFetcherJsonDeployments(
       `/deployments?entityType=${EntityType.PROFILE}&sortingField=entity_timestamp&sortingOrder=ASC`,
       requestResult
     )
@@ -361,11 +362,17 @@ describe('ContentClient', () => {
     }
 
     const mockedFetcher: Fetcher = mock(Fetcher)
-    when(
-      mockedFetcher.fetchJson(`${URL}/deployments?entityType=${EntityType.PROFILE}&fields=auditInfo`, anything())
-    ).thenReturn(Promise.resolve(requestResult1))
 
-    when(mockedFetcher.fetchJson(`${URL}/deployments${next}`, anything())).thenReturn(Promise.resolve(requestResult2))
+    when(mockedFetcher.fetch(anything(), anything())).thenCall((url, _) => {
+      if (url == `${URL}/deployments?entityType=${EntityType.PROFILE}&fields=auditInfo`) {
+        return Promise.resolve(new Response(JSON.stringify(requestResult1)))
+      }
+      if (url == `${URL}/deployments${next}`) {
+        return Promise.resolve(new Response(JSON.stringify(requestResult2)))
+      }
+      throw new Error(`Mock not ready for ${url}`)
+    })
+
     const fetcher = instance(mockedFetcher)
 
     const client = buildClient(URL, fetcher)
@@ -378,9 +385,88 @@ describe('ContentClient', () => {
     expect(result).toEqual([deployment1, deployment2])
   })
 
+  it('When fetching all deployments with pagination, if a request fails due to network it stops the iterator', async () => {
+    const [deployment1, deployment2] = [someDeployment(), someDeployment()]
+    const next = `?someName=value1&someName=value3`
+    const requestResult1: PartialDeploymentHistory<Deployment> = {
+      filters: {},
+      deployments: [deployment1, deployment2],
+      pagination: { next, offset: 0, limit: 987, moreData: true }
+    }
+
+    const mockedFetcher: Fetcher = mock(Fetcher)
+
+    when(mockedFetcher.fetch(anything(), anything())).thenCall((url, _) => {
+      if (url == `${URL}/deployments?entityType=${EntityType.PROFILE}&fields=auditInfo&limit=987`) {
+        return Promise.resolve(new Response(JSON.stringify(requestResult1)))
+      }
+      throw new Error(`ECONNECTION this is a network error.`)
+    })
+
+    const fetcher = instance(mockedFetcher)
+
+    const client = buildClient(URL, fetcher)
+    const iterator = client.iterateThroughDeployments({
+      filters: { entityTypes: [EntityType.PROFILE] },
+      fields: DeploymentFields.AUDIT_INFO,
+      limit: 987
+    })
+
+    const deployments: any[] = []
+
+    await expect(async () => {
+      for await (const it of iterator) {
+        deployments.push(it)
+      }
+    }).rejects.toEqual(new Error(`ECONNECTION this is a network error.`))
+
+    expect(deployments).toEqual([deployment1, deployment2])
+  })
+
+  it('When fetching all deployments with pagination, if a request fails due to http server error, it stops the iterator', async () => {
+    const [deployment1, deployment2] = [someDeployment(), someDeployment()]
+    const next = `?someName=value1&someName=value3`
+    const requestResult1: PartialDeploymentHistory<Deployment> = {
+      filters: {},
+      deployments: [deployment1, deployment2],
+      pagination: { next, offset: 0, limit: 1, moreData: true }
+    }
+
+    const mockedFetcher: Fetcher = mock(Fetcher)
+
+    when(mockedFetcher.fetch(anything(), anything())).thenCall((url, _) => {
+      if (url == `${URL}/deployments?entityType=${EntityType.PROFILE}&fields=auditInfo`) {
+        return Promise.resolve(new Response(JSON.stringify(requestResult1)))
+      }
+      return Promise.resolve(new Response('Service unavailable', { status: 502 }))
+    })
+
+    const fetcher = instance(mockedFetcher)
+
+    const client = buildClient(URL, fetcher)
+    const iterator = client.iterateThroughDeployments({
+      filters: { entityTypes: [EntityType.PROFILE] },
+      fields: DeploymentFields.AUDIT_INFO
+    })
+
+    const deployments: any[] = []
+
+    await expect(async () => {
+      for await (const it of iterator) {
+        deployments.push(it)
+      }
+    }).rejects.toEqual(
+      new Error(
+        `Error while requesting deployments to the url https://url.com/deployments?someName=value1&someName=value3. Status code was: 502 Response text was: "Service unavailable"`
+      )
+    )
+
+    expect(deployments).toEqual([deployment1, deployment2])
+  })
+
   it('When a fetch is piped without headers then none is returned', async () => {
     const contentHash = 'abc123'
-    const mockedResponse = instance(mock<ReadableStream>())
+    const mockedResponse = instance(mock<Readable>())
     const { instance: fetcher } = mockPipeFetcher(new Headers())
     const client = buildClient(URL, fetcher)
 
@@ -391,7 +477,7 @@ describe('ContentClient', () => {
 
   it('When a fetch is piped with a non recognized header then none is returned', async () => {
     const contentHash = 'abc123'
-    const mockedResponse = instance(mock<ReadableStream>())
+    const mockedResponse = instance(mock<Readable>())
     const headers: Headers = new Headers()
     headers.set('invalid', 'val')
     const { instance: fetcher } = mockPipeFetcher(headers)
@@ -404,7 +490,7 @@ describe('ContentClient', () => {
 
   it('When a fetch is piped then only sanitized headers of the response are returned', async () => {
     const contentHash = 'abc123'
-    const mockedResponse = instance(mock<ReadableStream>())
+    const mockedResponse = instance(mock<Readable>())
     const headers: Headers = new Headers()
     headers.set('invalid', 'val')
     headers.set('content-length', '200')
@@ -440,6 +526,21 @@ describe('ContentClient', () => {
       pointers: ['Pointer'],
       timestamp: 10
     }
+  }
+
+  function mockFetcherJsonDeployments<T>(path?: string, result?: T): { mock: Fetcher; instance: Fetcher } {
+    // Create mock
+    const mockedFetcher: Fetcher = mock(Fetcher)
+
+    if (path) {
+      when(mockedFetcher.fetch(anything(), anything())).thenCall((url, _) => {
+        expect(url).toEqual(`${URL}${path}`)
+        return Promise.resolve(new Response(JSON.stringify(result)))
+      })
+    }
+
+    // Getting instance from mock
+    return { mock: mockedFetcher, instance: instance(mockedFetcher) }
   }
 
   function mockFetcherJson<T>(path?: string, result?: T): { mock: Fetcher; instance: Fetcher } {
