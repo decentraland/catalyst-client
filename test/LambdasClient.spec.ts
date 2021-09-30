@@ -75,6 +75,18 @@ describe('LambdasClient', () => {
     expect(result).toEqual(requestResult)
   })
 
+  it('adds version to query string whe requesting a particular version', async () => {
+    const requestResult = [someResult()]
+    const [ethAddress1, ethAddress2] = ['ethAddress1', 'ethAddress2']
+    const [version1, version2] = [1, 2]
+    const { instance: fetcher } = mockFetcherJson(`/profiles?id=${ethAddress1}&id=${ethAddress2}&version=${version1}&version=${version2}`, requestResult)
+
+    const client = buildClient(URL, fetcher)
+    const result = await client.fetchProfiles([ethAddress1, ethAddress2], { versions: [version1, version2] })
+
+    expect(result).toEqual(requestResult)
+  })
+
   function someResult() {
     return {
       someKey: 'someValue'

@@ -51,6 +51,11 @@ export class LambdasClient implements LambdasAPI {
       const fieldsValue = profileOptions?.fields.getFields()
       queryParams.set('fields', [fieldsValue])
     }
+
+    if (profileOptions?.versions) {
+      queryParams.set('version', profileOptions.versions.map(it => it.toString(10)))
+    }
+
     return splitAndFetch<Profile>({
       fetcher: this.fetcher,
       baseUrl: this.lambdasUrl,
