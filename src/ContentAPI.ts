@@ -1,22 +1,22 @@
 import {
-  Timestamp,
-  ContentFileHash,
-  ServerStatus,
-  EntityType,
-  Pointer,
-  EntityId,
-  Entity,
   AvailableContentResult,
+  ContentFileHash,
   DeploymentBase,
-  DeploymentWithMetadata,
   DeploymentWithContent,
+  DeploymentWithMetadata,
   DeploymentWithPointers,
+  Entity,
+  EntityId,
+  EntityType,
   LegacyAuditInfo,
-  RequestOptions
+  Pointer,
+  RequestOptions,
+  ServerStatus,
+  Timestamp
 } from 'dcl-catalyst-commons'
-import { Readable } from 'stream'
-import { DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
+import { Readable, Writable } from 'stream'
 import { BuildEntityOptions, BuildEntityWithoutFilesOptions, DeploymentOptions } from './ContentClient'
+import { DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 
 export interface ContentAPI {
   /** Build entities */
@@ -38,17 +38,25 @@ export interface ContentAPI {
     deploymentOptions: DeploymentOptions<T>,
     options?: RequestOptions
   ): Promise<T[]>
+
+  /**
+   * @deprecated use iterateThroughDeployments instead
+   */
   streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
     deploymentOptions: DeploymentOptions<T>,
     options?: RequestOptions
   ): Readable
+  iterateThroughDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
+    deploymentOptions?: DeploymentOptions<T>,
+    options?: RequestOptions
+  ): AsyncIterable<T>
   downloadContent(contentHash: ContentFileHash, options?: RequestOptions): Promise<Buffer>
   isContentAvailable(cids: ContentFileHash[], options?: RequestOptions): Promise<AvailableContentResult>
-  pipeContent(
-    contentHash: ContentFileHash,
-    writeTo: ReadableStream<Uint8Array>,
-    options?: RequestOptions
-  ): Promise<Map<string, string>>
+
+  /**
+   * pipeContent only works in Node.js like environments
+   */
+  pipeContent(contentHash: ContentFileHash, writeTo: Writable, options?: RequestOptions): Promise<Map<string, string>>
 
   /** Upload */
   deployEntity(deployData: DeploymentData, fix?: boolean, options?: RequestOptions): Promise<Timestamp>

@@ -92,15 +92,15 @@ export class LambdasClient implements LambdasAPI {
   }
 
   fetchCatalystsApprovedByDAO(options?: RequestOptions): Promise<ServerMetadata[]> {
-    return this.fetcher.fetchJson(`${this.lambdasUrl}/contracts/servers`, options)
+    return this.fetcher.fetchJson(`${this.lambdasUrl}/contracts/servers`, options) as any
   }
 
   fetchLambdasStatus(options?: RequestOptions): Promise<{ contentServerUrl: string }> {
-    return this.fetcher.fetchJson(`${this.lambdasUrl}/status`, options)
+    return this.fetcher.fetchJson(`${this.lambdasUrl}/status`, options) as any
   }
 
   fetchPeerHealth(options?: RequestOptions): Promise<Record<string, HealthStatus>> {
-    return this.fetcher.fetchJson(`${this.lambdasUrl}/health`, options)
+    return this.fetcher.fetchJson(`${this.lambdasUrl}/health`, options) as any
   }
 
   getLambdasUrl(): string {
