@@ -12,8 +12,8 @@
     "watch": "tsc --watch --project tsconfig-build.json",
     "test": "jest --forceExit --detectOpenHandles --coverage --verbose",
     "commit-msg": "validate-commit-msg",
-    "lint:fix": "yarn eslint '**/*.{js,ts,tsx}' --quiet --fix",
-    "lint:check": "yarn eslint '**/*.{js,ts,tsx}' --quiet"
+    "lint:fix": "eslint '**/*.{js,ts,tsx}' --quiet --fix",
+    "lint:check": "eslint '**/*.{js,ts,tsx}' --quiet"
   },
   "nyc": {
     "all": true,
@@ -55,14 +55,14 @@
     "@types/log4js": "^2.3.5",
     "@typescript-eslint/eslint-plugin": "^4.9.0",
     "@typescript-eslint/parser": "^4.9.0",
-    "eslint": "^7.14.0",
-    "eslint-config-prettier": "^7.2.0",
-    "eslint-plugin-prettier": "^3.2.0",
+    "eslint": "^8.0.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^4.0.0",
     "jest": "^27.2.1",
     "prettier": "^2.2.1",
     "ts-jest": "^27.0.5",
     "ts-mockito": "^2.6.1",
-    "ts-node": "^9.1.1",
+    "ts-node": "^10.2.1",
     "typescript": "^4.4.3",
     "validate-commit-msg": "^2.14.0"
   },

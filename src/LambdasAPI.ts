@@ -2,7 +2,11 @@ import { EntityMetadata, Profile, RequestOptions, ServerMetadata } from 'dcl-cat
 import { EthAddress } from 'dcl-crypto'
 
 export interface LambdasAPI {
-  fetchProfiles(ethAddresses: EthAddress[], profileOptions?: ProfileOptions, options?: RequestOptions): Promise<Profile[]>
+  fetchProfiles(
+    ethAddresses: EthAddress[],
+    profileOptions?: ProfileOptions,
+    options?: RequestOptions
+  ): Promise<Profile[]>
 
   fetchWearables(filters: WearablesFilters, options?: RequestOptions): Promise<EntityMetadata[]>
 
@@ -26,7 +30,7 @@ export type ProfileOptions = {
 export class ProfileFields {
   static readonly ONLY_SNAPSHOTS = new ProfileFields(['snapshots'])
 
-  private constructor(private readonly fields: string[]) { }
+  private constructor(private readonly fields: string[]) {}
 
   getFields(): string {
     return this.fields.join(',')
