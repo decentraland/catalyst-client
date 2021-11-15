@@ -186,10 +186,16 @@ export class ContentClient implements ContentAPI {
     return retry(
       async () => {
         const content = await this.fetcher.fetchBuffer(`${this.contentUrl}/contents/${contentHash}`, timeout)
-        const downloadedHash = await Hashing.calculateBufferHash(content)
+        const downloadedHashAsV3 = await Hashing.calculateBufferHash(content)
         // Sometimes, the downloaded file is not complete, so the hash turns out to be different.
         // So we will check the hash before considering the download successful.
-        if (downloadedHash === contentHash) {
+        if (downloadedHashAsV3 === contentHash) {
+          return content
+        }
+        const downloadedHashAsV4 = await Hashing.calculateIPFSHash(content)
+        // Sometimes, the downloaded file is not complete, so the hash turns out to be different.
+        // So we will check the hash before considering the download successful.
+        if (downloadedHashAsV4 === contentHash) {
           return content
         }
         throw new Error(`Failed to fetch file with hash ${contentHash} from ${this.contentUrl}`)
