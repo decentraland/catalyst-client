@@ -28,17 +28,15 @@ export class DeploymentBuilder {
     version: EntityVersion
     type: EntityType
     pointers: Pointer[]
-    files?: Map<string, Buffer>
+    files?: Map<string, Uint8Array>
     metadata?: EntityMetadata
     timestamp?: Timestamp
   }): Promise<DeploymentPreparationData> {
     // Reorder input
-    const contentFiles: { key: string; content: Buffer }[] = Array.from(files ?? new Map().entries()).map(
-      ([key, content]) => ({
-        key,
-        content
-      })
-    )
+    const contentFiles = Array.from(files ?? []).map(([key, content]) => ({
+      key,
+      content
+    }))
 
     // Calculate hashes
     const hashing = version === EntityVersion.V3 ? Hashing.calculateBufferHash : Hashing.calculateIPFSHash
@@ -46,7 +44,7 @@ export class DeploymentBuilder {
       contentFiles.map(async ({ key, content }) => ({ key, content, hash: await hashing(content) }))
     )
     const hashesByKey: Map<string, ContentFileHash> = new Map(allInfo.map(({ hash, key }) => [key, hash]))
-    const filesByHash: Map<ContentFileHash, Buffer> = new Map(allInfo.map(({ hash, content }) => [hash, content]))
+    const filesByHash: Map<ContentFileHash, Uint8Array> = new Map(allInfo.map(({ hash, content }) => [hash, content]))
 
     return DeploymentBuilder.buildEntityInternal(version, type, pointers, {
       hashesByKey,
@@ -109,7 +107,7 @@ export class DeploymentBuilder {
     })
 
     // Add entity file to content files
-    const filesByHash: Map<ContentFileHash, Buffer> = options?.filesByHash ?? new Map()
+    const filesByHash: Map<ContentFileHash, Uint8Array> = options?.filesByHash ?? new Map()
     filesByHash.set(entity.id, entityFile)
 
     return { files: filesByHash, entityId: entity.id }
@@ -118,7 +116,7 @@ export class DeploymentBuilder {
 
 type BuildEntityInternalOptions = {
   hashesByKey?: Map<string, ContentFileHash>
-  filesByHash?: Map<ContentFileHash, Buffer>
+  filesByHash?: Map<ContentFileHash, Uint8Array>
   metadata?: EntityMetadata
   timestamp?: Timestamp
 }
@@ -126,7 +124,7 @@ type BuildEntityInternalOptions = {
 /** This data contains everything necessary for the user to sign, so that then a deployment can be executed */
 export type DeploymentPreparationData = {
   entityId: EntityId
-  files: Map<ContentFileHash, Buffer>
+  files: Map<ContentFileHash, Uint8Array>
 }
 
 export type DeploymentData = DeploymentPreparationData & {

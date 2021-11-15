@@ -41,7 +41,9 @@ describe('Deployment Builder', () => {
     expect(entityId).toEqual(await Hashing.calculateBufferHash(entityFileBuffer))
 
     // Assert entity file
-    const { type, pointers, timestamp, content, metadata } = JSON.parse(entityFileBuffer.toString())
+    const { type, pointers, timestamp, content, metadata } = JSON.parse(
+      new TextDecoder().decode(entityFileBuffer).toString()
+    )
 
     expect(type).toEqual(EntityType.PROFILE)
     expect(pointers).toEqual([pointer])
