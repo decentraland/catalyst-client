@@ -70,14 +70,70 @@ describe('ContentClient', () => {
     })
   })
 
+  describe('buildEntityFormDataForDeployment', () => {
+    it('works as expected', async () => {
+      const mock = mockFetcherJson()
+      mock.mockUrl('/status', { currentTime: 1, version: EntityVersion.V3 })
+      mock.mockUrl('/available-content?cid=QmA&cid=QmB', [])
+
+      const client = new ContentClient({ contentUrl: URL, fetcher: mock.instance })
+
+      const files = new Map<string, Uint8Array>()
+      files.set('QmA', new Uint8Array([111, 112, 113]))
+      files.set('QmB', Buffer.from('asd', 'utf-8'))
+
+      const form = await client.buildEntityFormDataForDeployment({ authChain: [], entityId: 'QmENTITY', files })
+
+      const formData = form.getBuffer().toString().replace(/\s*$/gm, '')
+
+      expect(formData).toContain(
+        `
+        | Content-Disposition: form-data; name="QmA"; filename="QmA"
+        | Content-Type: application/octet-stream
+        |
+        |
+        | opq
+        `
+          .replace(/^(\s*\|\s)*/gm, '') // scala, I miss you buddy...
+          .trim()
+      )
+
+      expect(formData).toContain(
+        `
+        | Content-Disposition: form-data; name="entityId"
+        |
+        |
+        | QmENTITY
+        `
+          .replace(/^(\s*\|\s)*/gm, '') // scala, I miss you buddy...
+          .trim()
+      )
+
+      expect(formData).toContain(
+        `
+        | Content-Disposition: form-data; name="QmB"; filename="QmB"
+        | Content-Type: application/octet-stream
+        |
+        |
+        | asd
+        `
+          .replace(/^(\s*\|\s)*/gm, '') // scala, I miss you buddy...
+          .trim()
+      )
+    })
+  })
+
   describe('When calling buildDeployment', () => {
     let mocked
     let fetcher
     const type = EntityType.PROFILE
     const pointers = ['p1']
-    const files = undefined
+    const files = new Map<string, Uint8Array>()
+    files.set('QmA', new Uint8Array([1, 2, 3]))
+    files.set('QmB', Buffer.from('asd', 'utf-8'))
     const metadata = {}
     const currentTime = 100
+    let client: ContentClient
     let deploymentBuilderClassMock: typeof DeploymentBuilder
 
     beforeEach(async () => {
@@ -96,7 +152,7 @@ describe('ContentClient', () => {
         })
       ).thenResolve()
 
-      const client = buildClient(URL, fetcher, instance(deploymentBuilderClassMock))
+      client = buildClient(URL, fetcher, instance(deploymentBuilderClassMock))
       await client.buildEntity({ type, pointers, files, metadata })
     })
 
@@ -543,19 +599,23 @@ describe('ContentClient', () => {
     return { mock: mockedFetcher, instance: instance(mockedFetcher) }
   }
 
-  function mockFetcherJson<T>(path?: string, result?: T): { mock: Fetcher; instance: Fetcher } {
+  function mockFetcherJson<T>(path?: string, result?: T) {
     // Create mock
     const mockedFetcher: Fetcher = mock(Fetcher)
 
-    if (path) {
+    function mockUrl(path: string, result: any) {
       when(mockedFetcher.fetchJson(anything(), anything())).thenCall((url, _) => {
         expect(url).toEqual(`${URL}${path}`)
         return Promise.resolve(result)
       })
     }
 
+    if (path) {
+      mockUrl(path, result)
+    }
+
     // Getting instance from mock
-    return { mock: mockedFetcher, instance: instance(mockedFetcher) }
+    return { mock: mockedFetcher, instance: instance(mockedFetcher), mockUrl }
   }
 
   function mockPipeFetcher(result: Headers): { mock: Fetcher; instance: Fetcher } {
