@@ -101,7 +101,7 @@ export class ContentClient implements ContentAPI {
     })
   }
 
-  async deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {
+  async buildEntityFormDataForDeployment(deployData: DeploymentData, options?: RequestOptions) {
     // Check if we are running in node or browser
     const areWeRunningInNode = isNode()
 
@@ -114,13 +114,19 @@ export class ContentClient implements ContentAPI {
       if (!alreadyUploadedHashes.has(fileHash) || fileHash === deployData.entityId) {
         if (areWeRunningInNode) {
           // Node
-          form.append(fileHash, file, fileHash)
+          form.append(fileHash, Buffer.isBuffer(file) ? file : Buffer.from(arrayBufferFrom(file)), fileHash)
         } else {
           // Browser
-          form.append(fileHash, new Blob([file.buffer]), fileHash)
+          form.append(fileHash, new Blob([arrayBufferFrom(file)]), fileHash)
         }
       }
     }
+
+    return form
+  }
+
+  async deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {
+    const form = this.buildEntityFormDataForDeployment(deployData, options)
 
     const requestOptions = mergeRequestOptions(options ?? {}, {
       body: form as any
@@ -436,7 +442,7 @@ export type DeploymentOptions<T> = {
 export interface BuildEntityOptions {
   type: EntityType
   pointers: Pointer[]
-  files?: Map<string, Buffer>
+  files?: Map<string, Uint8Array>
   metadata?: EntityMetadata
   timestamp?: Timestamp
 }
@@ -474,4 +480,11 @@ export class DeploymentFields<T extends Partial<Deployment>> {
   isFieldIncluded(name: string) {
     return this.fields.includes(name)
   }
+}
+
+function arrayBufferFrom(value: Buffer | Uint8Array) {
+  if (value.buffer) {
+    return value.buffer
+  }
+  return value
 }
