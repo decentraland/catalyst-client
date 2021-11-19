@@ -1,4 +1,3 @@
-// this server shuts down after 10100 requests.
 
 import { createConfigComponent } from '@well-known-components/env-config-provider'
 import { createServerComponent, Router } from '@well-known-components/http-server'
