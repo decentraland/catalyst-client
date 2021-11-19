@@ -126,7 +126,7 @@ export class ContentClient implements ContentAPI {
   }
 
   async deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {
-    const form = this.buildEntityFormDataForDeployment(deployData, options)
+    const form = await this.buildEntityFormDataForDeployment(deployData, options)
 
     const requestOptions = mergeRequestOptions(options ?? {}, {
       body: form as any
@@ -415,7 +415,7 @@ export class ContentClient implements ContentAPI {
   ): Promise<Set<ContentFileHash>> {
     const result: AvailableContentResult = await this.isContentAvailable(hashes, options)
 
-    const alreadyUploaded = result.filter(({ available }) => available).map(({ cid }) => cid)
+    const alreadyUploaded = result.filter(($) => $.available).map(({ cid }) => cid)
 
     return new Set(alreadyUploaded)
   }

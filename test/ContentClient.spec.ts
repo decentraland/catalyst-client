@@ -622,7 +622,7 @@ describe('ContentClient', () => {
     // Create mock
     const mockedFetcher: Fetcher = mock(Fetcher)
 
-    when(mockedFetcher.fetchPipe(anything(), anything(), anything())).thenResolve(result)
+    when(mockedFetcher.fetchPipe(anything(), anything(), anything())).thenResolve(result as any)
 
     // Getting instance from mock
     return { mock: mockedFetcher, instance: instance(mockedFetcher) }
