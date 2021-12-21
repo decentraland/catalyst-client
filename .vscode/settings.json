@@ -2,7 +2,8 @@
   "files.exclude": {
     "bazel*": true,
     "data*": true,
-    "dist/**/*": true
+    "dist/**/*": true,
+    "node_modules/**/*": true
   },
   "typescript.tsdk": "node_modules/typescript/lib",
   "editor.formatOnSave": true,

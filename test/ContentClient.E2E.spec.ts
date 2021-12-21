@@ -1,4 +1,3 @@
-import { EntityVersion } from 'dcl-catalyst-commons'
 import { ContentClient } from '../src'
 import { runServerBasedE2ETest } from './components'
 import { multipartParserWrapper } from './utils'
@@ -7,7 +6,6 @@ runServerBasedE2ETest('test client post', ({ components }) => {
   let client: ContentClient
 
   it('configures some endpoints', () => {
-    components.router.get('/status', async () => ({ status: 200, body: { currentTime: 1, version: EntityVersion.V3 } }))
 
     components.router.get('/available-content', async (ctx) => {
       const params = new URLSearchParams(ctx.url.search)
