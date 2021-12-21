@@ -72,7 +72,7 @@ export class ContentClient implements ContentAPI {
   }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData> {
     const result = timestamp ?? Date.now()
     return this.deploymentBuilderClass.buildEntityWithoutNewFiles({
-      version: status.version,
+      version: 'v3',
       type,
       pointers,
       hashesByKey,
@@ -90,7 +90,7 @@ export class ContentClient implements ContentAPI {
   }: BuildEntityOptions): Promise<DeploymentPreparationData> {
     const result = timestamp ?? Date.now()
     return this.deploymentBuilderClass.buildEntity({
-      version: status.version,
+      version: 'v3',
       type,
       pointers,
       files,
