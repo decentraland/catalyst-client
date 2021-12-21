@@ -21,7 +21,6 @@ describe('ContentClient', () => {
   const URL = 'https://url.com'
 
   describe('When calling buildEntityWithoutNewFiles', () => {
-    let mocked
     let fetcher
     const type = EntityType.PROFILE
     const pointers = ['p1']
@@ -31,7 +30,6 @@ describe('ContentClient', () => {
     let deploymentBuilderClassMock: typeof DeploymentBuilder
 
     beforeEach(async () => {
-      ;({ mock: mocked, instance: fetcher } = mockFetcherJson('/status', { currentTime, version: EntityVersion.V3 }))
 
       deploymentBuilderClassMock = mock<typeof DeploymentBuilder>(DeploymentBuilder)
 
@@ -47,11 +45,7 @@ describe('ContentClient', () => {
       ).thenResolve()
 
       const client = buildClient(URL, fetcher, instance(deploymentBuilderClassMock))
-      await client.buildEntityWithoutNewFiles({ type, pointers, hashesByKey, metadata })
-    })
-
-    it('should fetch the status', () => {
-      verify(mocked.fetchJson(URL + '/status', anything())).once()
+      await client.buildEntityWithoutNewFiles({ type, pointers, hashesByKey, metadata, timestamp: currentTime })
     })
 
     it('should call the deployer builder with the expected parameters', () => {
@@ -73,7 +67,6 @@ describe('ContentClient', () => {
   describe('buildEntityFormDataForDeployment', () => {
     it('works as expected', async () => {
       const mock = mockFetcherJson()
-      mock.mockUrl('/status', { currentTime: 1, version: EntityVersion.V3 })
       mock.mockUrl('/available-content?cid=QmA&cid=QmB', [])
 
       const client = new ContentClient({ contentUrl: URL, fetcher: mock.instance })
@@ -124,7 +117,6 @@ describe('ContentClient', () => {
   })
 
   describe('When calling buildDeployment', () => {
-    let mocked
     let fetcher
     const type = EntityType.PROFILE
     const pointers = ['p1']
@@ -137,7 +129,6 @@ describe('ContentClient', () => {
     let deploymentBuilderClassMock: typeof DeploymentBuilder
 
     beforeEach(async () => {
-      ;({ mock: mocked, instance: fetcher } = mockFetcherJson('/status', { currentTime, version: EntityVersion.V3 }))
 
       deploymentBuilderClassMock = mock<typeof DeploymentBuilder>(DeploymentBuilder)
 
@@ -153,11 +144,7 @@ describe('ContentClient', () => {
       ).thenResolve()
 
       client = buildClient(URL, fetcher, instance(deploymentBuilderClassMock))
-      await client.buildEntity({ type, pointers, files, metadata })
-    })
-
-    it('should fetch the status', () => {
-      verify(mocked.fetchJson(URL + '/status', anything())).once()
+      await client.buildEntity({ type, pointers, files, metadata, timestamp: currentTime })
     })
 
     it('should call the deployer builder with the expected parameters', () => {

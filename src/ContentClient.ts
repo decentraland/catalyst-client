@@ -11,6 +11,7 @@ import {
   EntityId,
   EntityMetadata,
   EntityType,
+  EntityVersion,
   Fetcher,
   Hashing,
   LegacyAuditInfo,
@@ -72,7 +73,7 @@ export class ContentClient implements ContentAPI {
   }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData> {
     const result = timestamp ?? Date.now()
     return this.deploymentBuilderClass.buildEntityWithoutNewFiles({
-      version: 'v3',
+      version: EntityVersion.V3,
       type,
       pointers,
       hashesByKey,
@@ -90,7 +91,7 @@ export class ContentClient implements ContentAPI {
   }: BuildEntityOptions): Promise<DeploymentPreparationData> {
     const result = timestamp ?? Date.now()
     return this.deploymentBuilderClass.buildEntity({
-      version: 'v3',
+      version: EntityVersion.V3,
       type,
       pointers,
       files,
