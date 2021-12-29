@@ -6,9 +6,9 @@
     "target": "es2020",
     "lib": [
       "es2020",
-      "dom",
-      "esnext.asynciterable"
+      "DOM"
     ],
+    "types": [],
     "sourceMap": true,
     "moduleResolution": "node",
     "forceConsistentCasingInFileNames": true,
@@ -27,15 +27,7 @@
     ],
     "declaration": true
   },
-  "exclude": [
-    "node_modules",
-    "build",
-    "scripts",
-    "acceptance-tests",
-    "webpack",
-    "jest",
-    "dist",
-    "src/contracts",
-    "src/setupTests.ts"
+  "include": [
+    "src"
   ]
 }

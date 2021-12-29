@@ -1,10 +1,7 @@
 import cookie from 'cookie'
 import { CrossFetchRequest, Fetcher } from 'dcl-catalyst-commons'
-import log4js from 'log4js'
 import ms from 'ms'
 import { generateNonceForChallenge } from '../utils/ProofOfWork'
-
-const LOGGER = log4js.getLogger('JWTPort')
 
 export async function obtainJWT(fetcher: Fetcher, catalystUrl: string): Promise<string | undefined> {
   try {
@@ -19,11 +16,11 @@ export async function obtainJWT(fetcher: Fetcher, catalystUrl: string): Promise<
     const jwtResponse = (await fetcher.postForm(powAuthUrl, { body: challengeBody })) as any
 
     if (!jwtResponse.jwt) {
-      LOGGER.warn('[POW] Could not get a JWT from Pow Auth Server.')
+      console.warn('[POW] Could not get a JWT from Pow Auth Server.')
     }
     return jwtResponse.jwt
   } catch (error) {
-    LOGGER.warn(`[POW] Could not get a JWT from Pow Auth Server, due to: ${error}`)
+    console.warn(`[POW] Could not get a JWT from Pow Auth Server, due to: ${error}`)
     return ''
   }
 }
@@ -87,7 +84,7 @@ export function configureJWTMiddlewares(fetcher: Fetcher, baseUrl: string): void
               minutesToAdd = 2 * minutesToAdd
             }
           } catch {
-            LOGGER.warn('[POW] Could not configure Middleware to set JWT.')
+            console.warn('[POW] Could not configure Middleware to set JWT.')
           } finally {
             isRequestingJWT = false
           }
