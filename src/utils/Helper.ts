@@ -1,5 +1,5 @@
 import { Fetcher, RequestOptions } from 'dcl-catalyst-commons'
-import FormData from 'form-data'
+import type FormData from 'form-data'
 import { RUNNING_VERSION } from './Environment'
 
 export function addModelToFormData(model: any, form: FormData, namespace = ''): FormData {
