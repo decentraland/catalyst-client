@@ -1,8 +1,6 @@
 import {
   AvailableContentResult,
-  ContentFileHash,
-  DeploymentBase,
-  DeploymentWithContent,
+  ContentFileHash, DeploymentWithContent,
   DeploymentWithMetadata,
   DeploymentWithPointers,
   Entity,
@@ -14,8 +12,8 @@ import {
   ServerStatus,
   Timestamp
 } from 'dcl-catalyst-commons'
-import { Readable, Writable } from 'stream'
-import { BuildEntityOptions, BuildEntityWithoutFilesOptions, DeploymentOptions } from './ContentClient'
+import { Writable } from 'stream'
+import { BuildEntityOptions, BuildEntityWithoutFilesOptions } from './ContentClient'
 import { DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 
 export interface ContentAPI {
@@ -34,22 +32,6 @@ export interface ContentAPI {
   fetchEntityById(type: EntityType, id: EntityId, options?: RequestOptions): Promise<Entity>
   fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<LegacyAuditInfo>
   fetchContentStatus(options?: RequestOptions): Promise<ServerStatus>
-  fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
-    deploymentOptions: DeploymentOptions<T>,
-    options?: RequestOptions
-  ): Promise<T[]>
-
-  /**
-   * @deprecated use iterateThroughDeployments instead
-   */
-  streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
-    deploymentOptions: DeploymentOptions<T>,
-    options?: RequestOptions
-  ): Readable
-  iterateThroughDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
-    deploymentOptions?: DeploymentOptions<T>,
-    options?: RequestOptions
-  ): AsyncIterable<T>
   downloadContent(contentHash: ContentFileHash, options?: RequestOptions): Promise<Buffer>
   isContentAvailable(cids: ContentFileHash[], options?: RequestOptions): Promise<AvailableContentResult>
 

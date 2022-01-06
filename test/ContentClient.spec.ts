@@ -5,16 +5,12 @@ import {
   EntityType,
   EntityVersion,
   Fetcher,
-  Hashing,
-  PartialDeploymentHistory,
-  SortingField,
-  SortingOrder
+  Hashing
 } from 'dcl-catalyst-commons'
 import { Headers } from 'node-fetch'
 import { Readable } from 'stream'
 import { anything, deepEqual, instance, mock, verify, when } from 'ts-mockito'
-import { DeploymentWithMetadataContentAndPointers } from '../src/ContentAPI'
-import { ContentClient, DeploymentFields } from '../src/ContentClient'
+import { ContentClient } from '../src/ContentClient'
 import { DeploymentBuilder } from '../src/utils/DeploymentBuilder'
 
 describe('ContentClient', () => {
@@ -117,7 +113,7 @@ describe('ContentClient', () => {
   })
 
   describe('When calling buildDeployment', () => {
-    let fetcher
+    let fetcher: Fetcher
     const type = EntityType.PROFILE
     const pointers = ['p1']
     const files = new Map<string, Uint8Array>()
@@ -300,211 +296,6 @@ describe('ContentClient', () => {
 
     await expect(client.isContentAvailable([])).rejects.toEqual(`You must set at least one cid.`)
     verify(mocked.fetchJson(anything())).never()
-  })
-
-  it('When fetching all deployments, then the result is as expected', async () => {
-    const deployment = someDeployment()
-    const filters = {
-      fromLocalTimestamp: 20,
-      toLocalTimestamp: 30,
-      onlyCurrentlyPointed: true,
-      deployedBy: ['eth1', 'eth2'],
-      entityTypes: [EntityType.PROFILE, EntityType.SCENE],
-      entityIds: ['id1', 'id2'],
-      pointers: ['p1', 'p2']
-    }
-    const requestResult: PartialDeploymentHistory<Deployment> = {
-      filters: {},
-      deployments: [deployment],
-      pagination: { offset: 10, limit: 10, moreData: false }
-    }
-    const { instance: fetcher } = mockFetcherJsonDeployments(
-      `/deployments?fromLocalTimestamp=20&toLocalTimestamp=30&onlyCurrentlyPointed=true&deployedBy=eth1&deployedBy=eth2&entityType=profile&entityType=scene&entityId=id1&entityId=id2&pointer=p1&pointer=p2`,
-      requestResult
-    )
-
-    const client = buildClient(URL, fetcher)
-    const result = await client.fetchAllDeployments({ filters: filters })
-
-    expect(result).toEqual([deployment])
-  })
-
-  it('When fetching all deployments with no audit, then the result is as expected', async () => {
-    const deployment = someDeployment()
-    const { auditInfo, ...deploymentWithoutAuditInfo } = deployment
-    const requestResult: PartialDeploymentHistory<DeploymentWithMetadataContentAndPointers> = {
-      filters: {},
-      deployments: [deploymentWithoutAuditInfo],
-      pagination: { offset: 10, limit: 10, moreData: false }
-    }
-    const { instance: fetcher } = mockFetcherJsonDeployments(
-      `/deployments?entityType=${EntityType.PROFILE}&fields=pointers,content,metadata`,
-      requestResult
-    )
-
-    const client = buildClient(URL, fetcher)
-    const result = await client.fetchAllDeployments({
-      filters: { entityTypes: [EntityType.PROFILE] },
-      fields: DeploymentFields.POINTERS_CONTENT_AND_METADATA
-    })
-
-    expect(result).toEqual([deploymentWithoutAuditInfo])
-  })
-
-  it('When fetching all deployments with no filters, then an error is thrown', async () => {
-    const client = buildClient(URL)
-    expect.assertions(1)
-    await expect(
-      client.fetchAllDeployments({
-        filters: {
-          deployedBy: [],
-          entityTypes: [],
-          entityIds: [],
-          pointers: [],
-          onlyCurrentlyPointed: true
-        }
-      })
-    ).rejects.toEqual(
-      new Error(`When fetching deployments, you must set at least one filter that isn't 'onlyCurrentlyPointed'`)
-    )
-  })
-
-  it('When fetching all deployments with sort params, then the request has the correct query params', async () => {
-    const deployment = someDeployment()
-    const requestResult: PartialDeploymentHistory<Deployment> = {
-      filters: {},
-      deployments: [deployment],
-      pagination: { offset: 10, limit: 10, moreData: false }
-    }
-    const { instance: fetcher } = mockFetcherJsonDeployments(
-      `/deployments?entityType=${EntityType.PROFILE}&sortingField=entity_timestamp&sortingOrder=ASC`,
-      requestResult
-    )
-
-    const client = buildClient(URL, fetcher)
-    const result = await client.fetchAllDeployments({
-      filters: { entityTypes: [EntityType.PROFILE] },
-      sortBy: { field: SortingField.ENTITY_TIMESTAMP, order: SortingOrder.ASCENDING }
-    })
-
-    expect(result).toEqual([deployment])
-  })
-
-  it('When fetching all deployments with pagination, then subsequent calls are made correctly', async () => {
-    const [deployment1, deployment2] = [someDeployment(), someDeployment()]
-    const next = `?someName=value1&someName=value3`
-    const requestResult1: PartialDeploymentHistory<Deployment> = {
-      filters: {},
-      deployments: [deployment1],
-      pagination: { next, offset: 0, limit: 1, moreData: true }
-    }
-    const requestResult2: PartialDeploymentHistory<Deployment> = {
-      filters: {},
-      deployments: [deployment1, deployment2],
-      pagination: { offset: 1, limit: 2, moreData: false }
-    }
-
-    const mockedFetcher: Fetcher = mock(Fetcher)
-
-    when(mockedFetcher.fetch(anything(), anything())).thenCall((url, _) => {
-      if (url == `${URL}/deployments?entityType=${EntityType.PROFILE}&fields=auditInfo`) {
-        return Promise.resolve(new Response(JSON.stringify(requestResult1)))
-      }
-      if (url == `${URL}/deployments${next}`) {
-        return Promise.resolve(new Response(JSON.stringify(requestResult2)))
-      }
-      throw new Error(`Mock not ready for ${url}`)
-    })
-
-    const fetcher = instance(mockedFetcher)
-
-    const client = buildClient(URL, fetcher)
-    const result = await client.fetchAllDeployments({
-      filters: { entityTypes: [EntityType.PROFILE] },
-      fields: DeploymentFields.AUDIT_INFO
-    })
-
-    // We make sure that repeated deployments were ignored
-    expect(result).toEqual([deployment1, deployment2])
-  })
-
-  it('When fetching all deployments with pagination, if a request fails due to network it stops the iterator', async () => {
-    const [deployment1, deployment2] = [someDeployment(), someDeployment()]
-    const next = `?someName=value1&someName=value3`
-    const requestResult1: PartialDeploymentHistory<Deployment> = {
-      filters: {},
-      deployments: [deployment1, deployment2],
-      pagination: { next, offset: 0, limit: 987, moreData: true }
-    }
-
-    const mockedFetcher: Fetcher = mock(Fetcher)
-
-    when(mockedFetcher.fetch(anything(), anything())).thenCall((url, _) => {
-      if (url == `${URL}/deployments?entityType=${EntityType.PROFILE}&fields=auditInfo&limit=987`) {
-        return Promise.resolve(new Response(JSON.stringify(requestResult1)))
-      }
-      throw new Error(`ECONNECTION this is a network error.`)
-    })
-
-    const fetcher = instance(mockedFetcher)
-
-    const client = buildClient(URL, fetcher)
-    const iterator = client.iterateThroughDeployments({
-      filters: { entityTypes: [EntityType.PROFILE] },
-      fields: DeploymentFields.AUDIT_INFO,
-      limit: 987
-    })
-
-    const deployments: any[] = []
-
-    await expect(async () => {
-      for await (const it of iterator) {
-        deployments.push(it)
-      }
-    }).rejects.toEqual(new Error(`ECONNECTION this is a network error.`))
-
-    expect(deployments).toEqual([deployment1, deployment2])
-  })
-
-  it('When fetching all deployments with pagination, if a request fails due to http server error, it stops the iterator', async () => {
-    const [deployment1, deployment2] = [someDeployment(), someDeployment()]
-    const next = `?someName=value1&someName=value3`
-    const requestResult1: PartialDeploymentHistory<Deployment> = {
-      filters: {},
-      deployments: [deployment1, deployment2],
-      pagination: { next, offset: 0, limit: 1, moreData: true }
-    }
-
-    const mockedFetcher: Fetcher = mock(Fetcher)
-
-    when(mockedFetcher.fetch(anything(), anything())).thenCall((url, _) => {
-      if (url == `${URL}/deployments?entityType=${EntityType.PROFILE}&fields=auditInfo`) {
-        return Promise.resolve(new Response(JSON.stringify(requestResult1)))
-      }
-      return Promise.resolve(new Response('Service unavailable', { status: 502 }))
-    })
-
-    const fetcher = instance(mockedFetcher)
-
-    const client = buildClient(URL, fetcher)
-    const iterator = client.iterateThroughDeployments({
-      filters: { entityTypes: [EntityType.PROFILE] },
-      fields: DeploymentFields.AUDIT_INFO
-    })
-
-    const deployments: any[] = []
-
-    await expect(async () => {
-      for await (const it of iterator) {
-        deployments.push(it)
-      }
-    }).rejects.toEqual(
-      new Error(
-        `Error while requesting deployments to the url https://url.com/deployments?someName=value1&someName=value3. Status code was: 502 Response text was: "Service unavailable"`
-      )
-    )
-
-    expect(deployments).toEqual([deployment1, deployment2])
   })
 
   it('When a fetch is piped without headers then none is returned', async () => {

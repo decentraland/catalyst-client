@@ -18,7 +18,6 @@ export async function getApprovedListFromContract(network: 'mainnet' | 'ropsten'
 const REQUIRED_LISTS = 3
 export type KnownServersOptions = {
   preKnownServers: { list: { address: string }[] } | { network: 'mainnet' | 'ropsten' }
-  proofOfWorkEnabled?: boolean
   requiredLists?: number
   fetchApprovedCatalysts?: (catalystUrl: string) => Promise<string[] | undefined>
 }
@@ -28,7 +27,7 @@ export async function getUpdatedApprovedListWithoutQueryingContract(
   // Set defaults if needed
   const catalystListFetch =
     options.fetchApprovedCatalysts ??
-    ((catalystUrl) => fetchCatalystsApprovedByDAO(catalystUrl, options.proofOfWorkEnabled))
+    ((catalystUrl) => fetchCatalystsApprovedByDAO(catalystUrl))
   const requiredAmountOfLists = options.requiredLists ?? REQUIRED_LISTS
 
   // Get the list of known servers
@@ -91,12 +90,10 @@ function calculateIntersection(lists: string[][]): string[] {
 }
 
 async function fetchCatalystsApprovedByDAO(
-  catalystUrl: string,
-  proofOfWorkEnabled?: boolean
+  catalystUrl: string
 ): Promise<string[] | undefined> {
   const client: CatalystClient = new CatalystClient({
-    catalystUrl,
-    proofOfWorkEnabled
+    catalystUrl
   })
   try {
     const servers = await client.fetchCatalystsApprovedByDAO({ timeout: '10s' })

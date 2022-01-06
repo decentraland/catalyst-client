@@ -1,10 +1,7 @@
 import {
-  applySomeDefaults,
   AvailableContentResult,
   ContentFileHash,
-  Deployment,
-  DeploymentBase,
-  DeploymentFilters,
+  Deployment, DeploymentFilters,
   DeploymentSorting,
   DeploymentWithAuditInfo,
   Entity,
@@ -15,32 +12,24 @@ import {
   Fetcher,
   Hashing,
   LegacyAuditInfo,
-  mergeRequestOptions,
-  PartialDeploymentHistory,
-  Pointer,
+  mergeRequestOptions, Pointer,
   RequestOptions,
   retry,
   ServerStatus,
   Timestamp
 } from 'dcl-catalyst-commons'
 import FormData from 'form-data'
-import { Readable } from 'stream'
 import { ContentAPI, DeploymentWithMetadataContentAndPointers } from './ContentAPI'
-import { configureJWTMiddlewares } from './ports/Jwt'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 import {
-  addModelToFormData,
-  convertFiltersToQueryParams,
-  getHeadersWithUserAgent,
+  addModelToFormData, getHeadersWithUserAgent,
   isNode,
   sanitizeUrl,
-  splitAndFetch,
-  splitValuesIntoManyQueries
+  splitAndFetch
 } from './utils/Helper'
 
 export type ContentClientOptions = {
   contentUrl: string
-  proofOfWorkEnabled?: boolean
   fetcher?: Fetcher
   deploymentBuilderClass?: typeof DeploymentBuilder
 }
@@ -57,11 +46,6 @@ export class ContentClient implements ContentAPI {
         headers: getHeadersWithUserAgent('content-client')
       })
     this.deploymentBuilderClass = options.deploymentBuilderClass ?? DeploymentBuilder
-
-    if (options.proofOfWorkEnabled) {
-      const powAuthBaseUrl = new URL(this.contentUrl).origin
-      configureJWTMiddlewares(this.fetcher, powAuthBaseUrl)
-    }
   }
 
   async buildEntityWithoutNewFiles({
@@ -240,152 +224,6 @@ export class ContentClient implements ContentAPI {
       }
     })
     return headers
-  }
-
-  /**
-   * This method fetches all deployments that match the given filters.
-   *  It is important to mention, that if there are too many filters, then the URL might get too long.
-   *  In that case, we will internally make the necessary requests,
-   *  but then the order of the deployments is not guaranteed.
-   */
-  async fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
-    deploymentOptions: DeploymentOptions<T>,
-    options?: RequestOptions
-  ): Promise<T[]> {
-    const ret: T[] = []
-    for await (const it of this.iterateThroughDeployments(deploymentOptions, options)) {
-      ret.push(it)
-    }
-    return ret
-  }
-
-  /**
-   * @deprecated use iterateThroughDeployments instead
-   */
-  streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
-    deploymentOptions: DeploymentOptions<T>,
-    options?: RequestOptions
-  ): Readable {
-    return Readable.from(this.iterateThroughDeployments(deploymentOptions, options))
-  }
-
-  iterateThroughDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
-    deploymentOptions?: DeploymentOptions<T>,
-    options?: RequestOptions
-  ): AsyncIterable<T> {
-    // We are setting different defaults in this case, because if one of the request fails, then all fail
-    const withSomeDefaults = applySomeDefaults({ attempts: 3, waitTime: '1s' }, options)
-
-    // Validate that some params were used, so that not everything is fetched
-    this.assertFiltersAreSet(deploymentOptions?.filters)
-
-    // Transform filters object into query params map
-    const filterQueryParams: Map<string, string[]> = convertFiltersToQueryParams(deploymentOptions?.filters)
-
-    // Transform sorting object into query params map
-    const sortingQueryParams = this.sortingToQueryParams(deploymentOptions?.sortBy)
-
-    // Initialize query params with filters and sorting
-    const queryParams = new Map([...filterQueryParams, ...sortingQueryParams])
-
-    if (deploymentOptions?.fields) {
-      const fieldsValue = deploymentOptions?.fields.getFields()
-      queryParams.set('fields', [fieldsValue])
-    }
-
-    if (deploymentOptions?.limit) {
-      queryParams.set('limit', [deploymentOptions?.limit.toFixed()])
-    }
-
-    // Reserve space in the url for possible pagination
-    const reservedParams: Map<string, number> = new Map([
-      ['from', 13],
-      ['to', 13]
-    ])
-
-    return this.iterateThroughDeploymentsBasedOnResult<T>(
-      queryParams,
-      reservedParams,
-      deploymentOptions?.errorListener,
-      withSomeDefaults
-    )
-  }
-
-  async *iterateThroughDeploymentsBasedOnResult<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
-    queryParams: Map<string, string[]>,
-    reservedParams: Map<string, number>,
-    errorListener?: (errorMessage: string) => void,
-    options: RequestOptions = {}
-  ): AsyncIterable<T> {
-    // Split values into different queries
-    const queries = splitValuesIntoManyQueries({
-      baseUrl: this.contentUrl,
-      path: '/deployments',
-      queryParams,
-      reservedParams
-    })
-
-    // Perform the different queries
-    const foundIds: Set<EntityId> = new Set()
-    let exit = false
-    for (let i = 0; i < queries.length && !exit; i++) {
-      let url: string | undefined = queries[i]
-      while (url && !exit) {
-        try {
-          const res = await this.fetcher.fetch(url, options)
-          if (!res.ok) {
-            throw new Error(
-              'Error while requesting deployments to the url ' +
-                url +
-                '. Status code was: ' +
-                res.status +
-                ' Response text was: ' +
-                JSON.stringify(await res.text())
-            )
-          }
-          const partialHistory: PartialDeploymentHistory<T> = await res.json()
-          for (const deployment of partialHistory.deployments) {
-            if (!foundIds.has(deployment.entityId)) {
-              foundIds.add(deployment.entityId)
-              yield deployment
-            }
-          }
-          const nextRelative = partialHistory.pagination.next
-          url = nextRelative ? new URL(nextRelative, url).toString() : undefined
-        } catch (error) {
-          if (errorListener) {
-            errorListener(`${error}`)
-            exit = true
-          } else {
-            throw error
-          }
-        }
-      }
-    }
-  }
-
-  private assertFiltersAreSet(filters: DeploymentFilters | undefined) {
-    const filtersAreSet =
-      filters?.from ||
-      filters?.to ||
-      (filters?.deployedBy && filters?.deployedBy.length > 0) ||
-      (filters?.entityTypes && filters?.entityTypes.length > 0) ||
-      (filters?.entityIds && filters?.entityIds.length > 0) ||
-      (filters?.pointers && filters?.pointers.length > 0)
-    if (!filtersAreSet) {
-      throw new Error(`When fetching deployments, you must set at least one filter that isn't 'onlyCurrentlyPointed'`)
-    }
-  }
-
-  private sortingToQueryParams(sort?: DeploymentSorting): Map<string, string[]> {
-    const sortQueryParams: Map<string, string[]> = new Map()
-    if (sort?.field) {
-      sortQueryParams.set('sortingField', [sort.field])
-    }
-    if (sort?.order) {
-      sortQueryParams.set('sortingOrder', [sort.order])
-    }
-    return sortQueryParams
   }
 
   isContentAvailable(cids: string[], options?: RequestOptions): Promise<AvailableContentResult> {
