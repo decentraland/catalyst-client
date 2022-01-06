@@ -362,21 +362,6 @@ describe('ContentClient', () => {
     }
   }
 
-  function mockFetcherJsonDeployments<T>(path?: string, result?: T): { mock: Fetcher; instance: Fetcher } {
-    // Create mock
-    const mockedFetcher: Fetcher = mock(Fetcher)
-
-    if (path) {
-      when(mockedFetcher.fetch(anything(), anything())).thenCall((url, _) => {
-        expect(url).toEqual(`${URL}${path}`)
-        return Promise.resolve(new Response(JSON.stringify(result)))
-      })
-    }
-
-    // Getting instance from mock
-    return { mock: mockedFetcher, instance: instance(mockedFetcher) }
-  }
-
   function mockFetcherJson<T>(path?: string, result?: T) {
     // Create mock
     const mockedFetcher: Fetcher = mock(Fetcher)

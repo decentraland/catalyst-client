@@ -1,9 +1,7 @@
 import {
   AvailableContentResult,
   ContentFileHash,
-  Deployment, DeploymentFilters,
-  DeploymentSorting,
-  DeploymentWithAuditInfo,
+  Deployment, DeploymentWithAuditInfo,
   Entity,
   EntityId,
   EntityMetadata,
@@ -260,20 +258,6 @@ export class ContentClient implements ContentAPI {
   private fetchJson(path: string, options?: Partial<RequestOptions>): Promise<any> {
     return this.fetcher.fetchJson(`${this.contentUrl}${path}`, options)
   }
-}
-
-export type DeploymentOptions<T> = {
-  filters: DeploymentFilters
-  sortBy?: DeploymentSorting
-  fields?: DeploymentFields<T>
-  /**
-   * @deprecated please use try-catch and iterators instead
-   */
-  errorListener?: (errorMessage: string) => void
-  /**
-   * Amount of elements per page
-   */
-  limit?: number
 }
 
 export interface BuildEntityOptions {
