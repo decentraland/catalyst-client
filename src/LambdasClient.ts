@@ -8,7 +8,6 @@ import {
   ProfileOptions,
   WearablesFilters
 } from './LambdasAPI'
-import { configureJWTMiddlewares } from './ports/Jwt'
 import {
   convertFiltersToQueryParams,
   getHeadersWithUserAgent,
@@ -19,7 +18,6 @@ import {
 
 export type LambdasClientOptions = {
   lambdasUrl: string
-  proofOfWorkEnabled?: boolean
   fetcher?: Fetcher
 }
 export class LambdasClient implements LambdasAPI {
@@ -33,11 +31,6 @@ export class LambdasClient implements LambdasAPI {
       new Fetcher({
         headers: getHeadersWithUserAgent('lambdas-client')
       })
-
-    if (options.proofOfWorkEnabled) {
-      const powAuthBaseUrl = new URL(this.lambdasUrl).origin
-      configureJWTMiddlewares(this.fetcher, powAuthBaseUrl)
-    }
   }
 
   fetchProfiles(

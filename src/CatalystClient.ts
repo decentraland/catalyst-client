@@ -1,9 +1,5 @@
 import {
-  AvailableContentResult,
-  CompleteRequestOptions,
-  ContentFileHash,
-  DeploymentBase,
-  Entity,
+  AvailableContentResult, ContentFileHash, Entity,
   EntityId,
   EntityType,
   Fetcher,
@@ -17,10 +13,9 @@ import {
   Timestamp
 } from 'dcl-catalyst-commons'
 import { EthAddress } from 'dcl-crypto'
-import { Readable, Writable } from 'stream'
+import { Writable } from 'stream'
 import { CatalystAPI } from './CatalystAPI'
-import { DeploymentWithMetadataContentAndPointers } from './ContentAPI'
-import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient, DeploymentOptions } from './ContentClient'
+import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient } from './ContentClient'
 import { OwnedWearables, ProfileOptions, WearablesFilters } from './LambdasAPI'
 import { LambdasClient } from './LambdasClient'
 import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
@@ -29,7 +24,6 @@ import { getHeadersWithUserAgent, sanitizeUrl } from './utils/Helper'
 
 export type CatalystClientOptions = {
   catalystUrl: string
-  proofOfWorkEnabled?: boolean
   fetcher?: Fetcher
   deploymentBuilderClass?: typeof DeploymentBuilder
 }
@@ -47,22 +41,13 @@ export class CatalystClient implements CatalystAPI {
       })
     this.contentClient = new ContentClient({
       contentUrl: this.catalystUrl + '/content',
-      proofOfWorkEnabled: options.proofOfWorkEnabled,
       fetcher: fetcher,
       deploymentBuilderClass: options.deploymentBuilderClass
     })
     this.lambdasClient = new LambdasClient({
       lambdasUrl: this.catalystUrl + '/lambdas',
       fetcher: fetcher,
-      proofOfWorkEnabled: options.proofOfWorkEnabled
     })
-  }
-
-  iterateThroughDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
-    deploymentOptions?: DeploymentOptions<T>,
-    options?: Partial<CompleteRequestOptions>
-  ): AsyncIterable<T> {
-    return this.contentClient.iterateThroughDeployments(deploymentOptions, options)
   }
 
   buildEntity(options: BuildEntityOptions): Promise<DeploymentPreparationData> {
@@ -95,20 +80,6 @@ export class CatalystClient implements CatalystAPI {
 
   fetchContentStatus(options?: RequestOptions): Promise<ServerStatus> {
     return this.contentClient.fetchContentStatus(options)
-  }
-
-  fetchAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
-    deploymentOptions: DeploymentOptions<T>,
-    options?: RequestOptions
-  ): Promise<T[]> {
-    return this.contentClient.fetchAllDeployments(deploymentOptions, options)
-  }
-
-  streamAllDeployments<T extends DeploymentBase = DeploymentWithMetadataContentAndPointers>(
-    deploymentOptions: DeploymentOptions<T>,
-    options?: RequestOptions
-  ): Readable {
-    return this.contentClient.streamAllDeployments(deploymentOptions, options)
   }
 
   isContentAvailable(cids: string[], options?: RequestOptions): Promise<AvailableContentResult> {
