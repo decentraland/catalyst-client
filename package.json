@@ -43,6 +43,8 @@
   },
   "homepage": "https://github.com/decentraland/catalyst-client#readme",
   "dependencies": {
+    "@dcl/hashing": "^1.0.0",
+    "@dcl/schemas": "^3.8.0",
     "@types/form-data": "^2.5.0",
     "cookie": "^0.4.1",
     "dcl-catalyst-commons": "7.2.1",
