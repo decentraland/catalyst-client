@@ -1,17 +1,10 @@
-import {
-  AvailableContentResult,
-  Deployment,
-  Entity,
-  EntityType,
-  EntityVersion,
-  Fetcher,
-  Hashing
-} from 'dcl-catalyst-commons'
+import { AvailableContentResult, Deployment, Entity, EntityType, EntityVersion, Fetcher } from 'dcl-catalyst-commons'
 import { Headers } from 'node-fetch'
 import { Readable } from 'stream'
 import { anything, deepEqual, instance, mock, verify, when } from 'ts-mockito'
 import { ContentClient } from '../src/ContentClient'
 import { DeploymentBuilder } from '../src/utils/DeploymentBuilder'
+import { hashV0 } from '@dcl/hashing'
 
 describe('ContentClient', () => {
   const URL = 'https://url.com'
@@ -26,7 +19,6 @@ describe('ContentClient', () => {
     let deploymentBuilderClassMock: typeof DeploymentBuilder
 
     beforeEach(async () => {
-
       deploymentBuilderClassMock = mock<typeof DeploymentBuilder>(DeploymentBuilder)
 
       when(
@@ -125,7 +117,6 @@ describe('ContentClient', () => {
     let deploymentBuilderClassMock: typeof DeploymentBuilder
 
     beforeEach(async () => {
-
       deploymentBuilderClassMock = mock<typeof DeploymentBuilder>(DeploymentBuilder)
 
       when(
@@ -238,7 +229,7 @@ describe('ContentClient', () => {
   it('When a file is downloaded, then the client retries if the downloaded file is not as expected', async () => {
     const failBuffer = Buffer.from('Fail')
     const realBuffer = Buffer.from('Real')
-    const fileHash = await Hashing.calculateBufferHash(realBuffer)
+    const fileHash = await hashV0(realBuffer)
 
     // Create mock, and return the wrong buffer the first time, and the correct one the second time
     const mockedFetcher: Fetcher = mock(Fetcher)

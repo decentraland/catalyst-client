@@ -1,18 +1,80 @@
+import * as hashing from '@dcl/hashing'
+import { hashV1 } from '@dcl/hashing'
 import {
-  buildEntityAndFile,
   ContentFileHash,
+  Entity,
   EntityContentItemReference,
   EntityId,
   EntityMetadata,
   EntityType,
   EntityVersion,
-  Hashing,
   Pointer,
   Timestamp
 } from 'dcl-catalyst-commons'
 import { AuthChain } from 'dcl-crypto'
 
 export class DeploymentBuilder {
+  /**
+   * Take all the entity's data, build the entity file with it, and calculate its id
+   */
+  static async buildEntityAndFile({
+    version,
+    type,
+    pointers,
+    timestamp,
+    content,
+    metadata
+  }: {
+    /** @deprecated version is nolonger required since ADR51 */
+    version?: EntityVersion
+    type: EntityType
+    pointers: Pointer[]
+    timestamp: Timestamp
+    content?: EntityContentItemReference[]
+    metadata?: EntityMetadata
+  }): Promise<{ entity: Entity; entityFile: Uint8Array }> {
+    // Make sure that there is at least one pointer
+    if (pointers.length === 0) throw new Error(`All entities must have at least one pointer.`)
+
+    if (version === EntityVersion.V2) throw new Error(`V2 is not supported.`)
+
+    const entity = {
+      // default version is V3
+      version: version || EntityVersion.V3,
+      type,
+      pointers,
+      timestamp,
+      content,
+      metadata
+    }
+
+    // prevent duplicated file names
+    if (content) {
+      const usedFilenames = new Set<string>()
+      for (let a of content) {
+        const lowerCasedFileName = a.file.toLowerCase()
+        if (usedFilenames.has(lowerCasedFileName)) {
+          throw new Error(
+            `Error creating the deployable entity: Decentraland's file system is case insensitive, the file ${JSON.stringify(
+              a.file
+            )} is repeated`
+          )
+        }
+        usedFilenames.add(lowerCasedFileName)
+      }
+    }
+
+    const entityFile = new TextEncoder().encode(JSON.stringify(entity))
+
+    const entityId: EntityId = await hashV1(entityFile)
+    const entityWithId: Entity = {
+      id: entityId,
+      ...entity
+    }
+
+    return { entity: entityWithId, entityFile }
+  }
+
   /**
    * As part of the deployment process, an entity has to be built. In this method, we are building it, based on the data provided.
    * After the entity is built, the user will have to sign the entity id, to prove they are actually who they say they are.
@@ -39,9 +101,8 @@ export class DeploymentBuilder {
     }))
 
     // Calculate hashes
-    const hashing = version === EntityVersion.V3 ? Hashing.calculateBufferHash : Hashing.calculateIPFSHash
     const allInfo = await Promise.all(
-      contentFiles.map(async ({ key, content }) => ({ key, content, hash: await hashing(content) }))
+      contentFiles.map(async ({ key, content }) => ({ key, content, hash: await hashing.hashV1(content) }))
     )
     const hashesByKey: Map<string, ContentFileHash> = new Map(allInfo.map(({ hash, key }) => [key, hash]))
     const filesByHash: Map<ContentFileHash, Uint8Array> = new Map(allInfo.map(({ hash, content }) => [hash, content]))
@@ -97,7 +158,7 @@ export class DeploymentBuilder {
     const timestamp: Timestamp = options?.timestamp ?? Date.now()
 
     // Build entity file
-    const { entity, entityFile } = await buildEntityAndFile({
+    const { entity, entityFile } = await DeploymentBuilder.buildEntityAndFile({
       version,
       type,
       pointers,

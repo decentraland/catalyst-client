@@ -1,16 +1,18 @@
+import { hashV0, hashV1 } from '@dcl/hashing'
 import {
   AvailableContentResult,
   ContentFileHash,
-  Deployment, DeploymentWithAuditInfo,
+  Deployment,
+  DeploymentWithAuditInfo,
   Entity,
   EntityId,
   EntityMetadata,
   EntityType,
   EntityVersion,
   Fetcher,
-  Hashing,
   LegacyAuditInfo,
-  mergeRequestOptions, Pointer,
+  mergeRequestOptions,
+  Pointer,
   RequestOptions,
   retry,
   ServerStatus,
@@ -19,12 +21,7 @@ import {
 import FormData from 'form-data'
 import { ContentAPI, DeploymentWithMetadataContentAndPointers } from './ContentAPI'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
-import {
-  addModelToFormData, getHeadersWithUserAgent,
-  isNode,
-  sanitizeUrl,
-  splitAndFetch
-} from './utils/Helper'
+import { addModelToFormData, getHeadersWithUserAgent, isNode, sanitizeUrl, splitAndFetch } from './utils/Helper'
 
 export type ContentClientOptions = {
   contentUrl: string
@@ -173,9 +170,7 @@ export class ContentClient implements ContentAPI {
     return retry(
       async () => {
         const content = await this.fetcher.fetchBuffer(`${this.contentUrl}/contents/${contentHash}`, timeout)
-        const downloadedHash = contentHash.startsWith('Qm')
-          ? await Hashing.calculateBufferHash(content)
-          : await Hashing.calculateIPFSHash(content)
+        const downloadedHash = contentHash.startsWith('Qm') ? await hashV0(content) : await hashV1(content)
 
         // Sometimes, the downloaded file is not complete, so the hash turns out to be different.
         // So we will check the hash before considering the download successful.
