@@ -5,9 +5,9 @@ import { DeploymentBuilder } from '../../src/utils/DeploymentBuilder'
 
 describe('Deployment Builder', () => {
   it('When an entity is built with no pointers, then an exception is thrown', async () => {
-    await expect(
-      DeploymentBuilder.buildEntity({ version: EntityVersion.V3, type: EntityType.PROFILE, pointers: [] })
-    ).rejects.toEqual(new Error('All entities must have at least one pointer.'))
+    await expect(DeploymentBuilder.buildEntity({ type: EntityType.PROFILE, pointers: [] })).rejects.toEqual(
+      new Error('All entities must have at least one pointer.')
+    )
   })
 
   it('When an entity is built, then the result is the expected', async () => {
@@ -23,7 +23,6 @@ describe('Deployment Builder', () => {
     const date = 100
 
     const { entityId, files } = await DeploymentBuilder.buildEntity({
-      version: EntityVersion.V3,
       type: EntityType.PROFILE,
       pointers: [pointer],
       files: contentFiles,
@@ -59,7 +58,6 @@ describe('EntityFactory', () => {
   it('When an entity is built with no pointers, then an exception is thrown', async () => {
     await expect(
       DeploymentBuilder.buildEntityAndFile({
-        version: EntityVersion.V3,
         type: EntityType.PROFILE,
         pointers: [],
         timestamp: 20
@@ -67,20 +65,8 @@ describe('EntityFactory', () => {
     ).rejects.toThrow(`All entities must have at least one pointer.`)
   })
 
-  it('When a v2 entity is built, then an exception is thrown', async () => {
-    await expect(
-      DeploymentBuilder.buildEntityAndFile({
-        version: EntityVersion.V2,
-        type: EntityType.PROFILE,
-        pointers: ['P1'],
-        timestamp: 20
-      })
-    ).rejects.toThrow(`V2 is not supported.`)
-  })
-
   it('When a v3 entity is built, CIDv1 is used', async () => {
     const { entity, entityFile } = await DeploymentBuilder.buildEntityAndFile({
-      version: EntityVersion.V3,
       type: EntityType.PROFILE,
       pointers: ['P1'],
       timestamp: 20
@@ -94,7 +80,6 @@ describe('EntityFactory', () => {
     let didFail: any = null
     try {
       await DeploymentBuilder.buildEntityAndFile({
-        version: EntityVersion.V3,
         type: EntityType.PROFILE,
         pointers: ['P1'],
         timestamp: 20,
@@ -113,7 +98,6 @@ describe('EntityFactory', () => {
 
   it('Does not fail on correct filesystem', async () => {
     await DeploymentBuilder.buildEntityAndFile({
-      version: EntityVersion.V3,
       type: EntityType.PROFILE,
       pointers: ['P1'],
       timestamp: 20,
@@ -163,7 +147,6 @@ describe('EntityFactory', () => {
     }
 
     const { entity, entityFile } = await DeploymentBuilder.buildEntityAndFile({
-      version: EntityVersion.V4,
       type: EntityType.PROFILE,
       pointers: ['P1'],
       timestamp: 20,
@@ -173,6 +156,6 @@ describe('EntityFactory', () => {
     })
 
     expect(entity.id).toEqual(await hashV1(entityFile))
-    expect(entity.id).toEqual('bafkreiawpk2gvgkxgvqwh5vwzh4yibcou5rfg3ddem3e4jl4mkgftq5ava')
+    expect(entity.id).toEqual('bafkreigfa4z2nt5yphk7hakeuvtxfv2ve5pqh5qrubcapsgofjqobizp74')
   })
 })

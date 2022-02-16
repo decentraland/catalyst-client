@@ -18,15 +18,12 @@ export class DeploymentBuilder {
    * Take all the entity's data, build the entity file with it, and calculate its id
    */
   static async buildEntityAndFile({
-    version,
     type,
     pointers,
     timestamp,
     content,
     metadata
   }: {
-    /** @deprecated version is nolonger required since ADR51 */
-    version?: EntityVersion
     type: EntityType
     pointers: Pointer[]
     timestamp: Timestamp
@@ -36,11 +33,9 @@ export class DeploymentBuilder {
     // Make sure that there is at least one pointer
     if (pointers.length === 0) throw new Error(`All entities must have at least one pointer.`)
 
-    if (version === EntityVersion.V2) throw new Error(`V2 is not supported.`)
-
     const entity = {
       // default version is V3
-      version: version || EntityVersion.V3,
+      version: EntityVersion.V3,
       type,
       pointers,
       timestamp,
@@ -80,14 +75,12 @@ export class DeploymentBuilder {
    * After the entity is built, the user will have to sign the entity id, to prove they are actually who they say they are.
    */
   static async buildEntity({
-    version,
     type,
     pointers,
     files,
     metadata,
     timestamp
   }: {
-    version: EntityVersion
     type: EntityType
     pointers: Pointer[]
     files?: Map<string, Uint8Array>
@@ -107,7 +100,7 @@ export class DeploymentBuilder {
     const hashesByKey: Map<string, ContentFileHash> = new Map(allInfo.map(({ hash, key }) => [key, hash]))
     const filesByHash: Map<ContentFileHash, Uint8Array> = new Map(allInfo.map(({ hash, content }) => [hash, content]))
 
-    return DeploymentBuilder.buildEntityInternal(version, type, pointers, {
+    return DeploymentBuilder.buildEntityInternal(type, pointers, {
       hashesByKey,
       filesByHash,
       metadata,
@@ -119,25 +112,22 @@ export class DeploymentBuilder {
    * In cases where we don't need upload content files, we can simply generate the new entity. We can still use already uploaded hashes on this new entity.
    */
   static async buildEntityWithoutNewFiles({
-    version,
     type,
     pointers,
     hashesByKey,
     metadata,
     timestamp
   }: {
-    version: EntityVersion
     type: EntityType
     pointers: Pointer[]
     hashesByKey?: Map<string, ContentFileHash>
     metadata?: EntityMetadata
     timestamp?: Timestamp
   }): Promise<DeploymentPreparationData> {
-    return DeploymentBuilder.buildEntityInternal(version, type, pointers, { hashesByKey, metadata, timestamp })
+    return DeploymentBuilder.buildEntityInternal(type, pointers, { hashesByKey, metadata, timestamp })
   }
 
   private static async buildEntityInternal(
-    version: EntityVersion,
     type: EntityType,
     pointers: Pointer[],
     options?: BuildEntityInternalOptions
@@ -159,7 +149,6 @@ export class DeploymentBuilder {
 
     // Build entity file
     const { entity, entityFile } = await DeploymentBuilder.buildEntityAndFile({
-      version,
       type,
       pointers,
       timestamp,
