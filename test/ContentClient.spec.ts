@@ -1,10 +1,10 @@
+import { hashV0 } from '@dcl/hashing'
 import { AvailableContentResult, Deployment, Entity, EntityType, EntityVersion, Fetcher } from 'dcl-catalyst-commons'
 import { Headers } from 'node-fetch'
 import { Readable } from 'stream'
 import { anything, deepEqual, instance, mock, verify, when } from 'ts-mockito'
 import { ContentClient } from '../src/ContentClient'
 import { DeploymentBuilder } from '../src/utils/DeploymentBuilder'
-import { hashV0 } from '@dcl/hashing'
 
 describe('ContentClient', () => {
   const URL = 'https://url.com'
@@ -23,7 +23,6 @@ describe('ContentClient', () => {
 
       when(
         deploymentBuilderClassMock.buildEntityWithoutNewFiles({
-          version: EntityVersion.V3,
           type,
           pointers,
           hashesByKey,
@@ -40,7 +39,6 @@ describe('ContentClient', () => {
       verify(
         deploymentBuilderClassMock.buildEntityWithoutNewFiles(
           deepEqual({
-            version: EntityVersion.V3,
             type,
             pointers,
             hashesByKey,
@@ -121,7 +119,6 @@ describe('ContentClient', () => {
 
       when(
         deploymentBuilderClassMock.buildEntity({
-          version: EntityVersion.V3,
           type,
           pointers,
           files,
@@ -138,7 +135,6 @@ describe('ContentClient', () => {
       verify(
         deploymentBuilderClassMock.buildEntity(
           deepEqual({
-            version: EntityVersion.V3,
             type,
             pointers,
             files,
