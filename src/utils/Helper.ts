@@ -40,7 +40,7 @@ export async function splitAndFetch<E>({
   options
 }: Omit<SplitAndFetchParams<E>, 'elementsProperty'>): Promise<E[]> {
   // Adding default
-  fetcher = fetcher ?? new Fetcher()
+  fetcher = fetcher ? fetcher : new Fetcher()
 
   // Split values into different queries
   const queries = splitValuesIntoManyQueries({ baseUrl, path, queryParams })
@@ -73,7 +73,7 @@ export async function splitAndFetchPaginated<E>({
   options
 }: RequiredOne<SplitAndFetchParams<E>, 'uniqueBy'>): Promise<E[]> {
   // Set default
-  fetcher = fetcher ?? new Fetcher()
+  fetcher = fetcher ? fetcher : new Fetcher()
 
   // Reserve a few chars to send the offset
   const reservedParams = new Map([['offset', CHARS_LEFT_FOR_OFFSET]])
@@ -264,7 +264,8 @@ export class QueryBuilder {
     if (!this.canAddParam(paramName, paramValue)) {
       throw new Error(`You can't add this parameter '${paramName}', since it would exceed the max url length`)
     }
-    const values = this.queryParams.get(paramName) ?? []
+    const queryParam = this.queryParams.get(paramName)
+    const values = queryParam ? queryParam : []
     values.push(paramValue)
     this.queryParams.set(paramName, values)
     this.length += this.calculateAddedLength(paramName, [paramValue])

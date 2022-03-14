@@ -34,12 +34,12 @@ export class ContentClient implements ContentAPI {
 
   constructor(options: ContentClientOptions) {
     this.contentUrl = sanitizeUrl(options.contentUrl)
-    this.fetcher =
-      options.fetcher ??
-      new Fetcher({
-        headers: getHeadersWithUserAgent('content-client')
-      })
-    this.deploymentBuilderClass = options.deploymentBuilderClass ?? DeploymentBuilder
+    this.fetcher = options.fetcher
+      ? options.fetcher
+      : new Fetcher({
+          headers: getHeadersWithUserAgent('content-client')
+        })
+    this.deploymentBuilderClass = options.deploymentBuilderClass ? options.deploymentBuilderClass : DeploymentBuilder
   }
 
   async buildEntityWithoutNewFiles({
@@ -49,7 +49,7 @@ export class ContentClient implements ContentAPI {
     metadata,
     timestamp
   }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData> {
-    const result = timestamp ?? Date.now()
+    const result = timestamp ? timestamp : Date.now()
     return this.deploymentBuilderClass.buildEntityWithoutNewFiles({
       type,
       pointers,
@@ -66,7 +66,7 @@ export class ContentClient implements ContentAPI {
     metadata,
     timestamp
   }: BuildEntityOptions): Promise<DeploymentPreparationData> {
-    const result = timestamp ?? Date.now()
+    const result = timestamp ? timestamp : Date.now()
     return this.deploymentBuilderClass.buildEntity({
       type,
       pointers,
@@ -103,7 +103,7 @@ export class ContentClient implements ContentAPI {
   async deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {
     const form = await this.buildEntityFormDataForDeployment(deployData, options)
 
-    const requestOptions = mergeRequestOptions(options ?? {}, {
+    const requestOptions = mergeRequestOptions(options ? options : {}, {
       body: form as any
     })
 
@@ -161,7 +161,7 @@ export class ContentClient implements ContentAPI {
   }
 
   async downloadContent(contentHash: ContentFileHash, options?: Partial<RequestOptions>): Promise<Buffer> {
-    const { attempts = 3, waitTime = '0.5s' } = options ?? {}
+    const { attempts = 3, waitTime = '0.5s' } = options ? options : {}
     const timeout = options?.timeout ? { timeout: options.timeout } : {}
 
     return retry(

@@ -1,5 +1,7 @@
 import {
-  AvailableContentResult, ContentFileHash, Entity,
+  AvailableContentResult,
+  ContentFileHash,
+  Entity,
   EntityId,
   EntityType,
   Fetcher,
@@ -34,11 +36,11 @@ export class CatalystClient implements CatalystAPI {
 
   constructor(options: CatalystClientOptions) {
     this.catalystUrl = sanitizeUrl(options.catalystUrl)
-    const fetcher =
-      options.fetcher ??
-      new Fetcher({
-        headers: getHeadersWithUserAgent('catalyst-client')
-      })
+    const fetcher = options.fetcher
+      ? options.fetcher
+      : new Fetcher({
+          headers: getHeadersWithUserAgent('catalyst-client')
+        })
     this.contentClient = new ContentClient({
       contentUrl: this.catalystUrl + '/content',
       fetcher: fetcher,
@@ -46,7 +48,7 @@ export class CatalystClient implements CatalystAPI {
     })
     this.lambdasClient = new LambdasClient({
       lambdasUrl: this.catalystUrl + '/lambdas',
-      fetcher: fetcher,
+      fetcher: fetcher
     })
   }
 
