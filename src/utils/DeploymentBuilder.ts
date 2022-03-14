@@ -88,7 +88,7 @@ export class DeploymentBuilder {
     timestamp?: Timestamp
   }): Promise<DeploymentPreparationData> {
     // Reorder input
-    const contentFiles = Array.from(files ?? []).map(([key, content]) => ({
+    const contentFiles = Array.from(files ? files : []).map(([key, content]) => ({
       key,
       content
     }))
@@ -138,14 +138,14 @@ export class DeploymentBuilder {
     }
 
     // Re-organize the hashes
-    const hashesByKey: Map<string, ContentFileHash> = options?.hashesByKey ?? new Map()
+    const hashesByKey: Map<string, ContentFileHash> = options?.hashesByKey ? options?.hashesByKey : new Map()
     const entityContent: EntityContentItemReference[] = Array.from(hashesByKey.entries()).map(([key, hash]) => ({
       file: key,
       hash
     }))
 
     // Calculate timestamp if necessary
-    const timestamp: Timestamp = options?.timestamp ?? Date.now()
+    const timestamp: Timestamp = options?.timestamp ? options?.timestamp : Date.now()
 
     // Build entity file
     const { entity, entityFile } = await DeploymentBuilder.buildEntityAndFile({
@@ -157,7 +157,7 @@ export class DeploymentBuilder {
     })
 
     // Add entity file to content files
-    const filesByHash: Map<ContentFileHash, Uint8Array> = options?.filesByHash ?? new Map()
+    const filesByHash: Map<ContentFileHash, Uint8Array> = options?.filesByHash ? options.filesByHash : new Map()
     filesByHash.set(entity.id, entityFile)
 
     return { files: filesByHash, entityId: entity.id }

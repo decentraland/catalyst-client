@@ -26,11 +26,11 @@ export class LambdasClient implements LambdasAPI {
 
   constructor(options: LambdasClientOptions) {
     this.lambdasUrl = sanitizeUrl(options.lambdasUrl)
-    this.fetcher =
-      options.fetcher ??
-      new Fetcher({
-        headers: getHeadersWithUserAgent('lambdas-client')
-      })
+    this.fetcher = options.fetcher
+      ? options.fetcher
+      : new Fetcher({
+          headers: getHeadersWithUserAgent('lambdas-client')
+        })
   }
 
   fetchProfiles(
@@ -46,7 +46,10 @@ export class LambdasClient implements LambdasAPI {
     }
 
     if (profileOptions?.versions) {
-      queryParams.set('version', profileOptions.versions.map(it => it.toString(10)))
+      queryParams.set(
+        'version',
+        profileOptions.versions.map((it) => it.toString(10))
+      )
     }
 
     return splitAndFetch<Profile>({

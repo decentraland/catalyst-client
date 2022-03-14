@@ -47,7 +47,7 @@
     "@dcl/schemas": "^3.8.0",
     "@types/form-data": "^2.5.0",
     "cookie": "^0.4.1",
-    "dcl-catalyst-commons": "^8.0.0",
+    "dcl-catalyst-commons": "8.1.0",
     "dcl-crypto": "^2.2.0",
     "form-data": "^4.0.0"
   },

@@ -25,10 +25,10 @@ export async function getUpdatedApprovedListWithoutQueryingContract(
   options: KnownServersOptions
 ): Promise<string[] | undefined> {
   // Set defaults if needed
-  const catalystListFetch =
-    options.fetchApprovedCatalysts ??
-    ((catalystUrl) => fetchCatalystsApprovedByDAO(catalystUrl))
-  const requiredAmountOfLists = options.requiredLists ?? REQUIRED_LISTS
+  const catalystListFetch = options.fetchApprovedCatalysts
+    ? options.fetchApprovedCatalysts
+    : (catalystUrl: string) => fetchCatalystsApprovedByDAO(catalystUrl)
+  const requiredAmountOfLists = options.requiredLists ? options.requiredLists : REQUIRED_LISTS
 
   // Get the list of known servers
   const knownServers =
@@ -80,7 +80,8 @@ function calculateIntersection(lists: string[][]): string[] {
   const count: Map<string, number> = new Map()
   for (const list of lists) {
     for (const element of list) {
-      count.set(element, (count.get(element) ?? 0) + 1)
+      const i = count.get(element)
+      count.set(element, (i ? i : 0) + 1)
     }
   }
 
@@ -89,9 +90,7 @@ function calculateIntersection(lists: string[][]): string[] {
     .map(([element]) => element)
 }
 
-async function fetchCatalystsApprovedByDAO(
-  catalystUrl: string
-): Promise<string[] | undefined> {
+async function fetchCatalystsApprovedByDAO(catalystUrl: string): Promise<string[] | undefined> {
   const client: CatalystClient = new CatalystClient({
     catalystUrl
   })
