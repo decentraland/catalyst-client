@@ -16,6 +16,13 @@ export interface LambdasAPI {
     options?: RequestOptions
   ): Promise<OwnedWearables<B>>
 
+  fetchOwnedThirdPartyWearables<B extends boolean>(
+    ethAddress: EthAddress,
+    thirdPartyId: string,
+    includeDefinitions: B,
+    options?: RequestOptions
+  ): Promise<OwnedWearables<B>>
+
   fetchCatalystsApprovedByDAO(options?: RequestOptions): Promise<ServerMetadata[]>
 
   fetchLambdasStatus(options?: RequestOptions): Promise<{ contentServerUrl: string }>
@@ -24,7 +31,7 @@ export interface LambdasAPI {
 }
 
 export type ProfileOptions = {
-  versions?: number[],
+  versions?: number[]
   fields?: ProfileFields
 }
 export class ProfileFields {

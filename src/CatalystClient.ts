@@ -116,6 +116,15 @@ export class CatalystClient implements CatalystAPI {
     return this.lambdasClient.fetchOwnedWearables(ethAddress, includeDefinitions, options)
   }
 
+  fetchOwnedThirdPartyWearables<B extends boolean>(
+    ethAddress: EthAddress,
+    thirdPartyId: string,
+    includeDefinitions: B,
+    options?: RequestOptions
+  ): Promise<OwnedWearables<B>> {
+    return this.lambdasClient.fetchOwnedThirdPartyWearables(ethAddress, thirdPartyId, includeDefinitions, options)
+  }
+
   fetchCatalystsApprovedByDAO(options?: RequestOptions): Promise<ServerMetadata[]> {
     return this.lambdasClient.fetchCatalystsApprovedByDAO(options)
   }
