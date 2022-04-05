@@ -92,6 +92,25 @@ export class LambdasClient implements LambdasAPI {
     })
   }
 
+  fetchOwnedThirdPartyWearables<B extends boolean>(
+    ethAddress: EthAddress,
+    thirdPartyId: string,
+    includeDefinitions: B,
+    options?: RequestOptions
+  ): Promise<OwnedWearables<B>> {
+    const queryParams = new Map([
+      ['collectionId', [thirdPartyId]],
+      ['includeDefinitions', [`${includeDefinitions}`]]
+    ])
+    return splitAndFetch<B extends false ? OwnedWearablesWithoutDefinition : OwnedWearablesWithDefinition>({
+      fetcher: this.fetcher,
+      baseUrl: this.lambdasUrl,
+      path: `/collections/wearables-by-owner/${ethAddress}`,
+      queryParams,
+      options
+    })
+  }
+
   fetchCatalystsApprovedByDAO(options?: RequestOptions): Promise<ServerMetadata[]> {
     return this.fetcher.fetchJson(`${this.lambdasUrl}/contracts/servers`, options) as any
   }
