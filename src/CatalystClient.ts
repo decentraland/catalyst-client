@@ -1,4 +1,5 @@
 import {
+  AuditInfo,
   AvailableContentResult,
   ContentFileHash,
   Entity,
@@ -6,7 +7,6 @@ import {
   EntityType,
   Fetcher,
   HealthStatus,
-  LegacyAuditInfo,
   Pointer,
   Profile,
   RequestOptions,
@@ -76,7 +76,7 @@ export class CatalystClient implements CatalystAPI {
     return this.contentClient.fetchEntityById(type, id, options)
   }
 
-  fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<LegacyAuditInfo> {
+  fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<AuditInfo> {
     return this.contentClient.fetchAuditInfo(type, id, options)
   }
 
