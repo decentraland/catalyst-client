@@ -1,4 +1,5 @@
 import {
+  AuditInfo,
   AvailableContentResult,
   ContentFileHash, DeploymentWithContent,
   DeploymentWithMetadata,
@@ -6,7 +7,6 @@ import {
   Entity,
   EntityId,
   EntityType,
-  LegacyAuditInfo,
   Pointer,
   RequestOptions,
   ServerStatus,
@@ -30,7 +30,7 @@ export interface ContentAPI {
   fetchEntitiesByPointers(type: EntityType, pointers: Pointer[], options?: RequestOptions): Promise<Entity[]>
   fetchEntitiesByIds(type: EntityType, ids: EntityId[], options?: RequestOptions): Promise<Entity[]>
   fetchEntityById(type: EntityType, id: EntityId, options?: RequestOptions): Promise<Entity>
-  fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<LegacyAuditInfo>
+  fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<AuditInfo>
   fetchContentStatus(options?: RequestOptions): Promise<ServerStatus>
   downloadContent(contentHash: ContentFileHash, options?: RequestOptions): Promise<Buffer>
   isContentAvailable(cids: ContentFileHash[], options?: RequestOptions): Promise<AvailableContentResult>

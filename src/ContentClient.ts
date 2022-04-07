@@ -1,5 +1,6 @@
 import { hashV0, hashV1 } from '@dcl/hashing'
 import {
+  AuditInfo,
   AvailableContentResult,
   ContentFileHash,
   Deployment,
@@ -9,7 +10,6 @@ import {
   EntityMetadata,
   EntityType,
   Fetcher,
-  LegacyAuditInfo,
   mergeRequestOptions,
   Pointer,
   RequestOptions,
@@ -152,7 +152,7 @@ export class ContentClient implements ContentAPI {
     return entities[0]
   }
 
-  fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<LegacyAuditInfo> {
+  fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<AuditInfo> {
     return this.fetchJson(`/audit/${type}/${id}`, options)
   }
 
