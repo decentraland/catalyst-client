@@ -8,7 +8,7 @@ import {
   EntityMetadata,
   EntityType,
   EntityVersion,
-  Pointer,
+  fetchArrayBuffer, Pointer,
   Timestamp
 } from 'dcl-catalyst-commons'
 import { AuthChain } from 'dcl-crypto'
@@ -109,21 +109,35 @@ export class DeploymentBuilder {
   }
 
   /**
-   * In cases where we don't need upload content files, we can simply generate the new entity. We can still use already uploaded hashes on this new entity.
+   * In cases where we don't need upload content files, we can simply generate the new entity.
+   * We can still use already uploaded hashes on this new entity.
    */
   static async buildEntityWithoutNewFiles({
+    contentUrl,
     type,
     pointers,
     hashesByKey,
     metadata,
     timestamp
   }: {
+    contentUrl: string,
     type: EntityType
     pointers: Pointer[]
     hashesByKey?: Map<string, ContentFileHash>
     metadata?: EntityMetadata
     timestamp?: Timestamp
-  }): Promise<DeploymentPreparationData> {
+    }): Promise<DeploymentPreparationData> {
+    // When the old entity has the old hashing algorithm, then the full entity with new hash will need to be deployed.
+    if (!!hashesByKey && Array.from(hashesByKey).some(([, hash]) => { hash.startsWith("Qm") })) {
+        const files = await downloadAllFiles(contentUrl, hashesByKey)
+        return DeploymentBuilder.buildEntity({
+          type,
+          pointers,
+          files,
+          metadata,
+          timestamp
+        })
+    }
     return DeploymentBuilder.buildEntityInternal(type, pointers, { hashesByKey, metadata, timestamp })
   }
 
@@ -179,4 +193,17 @@ export type DeploymentPreparationData = {
 
 export type DeploymentData = DeploymentPreparationData & {
   authChain: AuthChain
+}
+
+async function downloadAllFiles(contentUrl: string, hashes: Map<string, ContentFileHash>):
+  Promise<Map<string, Uint8Array>> {
+  const newHashMap: Map<string, Uint8Array> = new Map()
+  for (const fileName of Object.keys(hashes)) {
+    const oldHash = hashes.get(fileName)
+    const url = new URL(`${contentUrl}/contents/${oldHash}`).toString()
+    const fileContent = await fetchArrayBuffer(url)
+
+    newHashMap.set(fileName, fileContent)
+  }
+  return newHashMap
 }

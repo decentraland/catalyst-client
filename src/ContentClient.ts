@@ -55,7 +55,8 @@ export class ContentClient implements ContentAPI {
       pointers,
       hashesByKey,
       metadata,
-      timestamp: result
+      timestamp: result,
+      contentUrl: this.contentUrl
     })
   }
 

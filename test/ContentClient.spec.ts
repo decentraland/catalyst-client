@@ -27,7 +27,8 @@ describe('ContentClient', () => {
           pointers,
           hashesByKey,
           metadata,
-          timestamp: currentTime
+          timestamp: currentTime,
+          contentUrl: URL
         })
       ).thenResolve()
 
@@ -43,7 +44,8 @@ describe('ContentClient', () => {
             pointers,
             hashesByKey,
             metadata,
-            timestamp: currentTime
+            timestamp: currentTime,
+            contentUrl: URL
           })
         )
       ).once()
