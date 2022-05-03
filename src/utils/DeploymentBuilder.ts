@@ -200,7 +200,7 @@ async function downloadAllFiles(contentUrl: string, type: EntityType, hashes: Ma
   const newHashMap: Map<string, Uint8Array> = new Map()
   for (const fileName of Object.keys(hashes)) {
     // We are not uploading any more the deprecated profile pictures
-    if (type === EntityType.PROFILE && (fileName === 'face128' || fileName === 'face')) {
+    if (type === EntityType.PROFILE && (fileName === 'face128.png' || fileName === 'face.png')) {
       continue
     }
     const oldHash = hashes.get(fileName)
