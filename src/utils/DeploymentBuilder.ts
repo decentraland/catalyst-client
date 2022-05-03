@@ -128,13 +128,14 @@ export class DeploymentBuilder {
     timestamp?: Timestamp
     }): Promise<DeploymentPreparationData> {
     // When the old entity has the old hashing algorithm, then the full entity with new hash will need to be deployed.
-    if (!!hashesByKey && Array.from(hashesByKey).some(([, hash]) => { hash.startsWith("Qm") })) {
-        const files = await downloadAllFiles(contentUrl, type, hashesByKey)
+    if (type === EntityType.PROFILE && !!hashesByKey && Array.from(hashesByKey).some(([, hash]) => { hash.startsWith("Qm") })) {
+        const files = await downloadAllFiles(contentUrl, hashesByKey)
+        const metadataWithNewHash = updateMetadata(files, metadata)
         return DeploymentBuilder.buildEntity({
           type,
           pointers,
           files,
-          metadata,
+          metadata: metadataWithNewHash,
           timestamp
         })
     }
@@ -195,12 +196,12 @@ export type DeploymentData = DeploymentPreparationData & {
   authChain: AuthChain
 }
 
-async function downloadAllFiles(contentUrl: string, type: EntityType, hashes: Map<string, ContentFileHash>):
+async function downloadAllFiles(contentUrl: string, hashes: Map<string, ContentFileHash>):
   Promise<Map<string, Uint8Array>> {
   const newHashMap: Map<string, Uint8Array> = new Map()
   for (const fileName of Object.keys(hashes)) {
     // We are not uploading any more the deprecated profile pictures
-    if (type === EntityType.PROFILE && (fileName === 'face128.png' || fileName === 'face.png')) {
+    if (fileName === 'face128.png' || fileName === 'face.png') {
       continue
     }
     const oldHash = hashes.get(fileName)
@@ -210,4 +211,20 @@ async function downloadAllFiles(contentUrl: string, type: EntityType, hashes: Ma
     newHashMap.set(fileName, fileContent)
   }
   return newHashMap
+}
+
+function updateMetadata(files: Map<string, Uint8Array>, metadata?: EntityMetadata) {
+  if (!metadata) return metadata
+
+  metadata.avatars = metadata.avatars.map((avatar) => {
+    const snapshots = avatar.avatar.snapshots
+    let newSnapshots = {}
+    for (const key of snapshots.keys()) {
+      newSnapshots[key] = files.get(key)
+    }
+    avatar.avatar.snapshots = newSnapshots
+    return avatar
+  })
+
+  return metadata
 }
