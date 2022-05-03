@@ -156,5 +156,4 @@ export class CatalystClient implements CatalystAPI {
 
 export type CatalystConnectOptions = {
   network: 'mainnet' | 'ropsten'
-  proofOfWorkEnabled?: boolean
 }
