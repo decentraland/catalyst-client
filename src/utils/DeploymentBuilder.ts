@@ -129,7 +129,7 @@ export class DeploymentBuilder {
     }): Promise<DeploymentPreparationData> {
     // When the old entity has the old hashing algorithm, then the full entity with new hash will need to be deployed.
     if (!!hashesByKey && Array.from(hashesByKey).some(([, hash]) => { hash.startsWith("Qm") })) {
-        const files = await downloadAllFiles(contentUrl, hashesByKey)
+        const files = await downloadAllFiles(contentUrl, type, hashesByKey)
         return DeploymentBuilder.buildEntity({
           type,
           pointers,
@@ -195,10 +195,14 @@ export type DeploymentData = DeploymentPreparationData & {
   authChain: AuthChain
 }
 
-async function downloadAllFiles(contentUrl: string, hashes: Map<string, ContentFileHash>):
+async function downloadAllFiles(contentUrl: string, type: EntityType, hashes: Map<string, ContentFileHash>):
   Promise<Map<string, Uint8Array>> {
   const newHashMap: Map<string, Uint8Array> = new Map()
   for (const fileName of Object.keys(hashes)) {
+    // We are not uploading any more the deprecated profile pictures
+    if (type === EntityType.PROFILE && (fileName === 'face128' || fileName === 'face')) {
+      continue
+    }
     const oldHash = hashes.get(fileName)
     const url = new URL(`${contentUrl}/contents/${oldHash}`).toString()
     const fileContent = await fetchArrayBuffer(url)
