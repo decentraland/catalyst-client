@@ -8,7 +8,8 @@ import {
   EntityMetadata,
   EntityType,
   EntityVersion,
-  fetchArrayBuffer, Pointer,
+  fetchArrayBuffer,
+  Pointer,
   Timestamp
 } from 'dcl-catalyst-commons'
 import { AuthChain } from 'dcl-crypto'
@@ -128,7 +129,7 @@ export class DeploymentBuilder {
     timestamp?: Timestamp
     }): Promise<DeploymentPreparationData> {
     // When the old entity has the old hashing algorithm, then the full entity with new hash will need to be deployed.
-    if (type === EntityType.PROFILE && !!hashesByKey && Array.from(hashesByKey).some(([, hash]) => { hash.toLowerCase().startsWith("qm") })) {
+    if (!!hashesByKey && isObsoleteProfile(type, hashesByKey)) {
         const files = await downloadAllFiles(contentUrl, hashesByKey)
         const metadataWithNewHash = updateMetadata(files, metadata)
         return DeploymentBuilder.buildEntity({
@@ -196,13 +197,18 @@ export type DeploymentData = DeploymentPreparationData & {
   authChain: AuthChain
 }
 
+function isObsoleteProfile(type: EntityType, hashesByKey: Map<string, string>): boolean {
+  return type === EntityType.PROFILE &&
+    Array.from(hashesByKey).some(([, hash]) => { hash.toLowerCase().startsWith("qm") })
+}
+
 async function downloadAllFiles(contentUrl: string, hashes: Map<string, ContentFileHash>):
   Promise<Map<string, Uint8Array>> {
   const newHashMap: Map<string, Uint8Array> = new Map()
   for (const fileName of Object.keys(hashes)) {
     // We are not uploading any more the deprecated profile pictures
     if (fileName === 'face128.png' || fileName === 'face.png') {
-      console.debug(`Ignoring file '${fileName} to download, as it's deprecated`)
+      console.debug(`Ignoring file '${fileName}' to download, as it's deprecated`)
       continue
     }
     const oldHash = hashes.get(fileName)
