@@ -202,10 +202,12 @@ async function downloadAllFiles(contentUrl: string, hashes: Map<string, ContentF
   for (const fileName of Object.keys(hashes)) {
     // We are not uploading any more the deprecated profile pictures
     if (fileName === 'face128.png' || fileName === 'face.png') {
+      console.debug(`Ignoring file '${fileName} to download, as it's deprecated`)
       continue
     }
     const oldHash = hashes.get(fileName)
     const url = new URL(`${contentUrl}/contents/${oldHash}`).toString()
+    console.debug(`About to download file '${fileName}' from '${url}'`)
     const fileContent = await fetchArrayBuffer(url)
 
     newHashMap.set(fileName, fileContent)
@@ -227,6 +229,7 @@ function updateMetadata(files: Map<string, Uint8Array>, metadata?: EntityMetadat
     if (!!bodyContent) {
       newSnapshots['body'] = hashV1(bodyContent)
     }
+    console.debug(`Old snapshots: ${avatar.avatar.snapshots} will be replaced with ${newSnapshots}`)
     avatar.avatar.snapshots = newSnapshots
     return avatar
   })
