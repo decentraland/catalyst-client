@@ -128,7 +128,7 @@ export class DeploymentBuilder {
     timestamp?: Timestamp
     }): Promise<DeploymentPreparationData> {
     // When the old entity has the old hashing algorithm, then the full entity with new hash will need to be deployed.
-    if (type === EntityType.PROFILE && !!hashesByKey && Array.from(hashesByKey).some(([, hash]) => { hash.startsWith("Qm") })) {
+    if (type === EntityType.PROFILE && !!hashesByKey && Array.from(hashesByKey).some(([, hash]) => { hash.toLowerCase().startsWith("qm") })) {
         const files = await downloadAllFiles(contentUrl, hashesByKey)
         const metadataWithNewHash = updateMetadata(files, metadata)
         return DeploymentBuilder.buildEntity({
@@ -217,10 +217,15 @@ function updateMetadata(files: Map<string, Uint8Array>, metadata?: EntityMetadat
   if (!metadata) return metadata
 
   metadata.avatars = metadata.avatars.map((avatar) => {
-    const snapshots = avatar.avatar.snapshots
-    let newSnapshots = {}
-    for (const key of snapshots.keys()) {
-      newSnapshots[key] = files.get(key)
+    const newSnapshots = {}
+
+    const face256Content = files.get('face256.png')
+    if (!!face256Content) {
+      newSnapshots['face256'] = hashV1(face256Content)
+    }
+    const bodyContent = files.get('body.png')
+    if (!!bodyContent) {
+      newSnapshots['body'] = hashV1(bodyContent)
     }
     avatar.avatar.snapshots = newSnapshots
     return avatar
