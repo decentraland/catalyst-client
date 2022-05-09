@@ -132,15 +132,16 @@ export class DeploymentBuilder {
     const givenFilesMaps: Map<string, ContentFileHash> | undefined = hashesByKey ?? metadata? getHashesByKey(metadata): undefined
     // When the old entity has the old hashing algorithm, then the full entity with new hash will need to be deployed.
     if (!!givenFilesMaps && isObsoleteProfile(type, givenFilesMaps)) {
-        const files = await downloadAllFiles(contentUrl, givenFilesMaps)
-        const metadataWithNewHash = updateMetadata(files, metadata)
-        return DeploymentBuilder.buildEntity({
-          type,
-          pointers,
-          files,
-          metadata: metadataWithNewHash,
-          timestamp
-        })
+      console.log("will modify profile")
+      const files = await downloadAllFiles(contentUrl, givenFilesMaps)
+      const metadataWithNewHash = await updateMetadata(files, metadata)
+      return DeploymentBuilder.buildEntity({
+        type,
+        pointers,
+        files,
+        metadata: metadataWithNewHash,
+        timestamp
+      })
     }
     return DeploymentBuilder.buildEntityInternal(type, pointers, { hashesByKey, metadata, timestamp })
   }
@@ -201,32 +202,29 @@ export type DeploymentData = DeploymentPreparationData & {
 
 function isObsoleteProfile(type: EntityType, hashesByKey: Map<string, string>): boolean {
   return type === EntityType.PROFILE &&
-    Array.from(hashesByKey).some(([, hash]) => { hash.toLowerCase().startsWith("qm") })
+    Array.from(hashesByKey).some(([, hash]) => hash.toLowerCase().startsWith("qm") )
 }
 
 async function downloadAllFiles(contentUrl: string, hashes: Map<string, ContentFileHash>):
   Promise<Map<string, Uint8Array>> {
-  const newHashMap: Map<string, Uint8Array> = new Map()
-  for (const fileName of Object.keys(hashes)) {
-    // We are not uploading any more the deprecated profile pictures
-    if (fileName === 'face128.png' || fileName === 'face.png') {
-      console.debug(`Ignoring file '${fileName}' to download, as it's deprecated`)
-      continue
-    }
-    const oldHash = hashes.get(fileName)
-    const url = new URL(`${contentUrl}/contents/${oldHash}`).toString()
-    console.debug(`About to download file '${fileName}' from '${url}'`)
-    const fileContent = await fetchArrayBuffer(url)
 
-    newHashMap.set(fileName, fileContent)
-  }
-  return newHashMap
+  const oldBodyHash = hashes.get('body.png')
+  const bodyUrl = new URL(`${contentUrl}/contents/${oldBodyHash}`).toString()
+  console.debug(`About to download file 'body.png' from '${bodyUrl}'`)
+  const bodyFileContent = await fetchArrayBuffer(bodyUrl)
+
+  const oldFaceHash = hashes.get('body.png')
+  const faceUrl = new URL(`${contentUrl}/contents/${oldFaceHash}`).toString()
+  console.debug(`About to download file 'body.png' from '${faceUrl}'`)
+  const faceFileContent = await fetchArrayBuffer(faceUrl)
+
+  return new Map([['body.png', bodyFileContent],['face256.png', faceFileContent]])
 }
 
-function updateMetadata(files: Map<string, Uint8Array>, metadata?: EntityMetadata) {
+async function updateMetadata(files: Map<string, Uint8Array>, metadata?: EntityMetadata) {
   if (!metadata) return metadata
 
-  metadata.avatars = (metadata as Profile).avatars.map(async (avatar) => {
+  metadata.avatars = await Promise.all( (metadata as Profile).avatars.map(async (avatar) => {
     const newSnapshots = {'face256': '', 'body': ''}
 
     const face256Content = files.get('face256.png')
@@ -240,7 +238,7 @@ function updateMetadata(files: Map<string, Uint8Array>, metadata?: EntityMetadat
     console.debug(`Old snapshots: ${avatar.avatar.snapshots} will be replaced with ${newSnapshots}`)
     avatar.avatar.snapshots = newSnapshots
     return avatar
-  })
+  }))
 
   return metadata
 }
