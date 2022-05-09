@@ -209,12 +209,10 @@ async function downloadAllFiles(contentUrl: string, hashes: Map<string, ContentF
 
   const oldBodyHash = hashes.get('body.png')
   const bodyUrl = new URL(`${contentUrl}/contents/${oldBodyHash}`).toString()
-  console.debug(`About to download file 'body.png' from '${bodyUrl}'`)
   const bodyFileContent = await fetchArrayBuffer(bodyUrl)
 
   const oldFaceHash = hashes.get('face256.png')
   const faceUrl = new URL(`${contentUrl}/contents/${oldFaceHash}`).toString()
-  console.debug(`About to download file 'face256.png' from '${faceUrl}'`)
   const faceFileContent = await fetchArrayBuffer(faceUrl)
 
   return new Map([['body.png', bodyFileContent],['face256.png', faceFileContent]])
@@ -234,7 +232,6 @@ async function updateMetadata(files: Map<string, Uint8Array>, metadata?: EntityM
     if (!!bodyContent) {
       newSnapshots['body'] = await hashV1(bodyContent)
     }
-    console.debug(`Old snapshots: ${avatar.avatar.snapshots} will be replaced with ${newSnapshots}`)
     avatar.avatar.snapshots = newSnapshots
     return avatar
   }))
