@@ -213,9 +213,9 @@ async function downloadAllFiles(contentUrl: string, hashes: Map<string, ContentF
   console.debug(`About to download file 'body.png' from '${bodyUrl}'`)
   const bodyFileContent = await fetchArrayBuffer(bodyUrl)
 
-  const oldFaceHash = hashes.get('body.png')
+  const oldFaceHash = hashes.get('face256.png')
   const faceUrl = new URL(`${contentUrl}/contents/${oldFaceHash}`).toString()
-  console.debug(`About to download file 'body.png' from '${faceUrl}'`)
+  console.debug(`About to download file 'face256.png' from '${faceUrl}'`)
   const faceFileContent = await fetchArrayBuffer(faceUrl)
 
   return new Map([['body.png', bodyFileContent],['face256.png', faceFileContent]])
