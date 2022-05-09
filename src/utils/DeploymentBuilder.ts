@@ -132,7 +132,6 @@ export class DeploymentBuilder {
     const givenFilesMaps: Map<string, ContentFileHash> | undefined = hashesByKey ?? metadata? getHashesByKey(metadata): undefined
     // When the old entity has the old hashing algorithm, then the full entity with new hash will need to be deployed.
     if (!!givenFilesMaps && isObsoleteProfile(type, givenFilesMaps)) {
-      console.log("will modify profile")
       const files = await downloadAllFiles(contentUrl, givenFilesMaps)
       const metadataWithNewHash = await updateMetadata(files, metadata)
       return DeploymentBuilder.buildEntity({
