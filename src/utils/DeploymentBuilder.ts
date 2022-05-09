@@ -1,5 +1,6 @@
 import * as hashing from '@dcl/hashing'
 import { hashV1 } from '@dcl/hashing'
+import { Profile } from '@dcl/schemas'
 import {
   ContentFileHash,
   Entity,
@@ -128,9 +129,10 @@ export class DeploymentBuilder {
     metadata?: EntityMetadata
     timestamp?: Timestamp
     }): Promise<DeploymentPreparationData> {
+    const givenFilesMaps: Map<string, ContentFileHash> | undefined = hashesByKey ?? metadata? getHashesByKey(metadata): undefined
     // When the old entity has the old hashing algorithm, then the full entity with new hash will need to be deployed.
-    if (!!hashesByKey && isObsoleteProfile(type, hashesByKey)) {
-        const files = await downloadAllFiles(contentUrl, hashesByKey)
+    if (!!givenFilesMaps && isObsoleteProfile(type, givenFilesMaps)) {
+        const files = await downloadAllFiles(contentUrl, givenFilesMaps)
         const metadataWithNewHash = updateMetadata(files, metadata)
         return DeploymentBuilder.buildEntity({
           type,
@@ -224,16 +226,16 @@ async function downloadAllFiles(contentUrl: string, hashes: Map<string, ContentF
 function updateMetadata(files: Map<string, Uint8Array>, metadata?: EntityMetadata) {
   if (!metadata) return metadata
 
-  metadata.avatars = metadata.avatars.map((avatar) => {
-    const newSnapshots = {}
+  metadata.avatars = (metadata as Profile).avatars.map(async (avatar) => {
+    const newSnapshots = {'face256': '', 'body': ''}
 
     const face256Content = files.get('face256.png')
     if (!!face256Content) {
-      newSnapshots['face256'] = hashV1(face256Content)
+      newSnapshots['face256'] = await hashV1(face256Content)
     }
     const bodyContent = files.get('body.png')
     if (!!bodyContent) {
-      newSnapshots['body'] = hashV1(bodyContent)
+      newSnapshots['body'] = await hashV1(bodyContent)
     }
     console.debug(`Old snapshots: ${avatar.avatar.snapshots} will be replaced with ${newSnapshots}`)
     avatar.avatar.snapshots = newSnapshots
@@ -241,4 +243,8 @@ function updateMetadata(files: Map<string, Uint8Array>, metadata?: EntityMetadat
   })
 
   return metadata
+}
+function getHashesByKey(metadata: any): Map<string, string> {
+  const avatar = (metadata as Profile).avatars[0]
+  return new Map([['body.png', avatar.avatar.snapshots.body], ['face256.png', avatar.avatar.snapshots.face256]])
 }
