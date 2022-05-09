@@ -1,5 +1,6 @@
 import * as hashing from '@dcl/hashing'
 import { hashV1 } from '@dcl/hashing'
+import { Profile } from '@dcl/schemas'
 import {
   ContentFileHash,
   Entity,
@@ -8,6 +9,7 @@ import {
   EntityMetadata,
   EntityType,
   EntityVersion,
+  fetchArrayBuffer,
   Pointer,
   Timestamp
 } from 'dcl-catalyst-commons'
@@ -109,21 +111,37 @@ export class DeploymentBuilder {
   }
 
   /**
-   * In cases where we don't need upload content files, we can simply generate the new entity. We can still use already uploaded hashes on this new entity.
+   * In cases where we don't need upload content files, we can simply generate the new entity.
+   * We can still use already uploaded hashes on this new entity.
    */
   static async buildEntityWithoutNewFiles({
+    contentUrl,
     type,
     pointers,
     hashesByKey,
     metadata,
     timestamp
   }: {
+    contentUrl: string,
     type: EntityType
     pointers: Pointer[]
     hashesByKey?: Map<string, ContentFileHash>
     metadata?: EntityMetadata
     timestamp?: Timestamp
-  }): Promise<DeploymentPreparationData> {
+    }): Promise<DeploymentPreparationData> {
+    const givenFilesMaps: Map<string, ContentFileHash> | undefined = hashesByKey ?? metadata? getHashesByKey(metadata): undefined
+    // When the old entity has the old hashing algorithm, then the full entity with new hash will need to be deployed.
+    if (!!givenFilesMaps && isObsoleteProfile(type, givenFilesMaps)) {
+      const files = await downloadAllFiles(contentUrl, givenFilesMaps)
+      const metadataWithNewHash = await updateMetadata(files, metadata)
+      return DeploymentBuilder.buildEntity({
+        type,
+        pointers,
+        files,
+        metadata: metadataWithNewHash,
+        timestamp
+      })
+    }
     return DeploymentBuilder.buildEntityInternal(type, pointers, { hashesByKey, metadata, timestamp })
   }
 
@@ -179,4 +197,48 @@ export type DeploymentPreparationData = {
 
 export type DeploymentData = DeploymentPreparationData & {
   authChain: AuthChain
+}
+
+function isObsoleteProfile(type: EntityType, hashesByKey: Map<string, string>): boolean {
+  return type === EntityType.PROFILE &&
+    Array.from(hashesByKey).some(([, hash]) => hash.toLowerCase().startsWith("qm") )
+}
+
+async function downloadAllFiles(contentUrl: string, hashes: Map<string, ContentFileHash>):
+  Promise<Map<string, Uint8Array>> {
+
+  const oldBodyHash = hashes.get('body.png')
+  const bodyUrl = new URL(`${contentUrl}/contents/${oldBodyHash}`).toString()
+  const bodyFileContent = await fetchArrayBuffer(bodyUrl)
+
+  const oldFaceHash = hashes.get('face256.png')
+  const faceUrl = new URL(`${contentUrl}/contents/${oldFaceHash}`).toString()
+  const faceFileContent = await fetchArrayBuffer(faceUrl)
+
+  return new Map([['body.png', bodyFileContent],['face256.png', faceFileContent]])
+}
+
+async function updateMetadata(files: Map<string, Uint8Array>, metadata?: EntityMetadata) {
+  if (!metadata) return metadata
+
+  metadata.avatars = await Promise.all( (metadata as Profile).avatars.map(async (avatar) => {
+    const newSnapshots = {'face256': '', 'body': ''}
+
+    const face256Content = files.get('face256.png')
+    if (!!face256Content) {
+      newSnapshots['face256'] = await hashV1(face256Content)
+    }
+    const bodyContent = files.get('body.png')
+    if (!!bodyContent) {
+      newSnapshots['body'] = await hashV1(bodyContent)
+    }
+    avatar.avatar.snapshots = newSnapshots
+    return avatar
+  }))
+
+  return metadata
+}
+function getHashesByKey(metadata: any): Map<string, string> {
+  const avatar = (metadata as Profile).avatars[0]
+  return new Map([['body.png', avatar.avatar.snapshots.body], ['face256.png', avatar.avatar.snapshots.face256]])
 }
