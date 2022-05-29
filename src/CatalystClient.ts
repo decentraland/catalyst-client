@@ -14,7 +14,6 @@ import {
   ServerStatus,
   Timestamp
 } from 'dcl-catalyst-commons'
-import { EthAddress } from 'dcl-crypto'
 import { Writable } from 'stream'
 import { CatalystAPI } from './CatalystAPI'
 import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient } from './ContentClient'
@@ -97,7 +96,7 @@ export class CatalystClient implements CatalystAPI {
   }
 
   fetchProfiles(
-    ethAddresses: EthAddress[],
+    ethAddresses: string[],
     profileOptions?: ProfileOptions,
     options?: RequestOptions
   ): Promise<Profile[]> {
@@ -109,7 +108,7 @@ export class CatalystClient implements CatalystAPI {
   }
 
   fetchOwnedWearables<B extends boolean>(
-    ethAddress: EthAddress,
+    ethAddress: string,
     includeDefinitions: B,
     options?: RequestOptions
   ): Promise<OwnedWearables<B>> {
@@ -117,7 +116,7 @@ export class CatalystClient implements CatalystAPI {
   }
 
   fetchOwnedThirdPartyWearables<B extends boolean>(
-    ethAddress: EthAddress,
+    ethAddress: string,
     thirdPartyId: string,
     includeDefinitions: B,
     options?: RequestOptions

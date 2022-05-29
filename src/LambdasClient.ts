@@ -1,5 +1,4 @@
 import { EntityMetadata, Fetcher, HealthStatus, Profile, RequestOptions, ServerMetadata } from 'dcl-catalyst-commons'
-import { EthAddress } from 'dcl-crypto'
 import {
   LambdasAPI,
   OwnedWearables,
@@ -34,7 +33,7 @@ export class LambdasClient implements LambdasAPI {
   }
 
   fetchProfiles(
-    ethAddresses: EthAddress[],
+    ethAddresses: string[],
     profileOptions?: ProfileOptions,
     options?: RequestOptions
   ): Promise<Profile[]> {
@@ -79,7 +78,7 @@ export class LambdasClient implements LambdasAPI {
   }
 
   fetchOwnedWearables<B extends boolean>(
-    ethAddress: EthAddress,
+    ethAddress: string,
     includeDefinitions: B,
     options?: RequestOptions
   ): Promise<OwnedWearables<B>> {
@@ -93,7 +92,7 @@ export class LambdasClient implements LambdasAPI {
   }
 
   fetchOwnedThirdPartyWearables<B extends boolean>(
-    ethAddress: EthAddress,
+    ethAddress: string,
     thirdPartyId: string,
     includeDefinitions: B,
     options?: RequestOptions

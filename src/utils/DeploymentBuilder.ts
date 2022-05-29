@@ -1,19 +1,15 @@
 import * as hashing from '@dcl/hashing'
 import { hashV1 } from '@dcl/hashing'
-import { Profile } from '@dcl/schemas'
+import { AuthChain, Profile } from '@dcl/schemas'
 import {
   ContentFileHash,
   Entity,
   EntityContentItemReference,
-  EntityId,
   EntityMetadata,
   EntityType,
   EntityVersion,
-  fetchArrayBuffer,
-  Pointer,
-  Timestamp
+  fetchArrayBuffer
 } from 'dcl-catalyst-commons'
-import { AuthChain } from 'dcl-crypto'
 
 export class DeploymentBuilder {
   /**
@@ -27,8 +23,8 @@ export class DeploymentBuilder {
     metadata
   }: {
     type: EntityType
-    pointers: Pointer[]
-    timestamp: Timestamp
+    pointers: string[]
+    timestamp: number
     content?: EntityContentItemReference[]
     metadata?: EntityMetadata
   }): Promise<{ entity: Entity; entityFile: Uint8Array }> {
@@ -63,7 +59,7 @@ export class DeploymentBuilder {
 
     const entityFile = new TextEncoder().encode(JSON.stringify(entity))
 
-    const entityId: EntityId = await hashV1(entityFile)
+    const entityId = await hashV1(entityFile)
     const entityWithId: Entity = {
       id: entityId,
       ...entity
@@ -84,10 +80,10 @@ export class DeploymentBuilder {
     timestamp
   }: {
     type: EntityType
-    pointers: Pointer[]
+    pointers: string[]
     files?: Map<string, Uint8Array>
     metadata?: EntityMetadata
-    timestamp?: Timestamp
+    timestamp?: number
   }): Promise<DeploymentPreparationData> {
     // Reorder input
     const contentFiles = Array.from(files ? files : []).map(([key, content]) => ({
@@ -124,10 +120,10 @@ export class DeploymentBuilder {
   }: {
     contentUrl: string,
     type: EntityType
-    pointers: Pointer[]
+    pointers: string[]
     hashesByKey?: Map<string, ContentFileHash>
     metadata?: EntityMetadata
-    timestamp?: Timestamp
+    timestamp?: number
     }): Promise<DeploymentPreparationData> {
     const givenFilesMaps: Map<string, ContentFileHash> | undefined = hashesByKey ?? metadata? getHashesByKey(metadata): undefined
     // When the old entity has the old hashing algorithm, then the full entity with new hash will need to be deployed.
@@ -147,7 +143,7 @@ export class DeploymentBuilder {
 
   private static async buildEntityInternal(
     type: EntityType,
-    pointers: Pointer[],
+    pointers: string[],
     options?: BuildEntityInternalOptions
   ): Promise<DeploymentPreparationData> {
     // Make sure that there is at least one pointer
@@ -163,7 +159,7 @@ export class DeploymentBuilder {
     }))
 
     // Calculate timestamp if necessary
-    const timestamp: Timestamp = options?.timestamp ? options?.timestamp : Date.now()
+    const timestamp: number = options?.timestamp ? options?.timestamp : Date.now()
 
     // Build entity file
     const { entity, entityFile } = await DeploymentBuilder.buildEntityAndFile({
@@ -186,12 +182,12 @@ type BuildEntityInternalOptions = {
   hashesByKey?: Map<string, ContentFileHash>
   filesByHash?: Map<ContentFileHash, Uint8Array>
   metadata?: EntityMetadata
-  timestamp?: Timestamp
+  timestamp?: number
 }
 
 /** This data contains everything necessary for the user to sign, so that then a deployment can be executed */
 export type DeploymentPreparationData = {
-  entityId: EntityId
+  entityId: string
   files: Map<ContentFileHash, Uint8Array>
 }
 
