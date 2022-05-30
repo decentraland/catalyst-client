@@ -1,23 +1,16 @@
+import { Entity, EntityType } from '@dcl/schemas'
 import {
   AuditInfo,
   AvailableContentResult,
-  ContentFileHash,
-  Entity,
-  EntityId,
-  EntityType,
   Fetcher,
   HealthStatus,
-  Pointer,
-  Profile,
   RequestOptions,
-  ServerMetadata,
-  ServerStatus,
-  Timestamp
+  ServerStatus
 } from 'dcl-catalyst-commons'
 import { Writable } from 'stream'
 import { CatalystAPI } from './CatalystAPI'
 import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient } from './ContentClient'
-import { OwnedWearables, ProfileOptions, WearablesFilters } from './LambdasAPI'
+import { OwnedWearables, ProfileOptions, ServerMetadata, WearablesFilters } from './LambdasAPI'
 import { LambdasClient } from './LambdasClient'
 import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
@@ -38,8 +31,8 @@ export class CatalystClient implements CatalystAPI {
     const fetcher = options.fetcher
       ? options.fetcher
       : new Fetcher({
-          headers: getHeadersWithUserAgent('catalyst-client')
-        })
+        headers: getHeadersWithUserAgent('catalyst-client')
+      })
     this.contentClient = new ContentClient({
       contentUrl: this.catalystUrl + '/content',
       fetcher: fetcher,
@@ -59,23 +52,23 @@ export class CatalystClient implements CatalystAPI {
     return this.contentClient.buildEntityWithoutNewFiles(options)
   }
 
-  deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {
+  deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<number> {
     return this.contentClient.deployEntity(deployData, fix, options)
   }
 
-  fetchEntitiesByPointers(type: EntityType, pointers: Pointer[], options?: RequestOptions): Promise<Entity[]> {
+  fetchEntitiesByPointers(type: EntityType, pointers: string[], options?: RequestOptions): Promise<Entity[]> {
     return this.contentClient.fetchEntitiesByPointers(type, pointers, options)
   }
 
-  fetchEntitiesByIds(type: EntityType, ids: EntityId[], options?: RequestOptions): Promise<Entity[]> {
+  fetchEntitiesByIds(type: EntityType, ids: string[], options?: RequestOptions): Promise<Entity[]> {
     return this.contentClient.fetchEntitiesByIds(type, ids, options)
   }
 
-  fetchEntityById(type: EntityType, id: EntityId, options?: RequestOptions): Promise<Entity> {
+  fetchEntityById(type: EntityType, id: string, options?: RequestOptions): Promise<Entity> {
     return this.contentClient.fetchEntityById(type, id, options)
   }
 
-  fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<AuditInfo> {
+  fetchAuditInfo(type: EntityType, id: string, options?: RequestOptions): Promise<AuditInfo> {
     return this.contentClient.fetchAuditInfo(type, id, options)
   }
 
@@ -87,19 +80,15 @@ export class CatalystClient implements CatalystAPI {
     return this.contentClient.isContentAvailable(cids, options)
   }
 
-  downloadContent(contentHash: ContentFileHash, options?: RequestOptions): Promise<Buffer> {
+  downloadContent(contentHash: string, options?: RequestOptions): Promise<Buffer> {
     return this.contentClient.downloadContent(contentHash, options)
   }
 
-  pipeContent(contentHash: ContentFileHash, writeTo: Writable, options?: RequestOptions): Promise<Map<string, string>> {
+  pipeContent(contentHash: string, writeTo: Writable, options?: RequestOptions): Promise<Map<string, string>> {
     return this.contentClient.pipeContent(contentHash, writeTo, options)
   }
 
-  fetchProfiles(
-    ethAddresses: string[],
-    profileOptions?: ProfileOptions,
-    options?: RequestOptions
-  ): Promise<Profile[]> {
+  fetchProfiles(ethAddresses: string[], profileOptions?: ProfileOptions, options?: RequestOptions): Promise<any[]> {
     return this.lambdasClient.fetchProfiles(ethAddresses, profileOptions, options)
   }
 

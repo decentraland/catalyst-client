@@ -1,15 +1,7 @@
 import * as hashing from '@dcl/hashing'
 import { hashV1 } from '@dcl/hashing'
-import { AuthChain, Profile } from '@dcl/schemas'
-import {
-  ContentFileHash,
-  Entity,
-  EntityContentItemReference,
-  EntityMetadata,
-  EntityType,
-  EntityVersion,
-  fetchArrayBuffer
-} from 'dcl-catalyst-commons'
+import { AuthChain, ContentMapping, Entity, EntityType, Profile } from '@dcl/schemas'
+import { fetchArrayBuffer } from 'dcl-catalyst-commons'
 
 export class DeploymentBuilder {
   /**
@@ -25,15 +17,15 @@ export class DeploymentBuilder {
     type: EntityType
     pointers: string[]
     timestamp: number
-    content?: EntityContentItemReference[]
-    metadata?: EntityMetadata
+    content: ContentMapping[]
+    metadata?: any
   }): Promise<{ entity: Entity; entityFile: Uint8Array }> {
     // Make sure that there is at least one pointer
     if (pointers.length === 0) throw new Error(`All entities must have at least one pointer.`)
 
     const entity = {
       // default version is V3
-      version: EntityVersion.V3,
+      version: 'v3',
       type,
       pointers,
       timestamp,
@@ -44,7 +36,7 @@ export class DeploymentBuilder {
     // prevent duplicated file names
     if (content) {
       const usedFilenames = new Set<string>()
-      for (let a of content) {
+      for (const a of content) {
         const lowerCasedFileName = a.file.toLowerCase()
         if (usedFilenames.has(lowerCasedFileName)) {
           throw new Error(
@@ -65,6 +57,10 @@ export class DeploymentBuilder {
       ...entity
     }
 
+    if (!Entity.validate(entityWithId)) {
+      throw new Error('Generated entity is not valid:\n' + Entity.validate.errors?.map(($) => $.message).join('\n'))
+    }
+
     return { entity: entityWithId, entityFile }
   }
 
@@ -82,7 +78,7 @@ export class DeploymentBuilder {
     type: EntityType
     pointers: string[]
     files?: Map<string, Uint8Array>
-    metadata?: EntityMetadata
+    metadata?: any
     timestamp?: number
   }): Promise<DeploymentPreparationData> {
     // Reorder input
@@ -95,8 +91,8 @@ export class DeploymentBuilder {
     const allInfo = await Promise.all(
       contentFiles.map(async ({ key, content }) => ({ key, content, hash: await hashing.hashV1(content) }))
     )
-    const hashesByKey: Map<string, ContentFileHash> = new Map(allInfo.map(({ hash, key }) => [key, hash]))
-    const filesByHash: Map<ContentFileHash, Uint8Array> = new Map(allInfo.map(({ hash, content }) => [hash, content]))
+    const hashesByKey: Map<string, string> = new Map(allInfo.map(({ hash, key }) => [key, hash]))
+    const filesByHash: Map<string, Uint8Array> = new Map(allInfo.map(({ hash, content }) => [hash, content]))
 
     return DeploymentBuilder.buildEntityInternal(type, pointers, {
       hashesByKey,
@@ -118,14 +114,15 @@ export class DeploymentBuilder {
     metadata,
     timestamp
   }: {
-    contentUrl: string,
+    contentUrl: string
     type: EntityType
     pointers: string[]
-    hashesByKey?: Map<string, ContentFileHash>
-    metadata?: EntityMetadata
+    hashesByKey?: Map<string, string>
+    metadata?: any
     timestamp?: number
-    }): Promise<DeploymentPreparationData> {
-    const givenFilesMaps: Map<string, ContentFileHash> | undefined = hashesByKey ?? metadata? getHashesByKey(metadata): undefined
+  }): Promise<DeploymentPreparationData> {
+    const givenFilesMaps: Map<string, string> | undefined =
+      hashesByKey ?? metadata ? getHashesByKey(metadata) : undefined
     // When the old entity has the old hashing algorithm, then the full entity with new hash will need to be deployed.
     if (!!givenFilesMaps && isObsoleteProfile(type, givenFilesMaps)) {
       const files = await downloadAllFiles(contentUrl, givenFilesMaps)
@@ -152,8 +149,8 @@ export class DeploymentBuilder {
     }
 
     // Re-organize the hashes
-    const hashesByKey: Map<string, ContentFileHash> = options?.hashesByKey ? options?.hashesByKey : new Map()
-    const entityContent: EntityContentItemReference[] = Array.from(hashesByKey.entries()).map(([key, hash]) => ({
+    const hashesByKey: Map<string, string> = options?.hashesByKey ? options?.hashesByKey : new Map()
+    const entityContent: ContentMapping[] = Array.from(hashesByKey.entries()).map(([key, hash]) => ({
       file: key,
       hash
     }))
@@ -171,7 +168,7 @@ export class DeploymentBuilder {
     })
 
     // Add entity file to content files
-    const filesByHash: Map<ContentFileHash, Uint8Array> = options?.filesByHash ? options.filesByHash : new Map()
+    const filesByHash: Map<string, Uint8Array> = options?.filesByHash ? options.filesByHash : new Map()
     filesByHash.set(entity.id, entityFile)
 
     return { files: filesByHash, entityId: entity.id }
@@ -179,16 +176,16 @@ export class DeploymentBuilder {
 }
 
 type BuildEntityInternalOptions = {
-  hashesByKey?: Map<string, ContentFileHash>
-  filesByHash?: Map<ContentFileHash, Uint8Array>
-  metadata?: EntityMetadata
+  hashesByKey?: Map<string, string>
+  filesByHash?: Map<string, Uint8Array>
+  metadata?: any
   timestamp?: number
 }
 
 /** This data contains everything necessary for the user to sign, so that then a deployment can be executed */
 export type DeploymentPreparationData = {
   entityId: string
-  files: Map<ContentFileHash, Uint8Array>
+  files: Map<string, Uint8Array>
 }
 
 export type DeploymentData = DeploymentPreparationData & {
@@ -196,13 +193,10 @@ export type DeploymentData = DeploymentPreparationData & {
 }
 
 function isObsoleteProfile(type: EntityType, hashesByKey: Map<string, string>): boolean {
-  return type === EntityType.PROFILE &&
-    Array.from(hashesByKey).some(([, hash]) => hash.toLowerCase().startsWith("qm") )
+  return type === EntityType.PROFILE && Array.from(hashesByKey).some(([, hash]) => hash.toLowerCase().startsWith('qm'))
 }
 
-async function downloadAllFiles(contentUrl: string, hashes: Map<string, ContentFileHash>):
-  Promise<Map<string, Uint8Array>> {
-
+async function downloadAllFiles(contentUrl: string, hashes: Map<string, string>): Promise<Map<string, Uint8Array>> {
   const oldBodyHash = hashes.get('body.png')
   const bodyUrl = new URL(`${contentUrl}/contents/${oldBodyHash}`).toString()
   const bodyFileContent = await fetchArrayBuffer(bodyUrl)
@@ -211,30 +205,38 @@ async function downloadAllFiles(contentUrl: string, hashes: Map<string, ContentF
   const faceUrl = new URL(`${contentUrl}/contents/${oldFaceHash}`).toString()
   const faceFileContent = await fetchArrayBuffer(faceUrl)
 
-  return new Map([['body.png', bodyFileContent],['face256.png', faceFileContent]])
+  return new Map([
+    ['body.png', bodyFileContent],
+    ['face256.png', faceFileContent]
+  ])
 }
 
-async function updateMetadata(files: Map<string, Uint8Array>, metadata?: EntityMetadata) {
+async function updateMetadata(files: Map<string, Uint8Array>, metadata?: any) {
   if (!metadata) return metadata
 
-  metadata.avatars = await Promise.all( (metadata as Profile).avatars.map(async (avatar) => {
-    const newSnapshots = {'face256': '', 'body': ''}
+  metadata.avatars = await Promise.all(
+    (metadata as Profile).avatars.map(async (avatar) => {
+      const newSnapshots = { face256: '', body: '' }
 
-    const face256Content = files.get('face256.png')
-    if (!!face256Content) {
-      newSnapshots['face256'] = await hashV1(face256Content)
-    }
-    const bodyContent = files.get('body.png')
-    if (!!bodyContent) {
-      newSnapshots['body'] = await hashV1(bodyContent)
-    }
-    avatar.avatar.snapshots = newSnapshots
-    return avatar
-  }))
+      const face256Content = files.get('face256.png')
+      if (!!face256Content) {
+        newSnapshots['face256'] = await hashV1(face256Content)
+      }
+      const bodyContent = files.get('body.png')
+      if (!!bodyContent) {
+        newSnapshots['body'] = await hashV1(bodyContent)
+      }
+      avatar.avatar.snapshots = newSnapshots
+      return avatar
+    })
+  )
 
   return metadata
 }
 function getHashesByKey(metadata: any): Map<string, string> {
   const avatar = (metadata as Profile).avatars[0]
-  return new Map([['body.png', avatar.avatar.snapshots.body], ['face256.png', avatar.avatar.snapshots.face256]])
+  return new Map([
+    ['body.png', avatar.avatar.snapshots.body],
+    ['face256.png', avatar.avatar.snapshots.face256]
+  ])
 }

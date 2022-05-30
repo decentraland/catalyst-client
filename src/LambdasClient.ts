@@ -1,10 +1,11 @@
-import { EntityMetadata, Fetcher, HealthStatus, Profile, RequestOptions, ServerMetadata } from 'dcl-catalyst-commons'
+import { Fetcher, HealthStatus, RequestOptions } from 'dcl-catalyst-commons'
 import {
   LambdasAPI,
   OwnedWearables,
   OwnedWearablesWithDefinition,
   OwnedWearablesWithoutDefinition,
   ProfileOptions,
+  ServerMetadata,
   WearablesFilters
 } from './LambdasAPI'
 import {
@@ -19,6 +20,7 @@ export type LambdasClientOptions = {
   lambdasUrl: string
   fetcher?: Fetcher
 }
+
 export class LambdasClient implements LambdasAPI {
   private readonly lambdasUrl: string
   private readonly fetcher: Fetcher
@@ -32,11 +34,7 @@ export class LambdasClient implements LambdasAPI {
         })
   }
 
-  fetchProfiles(
-    ethAddresses: string[],
-    profileOptions?: ProfileOptions,
-    options?: RequestOptions
-  ): Promise<Profile[]> {
+  fetchProfiles(ethAddresses: string[], profileOptions?: ProfileOptions, options?: RequestOptions): Promise<any[]> {
     const queryParams: Map<string, string[]> = new Map()
     queryParams.set('id', ethAddresses)
     if (profileOptions?.fields) {
@@ -51,7 +49,7 @@ export class LambdasClient implements LambdasAPI {
       )
     }
 
-    return splitAndFetch<Profile>({
+    return splitAndFetch<any>({
       fetcher: this.fetcher,
       baseUrl: this.lambdasUrl,
       path: '/profiles',
@@ -60,7 +58,7 @@ export class LambdasClient implements LambdasAPI {
     })
   }
 
-  fetchWearables(filters: WearablesFilters, options?: RequestOptions): Promise<EntityMetadata[]> {
+  fetchWearables(filters: WearablesFilters, options?: RequestOptions): Promise<any[]> {
     const queryParams = convertFiltersToQueryParams(filters)
     if (queryParams.size === 0) {
       throw new Error('You must set at least one filter')

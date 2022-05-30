@@ -1,3 +1,4 @@
+import * as catalystContractsLib from '@dcl/catalyst-contracts/dist/utils'
 import { HealthStatus } from 'dcl-catalyst-commons'
 import { CatalystClient } from '../../src/CatalystClient'
 import { clientConnectedToCatalystIn } from '../../src/utils/CatalystClientBuilder'
@@ -42,10 +43,16 @@ describe('clientConnectedToCatalystIn', () => {
         catalystList,
         'getUpdatedApprovedListWithoutQueryingContract'
       )
-      getApprovedListFromContractSpy = jest.spyOn(catalystList, 'getApprovedListFromContract')
+      getApprovedListFromContractSpy = jest.spyOn(catalystContractsLib, 'getAllCatalystFromProvider')
       shuffleArraySpy = jest.spyOn(common, 'shuffleArray').mockReturnValueOnce(mockedServerList)
       getUpdatedApprovedListWithoutQueryingContractSpy.mockReturnValueOnce(Promise.resolve(undefined))
-      getApprovedListFromContractSpy.mockReturnValue(Promise.resolve(mockedServerList))
+      getApprovedListFromContractSpy.mockReturnValue(
+        Promise.resolve(
+          mockedServerList.map((domain) => ({
+            domain
+          }))
+        )
+      )
     })
 
     afterEach(() => {
@@ -70,7 +77,7 @@ describe('clientConnectedToCatalystIn', () => {
         catalystList,
         'getUpdatedApprovedListWithoutQueryingContract'
       )
-      getApprovedListFromContractSpy = jest.spyOn(catalystList, 'getApprovedListFromContract')
+      getApprovedListFromContractSpy = jest.spyOn(catalystContractsLib, 'getAllCatalystFromProvider')
       shuffleArraySpy = jest.spyOn(common, 'shuffleArray').mockReturnValueOnce(mockedServerList)
       getUpdatedApprovedListWithoutQueryingContractSpy.mockReturnValue(Promise.resolve(mockedServerList))
       getApprovedListFromContractSpy.mockReturnValue(Promise.resolve(undefined))

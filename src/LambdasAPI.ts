@@ -1,11 +1,13 @@
-import { EntityMetadata, Profile, RequestOptions, ServerMetadata } from 'dcl-catalyst-commons'
+import { EntityMetadata, Profile, RequestOptions } from 'dcl-catalyst-commons'
+
+export type ServerMetadata = {
+  baseUrl: string
+  owner: string
+  id: string
+}
 
 export interface LambdasAPI {
-  fetchProfiles(
-    ethAddresses: string[],
-    profileOptions?: ProfileOptions,
-    options?: RequestOptions
-  ): Promise<Profile[]>
+  fetchProfiles(ethAddresses: string[], profileOptions?: ProfileOptions, options?: RequestOptions): Promise<Profile[]>
 
   fetchWearables(filters: WearablesFilters, options?: RequestOptions): Promise<EntityMetadata[]>
 

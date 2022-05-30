@@ -1,5 +1,6 @@
 import { hashV0 } from '@dcl/hashing'
-import { AvailableContentResult, Deployment, Entity, EntityType, EntityVersion, Fetcher } from 'dcl-catalyst-commons'
+import { Entity, EntityType } from '@dcl/schemas'
+import { AvailableContentResult, Fetcher } from 'dcl-catalyst-commons'
 import { Headers } from 'node-fetch'
 import { Readable } from 'stream'
 import { anything, deepEqual, instance, mock, verify, when } from 'ts-mockito'
@@ -159,13 +160,13 @@ describe('ContentClient', () => {
     expect(result).toEqual(requestResult)
   })
 
-  it('When fetching by pointers, if none is set, then an error is thrown', () => {
+  it('When fetching by pointers, if none is set, then an error is thrown', async () => {
     const { mock: mocked, instance: fetcher } = mockFetcherJson()
 
     const client = buildClient(URL, fetcher)
     const result = client.fetchEntitiesByPointers(EntityType.PROFILE, [])
 
-    expect(result).rejects.toEqual(`You must set at least one pointer.`)
+    await expect(result).rejects.toEqual(`You must set at least one pointer.`)
     verify(mocked.fetchJson(anything())).never()
   })
 
@@ -180,13 +181,13 @@ describe('ContentClient', () => {
     expect(result).toEqual(requestResult)
   })
 
-  it('When fetching by ids, if none is set, then an error is thrown', () => {
+  it('When fetching by ids, if none is set, then an error is thrown', async () => {
     const { mock: mocked, instance: fetcher } = mockFetcherJson()
 
     const client = buildClient(URL, fetcher)
     const result = client.fetchEntitiesByIds(EntityType.PROFILE, [])
 
-    expect(result).rejects.toEqual(`You must set at least one id.`)
+    await expect(result).rejects.toEqual(`You must set at least one id.`)
     verify(mocked.fetchJson(anything())).never()
   })
 
@@ -325,28 +326,13 @@ describe('ContentClient', () => {
     expect(result.has('Content-Length')).toBe(true)
   })
 
-  function someDeployment(): Deployment {
-    return {
-      entityVersion: EntityVersion.V3,
-      entityId: `entityId${Math.random()}`,
-      entityType: EntityType.PROFILE,
-      entityTimestamp: 10,
-      deployedBy: 'deployedBy',
-      pointers: [],
-      auditInfo: {
-        version: EntityVersion.V2,
-        authChain: [],
-        localTimestamp: Math.round(Math.random() * 50)
-      }
-    }
-  }
-
   function someEntity(): Entity {
     return {
-      version: EntityVersion.V3,
+      version: 'v3',
       id: 'some-id',
       type: EntityType.PROFILE,
       pointers: ['Pointer'],
+      content: [],
       timestamp: 10
     }
   }
