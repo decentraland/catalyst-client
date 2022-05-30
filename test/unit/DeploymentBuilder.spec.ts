@@ -60,7 +60,8 @@ describe('EntityFactory', () => {
       DeploymentBuilder.buildEntityAndFile({
         type: EntityType.PROFILE,
         pointers: [],
-        timestamp: 20
+        timestamp: 20,
+        content: []
       })
     ).rejects.toThrow(`All entities must have at least one pointer.`)
   })
@@ -69,11 +70,12 @@ describe('EntityFactory', () => {
     const { entity, entityFile } = await DeploymentBuilder.buildEntityAndFile({
       type: EntityType.PROFILE,
       pointers: ['P1'],
-      timestamp: 20
+      timestamp: 20,
+      content: []
     })
 
     expect(entity.id).toEqual(await hashV1(entityFile))
-    expect(entity.id).toEqual('bafkreic7lioyaaith5fyrwptvobgbadbsvyo6vatnhvoxtwqwlzxrtsn3y')
+    expect(entity.id).toEqual('bafkreidsn6yrxu6lpuk4sdaluysuil33ihpgq2ry7kawehb2d3ogedaikm')
   })
 
   it('Fails on filesystem name collision', async () => {
@@ -84,8 +86,8 @@ describe('EntityFactory', () => {
         pointers: ['P1'],
         timestamp: 20,
         content: [
-          { file: 'A', hash: '' },
-          { file: 'a', hash: '' }
+          { file: 'A', hash: 'bafkreidsn6yrxu6lpuk4sdaluysuil33ihpgq2ry7kawehb2d3ogedaikm' },
+          { file: 'a', hash: 'bafkreidsn6yrxu6lpuk4sdaluysuil33ihpgq2ry7kawehb2d3ogedaikm' }
         ]
       })
     } catch (err: any) {
@@ -102,8 +104,8 @@ describe('EntityFactory', () => {
       pointers: ['P1'],
       timestamp: 20,
       content: [
-        { file: 'a', hash: '' },
-        { file: 'b', hash: '' }
+        { file: 'a', hash: 'bafkreidsn6yrxu6lpuk4sdaluysuil33ihpgq2ry7kawehb2d3ogedaikm' },
+        { file: 'b', hash: 'bafkreidsn6yrxu6lpuk4sdaluysuil33ihpgq2ry7kawehb2d3ogedaikm' }
       ]
     })
   })
@@ -112,12 +114,13 @@ describe('EntityFactory', () => {
     const { entity, entityFile } = await DeploymentBuilder.buildEntityAndFile({
       type: EntityType.PROFILE,
       pointers: ['P1'],
-      timestamp: 20
+      timestamp: 20,
+      content: []
     })
 
     expect(entity.version).toEqual(EntityVersion.V3)
     expect(entity.id).toEqual(await hashV1(entityFile))
-    expect(entity.id).toEqual('bafkreic7lioyaaith5fyrwptvobgbadbsvyo6vatnhvoxtwqwlzxrtsn3y')
+    expect(entity.id).toEqual('bafkreidsn6yrxu6lpuk4sdaluysuil33ihpgq2ry7kawehb2d3ogedaikm')
   })
 
   it('When a v4 entity is built, the ipfs hash is used', async () => {
@@ -150,12 +153,13 @@ describe('EntityFactory', () => {
       type: EntityType.PROFILE,
       pointers: ['P1'],
       timestamp: 20,
+      content: [],
       metadata: {
         avatars: [avatar]
       }
     })
 
     expect(entity.id).toEqual(await hashV1(entityFile))
-    expect(entity.id).toEqual('bafkreigfa4z2nt5yphk7hakeuvtxfv2ve5pqh5qrubcapsgofjqobizp74')
+    expect(entity.id).toEqual('bafkreiae665lm7vxqv2ytxrpqnvypbjqc24qqgvuy4yqs3767ps7riwxui')
   })
 })

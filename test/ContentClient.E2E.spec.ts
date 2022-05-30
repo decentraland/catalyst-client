@@ -6,7 +6,6 @@ runServerBasedE2ETest('test client post', ({ components }) => {
   let client: ContentClient
 
   it('configures some endpoints', () => {
-
     components.router.get('/available-content', async (ctx) => {
       const params = new URLSearchParams(ctx.url.search)
       const cids = params.getAll('cid')

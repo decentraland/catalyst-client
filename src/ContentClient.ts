@@ -1,24 +1,8 @@
 import { hashV0, hashV1 } from '@dcl/hashing'
-import {
-  AuditInfo,
-  AvailableContentResult,
-  ContentFileHash,
-  Deployment,
-  DeploymentWithAuditInfo,
-  Entity,
-  EntityId,
-  EntityMetadata,
-  EntityType,
-  Fetcher,
-  mergeRequestOptions,
-  Pointer,
-  RequestOptions,
-  retry,
-  ServerStatus,
-  Timestamp
-} from 'dcl-catalyst-commons'
+import { Entity, EntityType } from '@dcl/schemas'
+import { Fetcher, mergeRequestOptions, RequestOptions, retry, ServerStatus } from 'dcl-catalyst-commons'
 import FormData from 'form-data'
-import { ContentAPI, DeploymentWithMetadataContentAndPointers } from './ContentAPI'
+import { AvailableContentResult, ContentAPI } from './ContentAPI'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 import { addModelToFormData, getHeadersWithUserAgent, isNode, sanitizeUrl, splitAndFetch } from './utils/Helper'
 
@@ -27,6 +11,7 @@ export type ContentClientOptions = {
   fetcher?: Fetcher
   deploymentBuilderClass?: typeof DeploymentBuilder
 }
+
 export class ContentClient implements ContentAPI {
   private readonly contentUrl: string
   private readonly fetcher: Fetcher
@@ -101,7 +86,7 @@ export class ContentClient implements ContentAPI {
     return form
   }
 
-  async deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<Timestamp> {
+  async deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<number> {
     const form = await this.buildEntityFormDataForDeployment(deployData, options)
 
     const requestOptions = mergeRequestOptions(options ? options : {}, {
@@ -115,7 +100,7 @@ export class ContentClient implements ContentAPI {
     return creationTimestamp
   }
 
-  fetchEntitiesByPointers(type: EntityType, pointers: Pointer[], options?: RequestOptions): Promise<Entity[]> {
+  fetchEntitiesByPointers(type: EntityType, pointers: string[], options?: RequestOptions): Promise<Entity[]> {
     if (pointers.length === 0) {
       return Promise.reject(`You must set at least one pointer.`)
     }
@@ -130,7 +115,7 @@ export class ContentClient implements ContentAPI {
     })
   }
 
-  fetchEntitiesByIds(type: EntityType, ids: EntityId[], options?: RequestOptions): Promise<Entity[]> {
+  fetchEntitiesByIds(type: EntityType, ids: string[], options?: RequestOptions): Promise<Entity[]> {
     if (ids.length === 0) {
       return Promise.reject(`You must set at least one id.`)
     }
@@ -145,7 +130,7 @@ export class ContentClient implements ContentAPI {
     })
   }
 
-  async fetchEntityById(type: EntityType, id: EntityId, options?: RequestOptions): Promise<Entity> {
+  async fetchEntityById(type: EntityType, id: string, options?: RequestOptions): Promise<Entity> {
     const entities: Entity[] = await this.fetchEntitiesByIds(type, [id], options)
     if (entities.length === 0) {
       return Promise.reject(`Failed to find an entity with type '${type}' and id '${id}'.`)
@@ -153,7 +138,7 @@ export class ContentClient implements ContentAPI {
     return entities[0]
   }
 
-  fetchAuditInfo(type: EntityType, id: EntityId, options?: RequestOptions): Promise<AuditInfo> {
+  fetchAuditInfo(type: EntityType, id: string, options?: RequestOptions) {
     return this.fetchJson(`/audit/${type}/${id}`, options)
   }
 
@@ -161,7 +146,7 @@ export class ContentClient implements ContentAPI {
     return this.fetchJson('/status', options)
   }
 
-  async downloadContent(contentHash: ContentFileHash, options?: Partial<RequestOptions>): Promise<Buffer> {
+  async downloadContent(contentHash: string, options?: Partial<RequestOptions>): Promise<Buffer> {
     const { attempts = 3, waitTime = '0.5s' } = options ? options : {}
     const timeout = options?.timeout ? { timeout: options.timeout } : {}
 
@@ -183,7 +168,7 @@ export class ContentClient implements ContentAPI {
   }
 
   async pipeContent(
-    contentHash: ContentFileHash,
+    contentHash: string,
     writeTo: any,
     options?: Partial<RequestOptions>
   ): Promise<Map<string, string>> {
@@ -222,7 +207,7 @@ export class ContentClient implements ContentAPI {
       return Promise.reject(`You must set at least one cid.`)
     }
 
-    return splitAndFetch<{ cid: ContentFileHash; available: boolean }>({
+    return splitAndFetch<{ cid: string; available: boolean }>({
       fetcher: this.fetcher,
       baseUrl: this.contentUrl,
       path: `/available-content`,
@@ -237,10 +222,7 @@ export class ContentClient implements ContentAPI {
   }
 
   /** Given an array of file hashes, return a set with those already uploaded on the server */
-  private async hashesAlreadyOnServer(
-    hashes: ContentFileHash[],
-    options: RequestOptions | undefined
-  ): Promise<Set<ContentFileHash>> {
+  private async hashesAlreadyOnServer(hashes: string[], options: RequestOptions | undefined): Promise<Set<string>> {
     const result: AvailableContentResult = await this.isContentAvailable(hashes, options)
 
     const alreadyUploaded = result.filter(($) => $.available).map(({ cid }) => cid)
@@ -255,35 +237,31 @@ export class ContentClient implements ContentAPI {
 
 export interface BuildEntityOptions {
   type: EntityType
-  pointers: Pointer[]
+  pointers: string[]
   files?: Map<string, Uint8Array>
-  metadata?: EntityMetadata
-  timestamp?: Timestamp
+  metadata?: any
+  timestamp?: number
 }
 
 export interface BuildEntityWithoutFilesOptions {
   type: EntityType
-  pointers: Pointer[]
-  hashesByKey?: Map<string, ContentFileHash>
-  metadata?: EntityMetadata
-  timestamp?: Timestamp
+  pointers: string[]
+  hashesByKey?: Map<string, string>
+  metadata?: any
+  timestamp?: number
 }
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 //@ts-ignore
-export class DeploymentFields<T extends Partial<Deployment>> {
-  static readonly AUDIT_INFO = new DeploymentFields<DeploymentWithAuditInfo>(['auditInfo'])
-  static readonly POINTERS_CONTENT_METADATA_AND_AUDIT_INFO = new DeploymentFields<Deployment>([
+export class DeploymentFields {
+  static readonly AUDIT_INFO = new DeploymentFields(['auditInfo'])
+  static readonly POINTERS_CONTENT_METADATA_AND_AUDIT_INFO = new DeploymentFields([
     'pointers',
     'content',
     'metadata',
     'auditInfo'
   ])
-  static readonly POINTERS_CONTENT_AND_METADATA = new DeploymentFields<DeploymentWithMetadataContentAndPointers>([
-    'pointers',
-    'content',
-    'metadata'
-  ])
+  static readonly POINTERS_CONTENT_AND_METADATA = new DeploymentFields(['pointers', 'content', 'metadata'])
 
   private constructor(private readonly fields: string[]) {}
 

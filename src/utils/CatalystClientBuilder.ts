@@ -1,9 +1,18 @@
+import { getAllCatalystFromProvider } from '@dcl/catalyst-contracts'
 import { HealthStatus } from 'dcl-catalyst-commons'
+import { HTTPProvider } from 'eth-connect'
 import { CatalystClient, CatalystConnectOptions } from '../CatalystClient'
-import { getApprovedListFromContract, getUpdatedApprovedListWithoutQueryingContract } from './catalystList'
+import { getUpdatedApprovedListWithoutQueryingContract } from './catalystList'
 import { shuffleArray } from './common'
 
 const FETCH_HEALTH_TIMEOUT = '10s'
+
+function getApprovedListFromContract(network: string) {
+  const provider = new HTTPProvider(
+    `https://rpc.decentraland.org/${encodeURIComponent(network)}?project=catalyst-client`
+  )
+  return getAllCatalystFromProvider(provider)
+}
 
 /**
  * Returns a CatalystClient connected to one of the catalysts in the given network
@@ -18,7 +27,7 @@ export async function clientConnectedToCatalystIn(options: CatalystConnectOption
     list = noContractList
   } else {
     console.warn('Falling back to the smart contract to get an updated list of active servers')
-    list = await getApprovedListFromContract(options.network)
+    list = (await getApprovedListFromContract(options.network)).map(($) => $.domain)
   }
 
   const shuffled = shuffleArray(list)

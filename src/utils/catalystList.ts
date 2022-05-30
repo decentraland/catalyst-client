@@ -1,12 +1,6 @@
-import { getMainnetCatalysts, getRopstenCatalysts } from 'dcl-catalyst-commons'
 import { CatalystClient } from '../CatalystClient'
 import CatalystsList from '../CatalystsList'
 import { shuffleArray } from './common'
-
-export async function getApprovedListFromContract(network: 'mainnet' | 'ropsten'): Promise<string[]> {
-  const servers = network === 'mainnet' ? await getMainnetCatalysts() : await getRopstenCatalysts()
-  return servers.map(({ address }) => address)
-}
 
 /**
  * The idea here is to build an updated list of the catalysts approved by the DAO, without actually querying the DAO's contract
@@ -96,7 +90,7 @@ async function fetchCatalystsApprovedByDAO(catalystUrl: string): Promise<string[
   })
   try {
     const servers = await client.fetchCatalystsApprovedByDAO({ timeout: '10s' })
-    return servers.map(({ address }) => address)
+    return servers.map(({ baseUrl }) => baseUrl)
   } catch {
     return undefined
   }

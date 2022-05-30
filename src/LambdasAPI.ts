@@ -1,32 +1,27 @@
-import { EntityMetadata, Profile, RequestOptions, ServerMetadata } from 'dcl-catalyst-commons'
-import { EthAddress } from 'dcl-crypto'
+import { RequestOptions } from 'dcl-catalyst-commons'
+
+export type ServerMetadata = {
+  baseUrl: string
+  owner: string
+  id: string
+}
 
 export interface LambdasAPI {
-  fetchProfiles(
-    ethAddresses: EthAddress[],
-    profileOptions?: ProfileOptions,
-    options?: RequestOptions
-  ): Promise<Profile[]>
-
-  fetchWearables(filters: WearablesFilters, options?: RequestOptions): Promise<EntityMetadata[]>
-
+  fetchProfiles(ethAddresses: string[], profileOptions?: ProfileOptions, options?: RequestOptions): Promise<any[]>
+  fetchWearables(filters: WearablesFilters, options?: RequestOptions): Promise<any[]>
   fetchOwnedWearables<B extends boolean>(
-    ethAddress: EthAddress,
+    ethAddress: string,
     includeDefinitions: B,
     options?: RequestOptions
   ): Promise<OwnedWearables<B>>
-
   fetchOwnedThirdPartyWearables<B extends boolean>(
-    ethAddress: EthAddress,
+    ethAddress: string,
     thirdPartyId: string,
     includeDefinitions: B,
     options?: RequestOptions
   ): Promise<OwnedWearables<B>>
-
   fetchCatalystsApprovedByDAO(options?: RequestOptions): Promise<ServerMetadata[]>
-
   fetchLambdasStatus(options?: RequestOptions): Promise<{ contentServerUrl: string }>
-
   getLambdasUrl(): string
 }
 
@@ -34,6 +29,7 @@ export type ProfileOptions = {
   versions?: number[]
   fields?: ProfileFields
 }
+
 export class ProfileFields {
   static readonly ONLY_SNAPSHOTS = new ProfileFields(['snapshots'])
 
@@ -54,7 +50,7 @@ export type OwnedWearables<B extends boolean> = (B extends false
   ? OwnedWearablesWithoutDefinition
   : OwnedWearablesWithDefinition)[]
 
-export type OwnedWearablesWithDefinition = OwnedWearablesWithoutDefinition & { definition: EntityMetadata }
+export type OwnedWearablesWithDefinition = OwnedWearablesWithoutDefinition & { definition: any }
 
 export type OwnedWearablesWithoutDefinition = {
   urn: string

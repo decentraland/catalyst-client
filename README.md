@@ -23,8 +23,8 @@ One of the most important aspects, is the ability to deploy new entities. Here i
 
 ```
 import { CatalystClient, DeploymentBuilder } from 'dcl-catalyst-client'
-import { EntityType } from 'dcl-catalyst-commons'
-import { Authenticator } from 'dcl-crypto'
+import { EntityType } from '@dcl/schemas'
+import { Authenticator } from '@dcl/crypto'
 
 
 // This is up to you. You will need to figure out how to make the owner of the pointer sign the entity id

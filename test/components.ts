@@ -1,4 +1,3 @@
-
 import { createConfigComponent } from '@well-known-components/env-config-provider'
 import { createServerComponent, Router } from '@well-known-components/http-server'
 import { IConfigComponent, IHttpServerComponent, ILoggerComponent, Lifecycle } from '@well-known-components/interfaces'
@@ -31,7 +30,7 @@ async function main({ components, startComponents }: Lifecycle.EntryPointParamet
   components.server.use(async function logger(ctx, next) {
     const headers: Record<string, string> = {}
 
-    for (let [header, value] of ctx.request.headers) {
+    for (const [header, value] of ctx.request.headers) {
       headers[header] = value
     }
 
