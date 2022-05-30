@@ -1,16 +1,8 @@
 import { hashV0, hashV1 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
-import {
-  AuditInfo,
-  AvailableContentResult,
-  Fetcher,
-  mergeRequestOptions,
-  RequestOptions,
-  retry,
-  ServerStatus
-} from 'dcl-catalyst-commons'
+import { Fetcher, mergeRequestOptions, RequestOptions, retry, ServerStatus } from 'dcl-catalyst-commons'
 import FormData from 'form-data'
-import { ContentAPI } from './ContentAPI'
+import { AvailableContentResult, ContentAPI } from './ContentAPI'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 import { addModelToFormData, getHeadersWithUserAgent, isNode, sanitizeUrl, splitAndFetch } from './utils/Helper'
 
@@ -146,7 +138,7 @@ export class ContentClient implements ContentAPI {
     return entities[0]
   }
 
-  fetchAuditInfo(type: EntityType, id: string, options?: RequestOptions): Promise<AuditInfo> {
+  fetchAuditInfo(type: EntityType, id: string, options?: RequestOptions) {
     return this.fetchJson(`/audit/${type}/${id}`, options)
   }
 

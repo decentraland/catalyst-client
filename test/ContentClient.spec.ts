@@ -1,9 +1,10 @@
 import { hashV0 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
-import { AvailableContentResult, Fetcher } from 'dcl-catalyst-commons'
+import { Fetcher } from 'dcl-catalyst-commons'
 import { Headers } from 'node-fetch'
 import { Readable } from 'stream'
 import { anything, deepEqual, instance, mock, verify, when } from 'ts-mockito'
+import { AvailableContentResult } from '../src/ContentAPI'
 import { ContentClient } from '../src/ContentClient'
 import { DeploymentBuilder } from '../src/utils/DeploymentBuilder'
 

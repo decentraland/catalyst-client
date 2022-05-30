@@ -1,16 +1,18 @@
-import { Entity, EntityType } from '@dcl/schemas'
-import {
-  AuditInfo,
-  AvailableContentResult,
-  DeploymentWithContent,
-  DeploymentWithMetadata,
-  DeploymentWithPointers,
-  RequestOptions,
-  ServerStatus
-} from 'dcl-catalyst-commons'
+import { AuthChain, Entity, EntityType } from '@dcl/schemas'
+import { RequestOptions, ServerStatus } from 'dcl-catalyst-commons'
 import type { Writable } from 'stream'
 import { BuildEntityOptions, BuildEntityWithoutFilesOptions } from './ContentClient'
 import { DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
+
+export type AvailableContentResult = Array<{
+  cid: string
+  available: boolean
+}>
+
+export type EntityAuditInfoResponse = {
+  localTimestamp: number
+  authChain: AuthChain
+}
 
 export interface ContentAPI {
   /** Build entities */
@@ -26,7 +28,7 @@ export interface ContentAPI {
   fetchEntitiesByPointers(type: EntityType, pointers: string[], options?: RequestOptions): Promise<Entity[]>
   fetchEntitiesByIds(type: EntityType, ids: string[], options?: RequestOptions): Promise<Entity[]>
   fetchEntityById(type: EntityType, id: string, options?: RequestOptions): Promise<Entity>
-  fetchAuditInfo(type: EntityType, id: string, options?: RequestOptions): Promise<AuditInfo>
+  fetchAuditInfo(type: EntityType, id: string, options?: RequestOptions): Promise<EntityAuditInfoResponse>
   fetchContentStatus(options?: RequestOptions): Promise<ServerStatus>
   downloadContent(contentHash: string, options?: RequestOptions): Promise<Buffer>
   isContentAvailable(cids: string[], options?: RequestOptions): Promise<AvailableContentResult>
@@ -42,7 +44,3 @@ export interface ContentAPI {
   /** Status */
   getContentUrl(): string
 }
-
-export type DeploymentWithMetadataContentAndPointers = DeploymentWithMetadata &
-  DeploymentWithContent &
-  DeploymentWithPointers
