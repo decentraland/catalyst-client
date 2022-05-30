@@ -8,7 +8,7 @@ export type ServerMetadata = {
 
 export interface LambdasAPI {
   fetchProfiles(ethAddresses: string[], profileOptions?: ProfileOptions, options?: RequestOptions): Promise<any[]>
-  fetchWearables(filters: WearablesFilters, options?: RequestOptions): Promise<EntityMetadata[]>
+  fetchWearables(filters: WearablesFilters, options?: RequestOptions): Promise<any[]>
   fetchOwnedWearables<B extends boolean>(
     ethAddress: string,
     includeDefinitions: B,
@@ -50,7 +50,7 @@ export type OwnedWearables<B extends boolean> = (B extends false
   ? OwnedWearablesWithoutDefinition
   : OwnedWearablesWithDefinition)[]
 
-export type OwnedWearablesWithDefinition = OwnedWearablesWithoutDefinition & { definition: EntityMetadata }
+export type OwnedWearablesWithDefinition = OwnedWearablesWithoutDefinition & { definition: any }
 
 export type OwnedWearablesWithoutDefinition = {
   urn: string

@@ -31,8 +31,8 @@ export class CatalystClient implements CatalystAPI {
     const fetcher = options.fetcher
       ? options.fetcher
       : new Fetcher({
-        headers: getHeadersWithUserAgent('catalyst-client')
-      })
+          headers: getHeadersWithUserAgent('catalyst-client')
+        })
     this.contentClient = new ContentClient({
       contentUrl: this.catalystUrl + '/content',
       fetcher: fetcher,
