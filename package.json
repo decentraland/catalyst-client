@@ -43,12 +43,12 @@
   },
   "homepage": "https://github.com/decentraland/catalyst-client#readme",
   "dependencies": {
-    "@dcl/catalyst-contracts": "^2.0.0-20220530154414.commit-8fd9522",
+    "@dcl/catalyst-contracts": "^2.0.0",
     "@dcl/hashing": "^1.1.0",
     "@dcl/schemas": "^4.14.0",
     "@types/form-data": "^2.5.0",
     "cookie": "^0.4.1",
-    "dcl-catalyst-commons": "^8.3.1-20220530160044.commit-d879278",
+    "dcl-catalyst-commons": "^9.0.0",
     "form-data": "^4.0.0"
   },
   "devDependencies": {
