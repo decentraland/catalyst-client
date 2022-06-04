@@ -86,18 +86,19 @@ export class ContentClient implements ContentAPI {
     return form
   }
 
-  async deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<number> {
+  async deployEntity(deployData: DeploymentData, _fix: boolean = false, options?: RequestOptions): Promise<number> {
+    const { creationTimestamp } = (await this.deploy(deployData, options)) as { creationTimestamp: number }
+    return creationTimestamp
+  }
+
+  async deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
     const form = await this.buildEntityFormDataForDeployment(deployData, options)
 
     const requestOptions = mergeRequestOptions(options ? options : {}, {
       body: form as any
     })
 
-    const { creationTimestamp } = (await this.fetcher.postForm(
-      `${this.contentUrl}/entities${fix ? '?fix=true' : ''}`,
-      requestOptions
-    )) as any
-    return creationTimestamp
+    return await this.fetcher.postForm(`${this.contentUrl}/entities`, requestOptions)
   }
 
   fetchEntitiesByPointers(type: EntityType, pointers: string[], options?: RequestOptions): Promise<Entity[]> {
