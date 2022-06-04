@@ -34,12 +34,18 @@ export interface ContentAPI {
   isContentAvailable(cids: string[], options?: RequestOptions): Promise<AvailableContentResult>
 
   /**
-   * pipeContent only works in Node.js like environments
+   * @deprecated pipeContent only works in Node.js like environments.
+   * Move this to lambdas server https://github.com/decentraland/catalyst/issues/1119
    */
   pipeContent(contentHash: string, writeTo: Writable, options?: RequestOptions): Promise<Map<string, string>>
 
-  /** Upload */
+  /** @deprecated use deploy instead */
   deployEntity(deployData: DeploymentData, fix?: boolean, options?: RequestOptions): Promise<number>
+
+  /**
+   * Deploys an entity to the content server.
+   */
+  deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown>
 
   /** Status */
   getContentUrl(): string
