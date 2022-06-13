@@ -2,17 +2,20 @@ name: 'release'
 on:
   workflow_dispatch:
     inputs:
-        dry_run:
-          description: dry run
-          type: boolean
-          required: false
-          default: false
+      dry_run:
+        description: dry run
+        type: boolean
+        required: false
+        default: false
+  schedule:
+    - cron: '30 13 * * 6' # Every Saturday at 13:30 UTC
 jobs:
   release:
     runs-on: ubuntu-latest
     permissions: write-all
     steps:
-      - uses: decentraland/gh-action-release@0.2.2
+      - uses: decentraland/gh-action-release@0.3.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           dry_run: ${{ github.event.inputs.dry_run }}
+          repository: ${{ github.repository }}
