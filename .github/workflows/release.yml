@@ -17,5 +17,6 @@ jobs:
       - uses: decentraland/gh-action-release@0.3.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          
           dry_run: ${{ github.event.inputs.dry_run }}
           repository: ${{ github.repository }}
