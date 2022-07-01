@@ -35,6 +35,7 @@ export class LambdasClient implements LambdasAPI {
         })
   }
 
+  // TODO: Use POST method here
   fetchProfiles(ethAddresses: string[], profileOptions?: ProfileOptions, options?: RequestOptions): Promise<any[]> {
     if (ethAddresses.length === 0) {
       return Promise.resolve([])
