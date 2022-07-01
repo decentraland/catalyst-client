@@ -61,16 +61,16 @@ export class CatalystClient implements CatalystAPI {
     return this.contentClient.deploy(deployData, options)
   }
 
-  fetchEntitiesByPointers(type: EntityType, pointers: string[], options?: RequestOptions): Promise<Entity[]> {
-    return this.contentClient.fetchEntitiesByPointers(type, pointers, options)
+  fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]> {
+    return this.contentClient.fetchEntitiesByPointers(pointers, options)
   }
 
-  fetchEntitiesByIds(type: EntityType, ids: string[], options?: RequestOptions): Promise<Entity[]> {
-    return this.contentClient.fetchEntitiesByIds(type, ids, options)
+  fetchEntitiesByIds(ids: string[], options?: RequestOptions): Promise<Entity[]> {
+    return this.contentClient.fetchEntitiesByIds(ids, options)
   }
 
-  fetchEntityById(type: EntityType, id: string, options?: RequestOptions): Promise<Entity> {
-    return this.contentClient.fetchEntityById(type, id, options)
+  fetchEntityById(id: string, options?: RequestOptions): Promise<Entity> {
+    return this.contentClient.fetchEntityById(id, options)
   }
 
   fetchAuditInfo(type: EntityType, id: string, options?: RequestOptions): Promise<AuditInfo> {
