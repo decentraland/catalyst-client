@@ -25,9 +25,9 @@ export interface ContentAPI {
   }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData>
 
   /** Retrieve / Download */
-  fetchEntitiesByPointers(type: EntityType, pointers: string[], options?: RequestOptions): Promise<Entity[]>
-  fetchEntitiesByIds(type: EntityType, ids: string[], options?: RequestOptions): Promise<Entity[]>
-  fetchEntityById(type: EntityType, id: string, options?: RequestOptions): Promise<Entity>
+  fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]>
+  fetchEntitiesByIds(ids: string[], options?: RequestOptions): Promise<Entity[]>
+  fetchEntityById(id: string, options?: RequestOptions): Promise<Entity>
   fetchAuditInfo(type: EntityType, id: string, options?: RequestOptions): Promise<EntityAuditInfoResponse>
   fetchContentStatus(options?: RequestOptions): Promise<ServerStatus>
   downloadContent(contentHash: string, options?: RequestOptions): Promise<Buffer>

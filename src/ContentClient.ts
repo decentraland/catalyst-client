@@ -95,46 +95,42 @@ export class ContentClient implements ContentAPI {
     const form = await this.buildEntityFormDataForDeployment(deployData, options)
 
     const requestOptions = mergeRequestOptions(options ? options : {}, {
-      body: form as any
+      body: form as any,
+      method: 'POST'
     })
 
-    return await this.fetcher.postForm(`${this.contentUrl}/entities`, requestOptions)
+    return await this.fetcher.fetch(`${this.contentUrl}/entities`, requestOptions)
   }
 
-  fetchEntitiesByPointers(type: EntityType, pointers: string[], options?: RequestOptions): Promise<Entity[]> {
+  async fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]> {
     if (pointers.length === 0) {
       return Promise.reject(`You must set at least one pointer.`)
     }
-
-    return splitAndFetch<Entity>({
-      fetcher: this.fetcher,
-      baseUrl: this.contentUrl,
-      path: `/entities/${type}`,
-      queryParams: { name: 'pointer', values: pointers },
-      uniqueBy: 'id',
-      options
+    const requestOptions = mergeRequestOptions(options ? options : {}, {
+      body: JSON.stringify({ pointers: pointers }),
+      method: 'POST'
     })
+
+    return (await this.fetcher.fetch(`${this.contentUrl}/entities/active`, requestOptions)).json()
   }
 
-  fetchEntitiesByIds(type: EntityType, ids: string[], options?: RequestOptions): Promise<Entity[]> {
+  async fetchEntitiesByIds(ids: string[], options?: RequestOptions): Promise<Entity[]> {
     if (ids.length === 0) {
       return Promise.reject(`You must set at least one id.`)
     }
 
-    return splitAndFetch<Entity>({
-      fetcher: this.fetcher,
-      baseUrl: this.contentUrl,
-      path: `/entities/${type}`,
-      queryParams: { name: 'id', values: ids },
-      uniqueBy: 'id',
-      options
+    const requestOptions = mergeRequestOptions(options ? options : {}, {
+      body: JSON.stringify({ ids: ids }),
+      method: 'POST'
     })
+
+    return (await this.fetcher.fetch(`${this.contentUrl}/entities/active`, requestOptions)).json()
   }
 
-  async fetchEntityById(type: EntityType, id: string, options?: RequestOptions): Promise<Entity> {
-    const entities: Entity[] = await this.fetchEntitiesByIds(type, [id], options)
+  async fetchEntityById(id: string, options?: RequestOptions): Promise<Entity> {
+    const entities: Entity[] = await this.fetchEntitiesByIds([id], options)
     if (entities.length === 0) {
-      return Promise.reject(`Failed to find an entity with type '${type}' and id '${id}'.`)
+      return Promise.reject(`Failed to find an entity with id '${id}'.`)
     }
     return entities[0]
   }
@@ -231,8 +227,8 @@ export class ContentClient implements ContentAPI {
     return new Set(alreadyUploaded)
   }
 
-  private fetchJson(path: string, options?: Partial<RequestOptions>): Promise<any> {
-    return this.fetcher.fetchJson(`${this.contentUrl}${path}`, options)
+  private async fetchJson(path: string, options?: Partial<RequestOptions>): Promise<any> {
+    return (await this.fetcher.fetch(`${this.contentUrl}${path}`, options)).json()
   }
 }
 
