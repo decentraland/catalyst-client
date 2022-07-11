@@ -4,12 +4,18 @@ on:
       - '*'
     branches:
       - master
-  release:
-    types:
-      - created
 
-name: Publish NPM package
+name: Release and publish NPM package
 jobs:
+
+  release:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - uses: decentraland/gh-action-release@0.3.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
   build:
     runs-on: ubuntu-latest
     steps:
