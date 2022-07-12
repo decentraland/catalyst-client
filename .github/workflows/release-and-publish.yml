@@ -50,6 +50,7 @@ jobs:
     needs: release
     if: ${{ success() }}
     steps:
+      - uses: actions/checkout@master
       - name: NPM Publish
         uses: menduz/oddish-action@master
         with:
