@@ -8,14 +8,6 @@ on:
 name: Release and publish NPM package
 jobs:
 
-  release:
-    runs-on: ubuntu-latest
-    permissions: write-all
-    steps:
-      - uses: decentraland/gh-action-release@0.3.2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
   build:
     runs-on: ubuntu-latest
     steps:
@@ -42,6 +34,22 @@ jobs:
         run: npm run build
       - name: Run tests
         run: npm run test
+
+  release:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    needs: build
+    if: ${{ success() }}
+    steps:
+      - uses: decentraland/gh-action-release@0.3.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: release
+    if: ${{ success() }}
+    steps:
       - name: NPM Publish
         uses: menduz/oddish-action@master
         with:
