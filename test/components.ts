@@ -49,7 +49,7 @@ async function main({ components, startComponents }: Lifecycle.EntryPointParamet
 // initComponents role is to create BUT NOT START the components,
 // this function is only called once by the Lifecycle manager
 async function initComponents(): Promise<TestComponents> {
-  const logs = createLogComponent()
+  const logs = createLogComponent({})
 
   const config = createConfigComponent(defaultServerConfig())
 
