@@ -10,7 +10,7 @@ import {
 import { Writable } from 'stream'
 import { CatalystAPI } from './CatalystAPI'
 import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient } from './ContentClient'
-import { OwnedWearables, ProfileOptions, ServerMetadata, WearablesFilters } from './LambdasAPI'
+import { OwnedItems, ProfileOptions, ServerMetadata, WearablesFilters } from './LambdasAPI'
 import { LambdasClient } from './LambdasClient'
 import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
@@ -105,7 +105,7 @@ export class CatalystClient implements CatalystAPI {
     ethAddress: string,
     includeDefinitions: B,
     options?: RequestOptions
-  ): Promise<OwnedWearables<B>> {
+  ): Promise<OwnedItems<B>> {
     return this.lambdasClient.fetchOwnedWearables(ethAddress, includeDefinitions, options)
   }
 
@@ -114,8 +114,29 @@ export class CatalystClient implements CatalystAPI {
     thirdPartyId: string,
     includeDefinitions: B,
     options?: RequestOptions
-  ): Promise<OwnedWearables<B>> {
+  ): Promise<OwnedItems<B>> {
     return this.lambdasClient.fetchOwnedThirdPartyWearables(ethAddress, thirdPartyId, includeDefinitions, options)
+  }
+
+  fetchEmotes(filters: WearablesFilters, options?: RequestOptions): Promise<any[]> {
+    return this.lambdasClient.fetchEmotes(filters, options)
+  }
+
+  fetchOwnedEmotes<B extends boolean>(
+    ethAddress: string,
+    includeDefinitions: B,
+    options?: RequestOptions
+  ): Promise<OwnedItems<B>> {
+    return this.lambdasClient.fetchOwnedEmotes(ethAddress, includeDefinitions, options)
+  }
+
+  fetchOwnedThirdPartyEmotes<B extends boolean>(
+    ethAddress: string,
+    thirdPartyId: string,
+    includeDefinitions: B,
+    options?: RequestOptions
+  ): Promise<OwnedItems<B>> {
+    return this.lambdasClient.fetchOwnedThirdPartyEmotes(ethAddress, thirdPartyId, includeDefinitions, options)
   }
 
   fetchCatalystsApprovedByDAO(options?: RequestOptions): Promise<ServerMetadata[]> {

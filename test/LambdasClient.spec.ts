@@ -75,6 +75,51 @@ describe('LambdasClient', () => {
     expect(result).toEqual(requestResult)
   })
 
+  it('When fetching for emotes, then the result is as expected', async () => {
+    const emotes = [{ id: 'emoteId' }]
+    const requestResult = {
+      emotes,
+      pagination: { offset: 0, limit: 0, moreData: false }
+    }
+    const { instance: fetcher } = mockFetcherJson(
+      `/collections/emotes?textSearch=text&emoteId=id1&emoteId=id2`,
+      requestResult
+    )
+
+    const client = buildClient(URL, fetcher)
+    const result = await client.fetchEmotes({ emoteIds: ['id1', 'id2'], textSearch: 'text' })
+
+    expect(result).toEqual(emotes)
+  })
+
+  it('When fetching for owned emotes without definition, then the result is as expected', async () => {
+    const ethAddress = 'ethAddress'
+    const requestResult = [{ urn: 'urn', amount: 10 }]
+    const { instance: fetcher } = mockFetcherJson(
+      `/collections/emotes-by-owner/${ethAddress}?includeDefinitions=false`,
+      requestResult
+    )
+
+    const client = buildClient(URL, fetcher)
+    const result = await client.fetchOwnedEmotes(ethAddress, false)
+
+    expect(result).toEqual(requestResult)
+  })
+
+  it('When fetching for owned emotes with definition, then the result is as expected', async () => {
+    const ethAddress = 'ethAddress'
+    const requestResult = [{ urn: 'urn', amount: 10, definition: {} }]
+    const { instance: fetcher } = mockFetcherJson(
+      `/collections/emotes-by-owner/${ethAddress}?includeDefinitions=true`,
+      requestResult
+    )
+
+    const client = buildClient(URL, fetcher)
+    const result = await client.fetchOwnedEmotes(ethAddress, true)
+
+    expect(result).toEqual(requestResult)
+  })
+
   it('adds version to query string whe requesting a particular version', async () => {
     const requestResult = [someResult()]
     const [ethAddress1, ethAddress2] = ['ethAddress1', 'ethAddress2']

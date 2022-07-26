@@ -1,9 +1,10 @@
 import { Fetcher, HealthStatus, RequestOptions } from 'dcl-catalyst-commons'
 import {
+  EmotesFilters,
   LambdasAPI,
-  OwnedWearables,
-  OwnedWearablesWithDefinition,
-  OwnedWearablesWithoutDefinition,
+  OwnedItems,
+  OwnedItemsWithDefinition,
+  OwnedItemsWithoutDefinition,
   ProfileOptions,
   ServerMetadata,
   WearablesFilters
@@ -79,8 +80,8 @@ export class LambdasClient implements LambdasAPI {
     ethAddress: string,
     includeDefinitions: B,
     options?: RequestOptions
-  ): Promise<OwnedWearables<B>> {
-    return splitAndFetch<B extends false ? OwnedWearablesWithoutDefinition : OwnedWearablesWithDefinition>({
+  ): Promise<OwnedItems<B>> {
+    return splitAndFetch<B extends false ? OwnedItemsWithoutDefinition : OwnedItemsWithDefinition>({
       fetcher: this.fetcher,
       baseUrl: this.lambdasUrl,
       path: `/collections/wearables-by-owner/${ethAddress}`,
@@ -94,15 +95,65 @@ export class LambdasClient implements LambdasAPI {
     thirdPartyId: string,
     includeDefinitions: B,
     options?: RequestOptions
-  ): Promise<OwnedWearables<B>> {
+  ): Promise<OwnedItems<B>> {
     const queryParams = new Map([
       ['collectionId', [thirdPartyId]],
       ['includeDefinitions', [`${includeDefinitions}`]]
     ])
-    return splitAndFetch<B extends false ? OwnedWearablesWithoutDefinition : OwnedWearablesWithDefinition>({
+    return splitAndFetch<B extends false ? OwnedItemsWithoutDefinition : OwnedItemsWithDefinition>({
       fetcher: this.fetcher,
       baseUrl: this.lambdasUrl,
       path: `/collections/wearables-by-owner/${ethAddress}`,
+      queryParams,
+      options
+    })
+  }
+
+  fetchEmotes(filters: EmotesFilters, options?: RequestOptions): Promise<any[]> {
+    const queryParams = convertFiltersToQueryParams(filters)
+    if (queryParams.size === 0) {
+      throw new Error('You must set at least one filter')
+    }
+
+    return splitAndFetchPaginated({
+      fetcher: this.fetcher,
+      baseUrl: this.lambdasUrl,
+      path: '/collections/emotes',
+      queryParams,
+      uniqueBy: 'id',
+      elementsProperty: 'emotes',
+      options
+    })
+  }
+
+  fetchOwnedEmotes<B extends boolean>(
+    ethAddress: string,
+    includeDefinitions: B,
+    options?: RequestOptions
+  ): Promise<OwnedItems<B>> {
+    return splitAndFetch<B extends false ? OwnedItemsWithoutDefinition : OwnedItemsWithDefinition>({
+      fetcher: this.fetcher,
+      baseUrl: this.lambdasUrl,
+      path: `/collections/emotes-by-owner/${ethAddress}`,
+      queryParams: { name: 'includeDefinitions', values: [`${includeDefinitions}`] },
+      options
+    })
+  }
+
+  fetchOwnedThirdPartyEmotes<B extends boolean>(
+    ethAddress: string,
+    thirdPartyId: string,
+    includeDefinitions: B,
+    options?: RequestOptions
+  ): Promise<OwnedItems<B>> {
+    const queryParams = new Map([
+      ['collectionId', [thirdPartyId]],
+      ['includeDefinitions', [`${includeDefinitions}`]]
+    ])
+    return splitAndFetch<B extends false ? OwnedItemsWithoutDefinition : OwnedItemsWithDefinition>({
+      fetcher: this.fetcher,
+      baseUrl: this.lambdasUrl,
+      path: `/collections/emotes-by-owner/${ethAddress}`,
       queryParams,
       options
     })
