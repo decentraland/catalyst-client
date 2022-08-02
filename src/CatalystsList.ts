@@ -58,6 +58,13 @@ export = (
             "id": "0xfb2e343efdf90aa09f8f02849e453fac3c0b21edbc1de23ac6e6fb1981f5d009"
         }
     ],
+    "goerli": [
+        {
+            "address": "https://peer-ap1.decentraland.zone",
+            "owner": "0xE4747cc0606a622E9388BecbDf528ABE94E68F1c",
+            "id": "0xdac0e1d5e7bf7311873e0d2f05eaade8b96a162f80fb9ff631984f397904fc2c"
+        }
+    ],
     "ropsten": [
         {
             "address": "https://peer-ue-2.decentraland.zone",
@@ -68,11 +75,6 @@ export = (
             "address": "https://peer.decentraland.zone",
             "owner": "0x079BED9C31CB772c4C156F86E1CFf15bf751ADd0",
             "id": "0xcf660ac37597dcaf97b3cc1613deb0cda68246901786cd30d09d91f8db79ab8e"
-        },
-        {
-            "address": "https://peer-ap1.decentraland.zone",
-            "owner": "0xE4747cc0606a622E9388BecbDf528ABE94E68F1c",
-            "id": "0xb2c3f1812d30675137a9a0e6beaa21ebe160e03e5e02bb5433fcfbd118347ece"
         }
     ]
 }
