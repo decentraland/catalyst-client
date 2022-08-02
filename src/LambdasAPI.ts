@@ -13,13 +13,25 @@ export interface LambdasAPI {
     ethAddress: string,
     includeDefinitions: B,
     options?: RequestOptions
-  ): Promise<OwnedWearables<B>>
+  ): Promise<OwnedItems<B>>
   fetchOwnedThirdPartyWearables<B extends boolean>(
     ethAddress: string,
     thirdPartyId: string,
     includeDefinitions: B,
     options?: RequestOptions
-  ): Promise<OwnedWearables<B>>
+  ): Promise<OwnedItems<B>>
+  fetchEmotes(filters: EmotesFilters, options?: RequestOptions): Promise<any[]>
+  fetchOwnedEmotes<B extends boolean>(
+    ethAddress: string,
+    includeDefinitions: B,
+    options?: RequestOptions
+  ): Promise<OwnedItems<B>>
+  fetchOwnedThirdPartyEmotes<B extends boolean>(
+    ethAddress: string,
+    thirdPartyId: string,
+    includeDefinitions: B,
+    options?: RequestOptions
+  ): Promise<OwnedItems<B>>
   fetchCatalystsApprovedByDAO(options?: RequestOptions): Promise<ServerMetadata[]>
   fetchLambdasStatus(options?: RequestOptions): Promise<{ contentServerUrl: string }>
   getLambdasUrl(): string
@@ -40,19 +52,24 @@ export class ProfileFields {
   }
 }
 
-export type WearablesFilters = {
+export type ItemFilters = {
   collectionIds?: string[]
-  wearableIds?: string[]
   textSearch?: string
 }
 
-export type OwnedWearables<B extends boolean> = (B extends false
-  ? OwnedWearablesWithoutDefinition
-  : OwnedWearablesWithDefinition)[]
+export type WearablesFilters = ItemFilters & {
+  wearableIds?: string[]
+}
 
-export type OwnedWearablesWithDefinition = OwnedWearablesWithoutDefinition & { definition: any }
+export type EmotesFilters = ItemFilters & {
+  emoteIds?: string[]
+}
 
-export type OwnedWearablesWithoutDefinition = {
+export type OwnedItems<B extends boolean> = (B extends false ? OwnedItemsWithoutDefinition : OwnedItemsWithDefinition)[]
+
+export type OwnedItemsWithDefinition = OwnedItemsWithoutDefinition & { definition: any }
+
+export type OwnedItemsWithoutDefinition = {
   urn: string
   amount: number
 }
