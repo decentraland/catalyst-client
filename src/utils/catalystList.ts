@@ -1,4 +1,4 @@
-import { CatalystClient } from '../CatalystClient'
+import { CatalystClient, CatalystConnectOptions } from '../CatalystClient'
 import CatalystsList from '../CatalystsList'
 import { shuffleArray } from './common'
 
@@ -11,7 +11,7 @@ import { shuffleArray } from './common'
  */
 const REQUIRED_LISTS = 3
 export type KnownServersOptions = {
-  preKnownServers: { list: { address: string }[] } | { network: 'mainnet' | 'ropsten' | 'goerli' }
+  preKnownServers: { list: { address: string }[] } | CatalystConnectOptions
   requiredLists?: number
   fetchApprovedCatalysts?: (catalystUrl: string) => Promise<string[] | undefined>
 }
