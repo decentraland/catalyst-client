@@ -11,7 +11,7 @@ import { shuffleArray } from './common'
  */
 const REQUIRED_LISTS = 3
 export type KnownServersOptions = {
-  preKnownServers: { list: { address: string }[] } | { network: 'mainnet' | 'ropsten' }
+  preKnownServers: { list: { address: string }[] } | { network: 'mainnet' | 'ropsten' | 'goerli' }
   requiredLists?: number
   fetchApprovedCatalysts?: (catalystUrl: string) => Promise<string[] | undefined>
 }
