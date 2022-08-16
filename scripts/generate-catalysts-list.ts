@@ -6,7 +6,6 @@ import fs from 'fs'
 async function main(): Promise<void> {
   const mainnet = await getAllCatalystFromProvider(new HTTPProvider('https://rpc.decentraland.org/mainnet?project=ci'))
   const goerli = await getAllCatalystFromProvider(new HTTPProvider('https://rpc.decentraland.org/goerli?project=ci'))
-  const ropsten = await getAllCatalystFromProvider(new HTTPProvider('https://rpc.decentraland.org/ropsten?project=ci'))
 
   const mapFunction = $ => {
     return {
@@ -19,7 +18,6 @@ async function main(): Promise<void> {
   const mergedList = {
     mainnet: mainnet.map(mapFunction),
     goerli: goerli.map(mapFunction),
-    ropsten: ropsten.map(mapFunction)
   }
 
   const listString = JSON.stringify(mergedList, null, 4)

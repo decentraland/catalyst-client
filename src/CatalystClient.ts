@@ -169,5 +169,5 @@ export class CatalystClient implements CatalystAPI {
 }
 
 export type CatalystConnectOptions = {
-  network: 'mainnet' | 'ropsten' | 'goerli'
+  network: 'mainnet' | 'goerli'
 }
