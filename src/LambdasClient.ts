@@ -36,6 +36,9 @@ export class LambdasClient implements LambdasAPI {
   }
 
   fetchProfiles(ethAddresses: string[], profileOptions?: ProfileOptions, options?: RequestOptions): Promise<any[]> {
+    if (ethAddresses.length === 0) {
+      return Promise.resolve([])
+    }
     const queryParams: Map<string, string[]> = new Map()
     queryParams.set('id', ethAddresses)
     if (profileOptions?.fields) {
