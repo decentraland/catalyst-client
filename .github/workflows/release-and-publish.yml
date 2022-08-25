@@ -30,7 +30,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: get latest release and export as GIT_TAG
-        run:  echo "GIT_TAG=refs/tags/$(git tag | grep -E "^[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1)" > $GITHUB_ENV
+        run:  echo "GIT_TAG=$(git tag | grep -E "^[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1)" > $GITHUB_ENV
       - name: Use Node.js 16.x
         uses: actions/setup-node@v1
         with:
