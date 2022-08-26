@@ -1,7 +1,5 @@
 on:
   push:
-    tags:
-      - '*'
     branches:
       - master
 
@@ -14,7 +12,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     permissions: write-all
-    needs: build
+    needs: build-and-test
     if: ${{ success() }}
     steps:
       - uses: decentraland/gh-action-release@0.3.4
