@@ -10,7 +10,7 @@ import {
 import { Writable } from 'stream'
 import { CatalystAPI } from './CatalystAPI'
 import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient } from './ContentClient'
-import { EmotesFilters, OwnedItems, ProfileOptions, ServerMetadata, WearablesFilters } from './LambdasAPI'
+import { EmotesFilters, OwnedItems, ServerMetadata, WearablesFilters } from './LambdasAPI'
 import { LambdasClient } from './LambdasClient'
 import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
@@ -93,8 +93,8 @@ export class CatalystClient implements CatalystAPI {
     return this.contentClient.pipeContent(contentHash, writeTo, options)
   }
 
-  fetchProfiles(ethAddresses: string[], profileOptions?: ProfileOptions, options?: RequestOptions): Promise<any[]> {
-    return this.lambdasClient.fetchProfiles(ethAddresses, profileOptions, options)
+  fetchProfiles(ethAddresses: string[], options?: RequestOptions): Promise<any[]> {
+    return this.lambdasClient.fetchProfiles(ethAddresses, options)
   }
 
   fetchWearables(filters: WearablesFilters, options?: RequestOptions): Promise<any[]> {
