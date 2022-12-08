@@ -1,11 +1,10 @@
-import { Fetcher, HealthStatus, RequestOptions } from 'dcl-catalyst-commons'
+import { Fetcher, HealthStatus, mergeRequestOptions, RequestOptions } from 'dcl-catalyst-commons'
 import {
   EmotesFilters,
   LambdasAPI,
   OwnedItems,
   OwnedItemsWithDefinition,
   OwnedItemsWithoutDefinition,
-  ProfileOptions,
   ServerMetadata,
   WearablesFilters
 } from './LambdasAPI'
@@ -35,31 +34,18 @@ export class LambdasClient implements LambdasAPI {
         })
   }
 
-  fetchProfiles(ethAddresses: string[], profileOptions?: ProfileOptions, options?: RequestOptions): Promise<any[]> {
+  async fetchProfiles(ethAddresses: string[], options?: RequestOptions): Promise<any[]> {
     if (ethAddresses.length === 0) {
       return Promise.resolve([])
     }
-    const queryParams: Map<string, string[]> = new Map()
-    queryParams.set('id', ethAddresses)
-    if (profileOptions?.fields) {
-      const fieldsValue = profileOptions?.fields.getFields()
-      queryParams.set('fields', [fieldsValue])
-    }
 
-    if (profileOptions?.versions) {
-      queryParams.set(
-        'version',
-        profileOptions.versions.map((it) => it.toString(10))
-      )
-    }
-
-    return splitAndFetch<any>({
-      fetcher: this.fetcher,
-      baseUrl: this.lambdasUrl,
-      path: '/profiles',
-      queryParams,
-      options
+    const requestOptions = mergeRequestOptions(options ? options : {}, {
+      body: JSON.stringify({ ids: ethAddresses }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST'
     })
+
+    return (await this.fetcher.fetch(`${this.lambdasUrl}/profiles`, requestOptions)).json()
   }
 
   fetchWearables(filters: WearablesFilters, options?: RequestOptions): Promise<any[]> {

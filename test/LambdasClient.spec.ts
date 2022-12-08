@@ -1,6 +1,6 @@
 import { Fetcher } from 'dcl-catalyst-commons'
-import { anything, instance, mock, when } from 'ts-mockito'
-import { LambdasClient, ProfileFields } from '../src/index'
+import { anything, instance, mock, verify, when } from 'ts-mockito'
+import { LambdasClient } from '../src/index'
 
 describe('LambdasClient', () => {
   const URL = 'https://url.com'
@@ -8,7 +8,7 @@ describe('LambdasClient', () => {
   it('When fetching for many profiles, then the result is as expected', async () => {
     const requestResult = [someResult()]
     const [ethAddress1, ethAddress2] = ['ethAddress1', 'ethAddress2']
-    const { instance: fetcher } = mockFetcherJson(`/profiles?id=${ethAddress1}&id=${ethAddress2}`, requestResult)
+    const { instance: fetcher } = mockFetcher(`/profiles`, requestResult)
 
     const client = buildClient(URL, fetcher)
     const result = await client.fetchProfiles([ethAddress1, ethAddress2])
@@ -16,18 +16,14 @@ describe('LambdasClient', () => {
     expect(result).toEqual(requestResult)
   })
 
-  it('When fetching only snapshots in profiles, then the result is as expected', async () => {
-    const requestResult = [someResult()]
-    const [ethAddress1, ethAddress2] = ['ethAddress1', 'ethAddress2']
-    const { instance: fetcher } = mockFetcherJson(
-      `/profiles?fields=snapshots&id=${ethAddress1}&id=${ethAddress2}`,
-      requestResult
-    )
+  it('When fetching for no profiles, result should eagerly return empty without calling API', async () => {
+    const { instance: fetcher, mock } = mockFetcher(`/profiles`, [])
 
     const client = buildClient(URL, fetcher)
-    const result = await client.fetchProfiles([ethAddress1, ethAddress2], { fields: ProfileFields.ONLY_SNAPSHOTS })
+    const result = await client.fetchProfiles([])
 
-    expect(result).toEqual(requestResult)
+    expect(result.length).toBe(0)
+    verify(mock.fetch(anything(), anything())).never()
   })
 
   it('When fetching for wearables, then the result is as expected', async () => {
@@ -36,7 +32,7 @@ describe('LambdasClient', () => {
       wearables,
       pagination: { offset: 0, limit: 0, moreData: false }
     }
-    const { instance: fetcher } = mockFetcherJson(
+    const { instance: fetcher } = mockFetcher(
       `/collections/wearables?textSearch=text&wearableId=id1&wearableId=id2`,
       requestResult
     )
@@ -47,10 +43,16 @@ describe('LambdasClient', () => {
     expect(result).toEqual(wearables)
   })
 
+  it('When fetching for wearables without filters, then an error should be raised', async () => {
+    const client = buildClient(URL, undefined)
+
+    await expect(async () => client.fetchWearables(undefined)).rejects.toThrow('You must set at least one filter')
+  })
+
   it('When fetching for owned wearables without definition, then the result is as expected', async () => {
     const ethAddress = 'ethAddress'
     const requestResult = [{ urn: 'urn', amount: 10 }]
-    const { instance: fetcher } = mockFetcherJson(
+    const { instance: fetcher } = mockFetcher(
       `/collections/wearables-by-owner/${ethAddress}?includeDefinitions=false`,
       requestResult
     )
@@ -64,7 +66,7 @@ describe('LambdasClient', () => {
   it('When fetching for owned wearables with definition, then the result is as expected', async () => {
     const ethAddress = 'ethAddress'
     const requestResult = [{ urn: 'urn', amount: 10, definition: {} }]
-    const { instance: fetcher } = mockFetcherJson(
+    const { instance: fetcher } = mockFetcher(
       `/collections/wearables-by-owner/${ethAddress}?includeDefinitions=true`,
       requestResult
     )
@@ -81,7 +83,7 @@ describe('LambdasClient', () => {
       emotes,
       pagination: { offset: 0, limit: 0, moreData: false }
     }
-    const { instance: fetcher } = mockFetcherJson(
+    const { instance: fetcher } = mockFetcher(
       `/collections/emotes?textSearch=text&emoteId=id1&emoteId=id2`,
       requestResult
     )
@@ -92,10 +94,16 @@ describe('LambdasClient', () => {
     expect(result).toEqual(emotes)
   })
 
+  it('When fetching for emotes without filters, then an error should be raised', async () => {
+    const client = buildClient(URL, undefined)
+
+    await expect(async () => client.fetchEmotes(undefined)).rejects.toThrow('You must set at least one filter')
+  })
+
   it('When fetching for owned emotes without definition, then the result is as expected', async () => {
     const ethAddress = 'ethAddress'
     const requestResult = [{ urn: 'urn', amount: 10 }]
-    const { instance: fetcher } = mockFetcherJson(
+    const { instance: fetcher } = mockFetcher(
       `/collections/emotes-by-owner/${ethAddress}?includeDefinitions=false`,
       requestResult
     )
@@ -109,7 +117,7 @@ describe('LambdasClient', () => {
   it('When fetching for owned emotes with definition, then the result is as expected', async () => {
     const ethAddress = 'ethAddress'
     const requestResult = [{ urn: 'urn', amount: 10, definition: {} }]
-    const { instance: fetcher } = mockFetcherJson(
+    const { instance: fetcher } = mockFetcher(
       `/collections/emotes-by-owner/${ethAddress}?includeDefinitions=true`,
       requestResult
     )
@@ -120,19 +128,74 @@ describe('LambdasClient', () => {
     expect(result).toEqual(requestResult)
   })
 
-  it('adds version to query string whe requesting a particular version', async () => {
-    const requestResult = [someResult()]
-    const [ethAddress1, ethAddress2] = ['ethAddress1', 'ethAddress2']
-    const [version1, version2] = [1, 2]
-    const { instance: fetcher } = mockFetcherJson(
-      `/profiles?id=${ethAddress1}&id=${ethAddress2}&version=${version1}&version=${version2}`,
+  it('When fetching for owned third party wearables with definition, then the result is as expected', async () => {
+    const ethAddress = 'ethAddress'
+    const thirdPartyId = 'thirdPartyId'
+    const requestResult = [{ urn: 'urn', amount: 10, definition: {} }]
+    const { instance: fetcher } = mockFetcher(
+      `/collections/wearables-by-owner/${ethAddress}?collectionId=thirdPartyId&includeDefinitions=true`,
       requestResult
     )
 
     const client = buildClient(URL, fetcher)
-    const result = await client.fetchProfiles([ethAddress1, ethAddress2], { versions: [version1, version2] })
+    const result = await client.fetchOwnedThirdPartyWearables(ethAddress, thirdPartyId, true)
 
     expect(result).toEqual(requestResult)
+  })
+
+  it('When fetching for owned third party emotes with definition, then the result is as expected', async () => {
+    const ethAddress = 'ethAddress'
+    const thirdPartyId = 'thirdPartyId'
+    const requestResult = [{ urn: 'urn', amount: 10, definition: {} }]
+    const { instance: fetcher } = mockFetcher(
+      `/collections/emotes-by-owner/${ethAddress}?collectionId=thirdPartyId&includeDefinitions=true`,
+      requestResult
+    )
+
+    const client = buildClient(URL, fetcher)
+    const result = await client.fetchOwnedThirdPartyEmotes(ethAddress, thirdPartyId, true)
+
+    expect(result).toEqual(requestResult)
+  })
+
+  it('When fetching catalysts approved by DAO, then the result is as expected', async () => {
+    const requestResult = [{ baseUrl: 'baseUrl', owner: 'owner', id: 'id' }]
+    const { instance: fetcher } = mockFetcher(`/contracts/servers`, requestResult)
+    const client = buildClient(URL, fetcher)
+
+    const result = await client.fetchCatalystsApprovedByDAO()
+
+    expect(result).toEqual(requestResult)
+  })
+
+  it('When fetching lambdas statuses, then the result is as expected', async () => {
+    const requestResult = 'contentServerUrl'
+    const { instance: fetcher } = mockFetcher(`/status`, requestResult)
+    const client = buildClient(URL, fetcher)
+
+    const result = await client.fetchLambdasStatus()
+
+    expect(result).toEqual(requestResult)
+  })
+
+  it('When fetching peer health, then the result is as expected', async () => {
+    const requestResult = {
+      aKey: 'Healthy'
+    }
+    const { instance: fetcher } = mockFetcher(`/health`, requestResult)
+    const client = buildClient(URL, fetcher)
+
+    const result = await client.fetchPeerHealth()
+
+    expect(result).toEqual(requestResult)
+  })
+
+  it('When retrieving lambdas url, then the result is as expected', () => {
+    const client = buildClient(URL, undefined)
+
+    const result = client.getLambdasUrl()
+
+    expect(result).toEqual(URL)
   })
 
   function someResult() {
@@ -141,11 +204,16 @@ describe('LambdasClient', () => {
     }
   }
 
-  function mockFetcherJson<T>(path?: string, result?: T): { mock: Fetcher; instance: Fetcher } {
+  function mockFetcher<T>(path?: string, result?: T): { mock: Fetcher; instance: Fetcher } {
     // Create mock
     const mockedFetcher: Fetcher = mock(Fetcher)
 
     if (path) {
+      when(mockedFetcher.fetch(anything(), anything())).thenCall((url, _) => {
+        expect(url).toEqual(`${URL}${path}`)
+        return Promise.resolve({ json: () => result })
+      })
+
       when(mockedFetcher.fetchJson(anything(), anything())).thenCall((url, _) => {
         expect(url).toEqual(`${URL}${path}`)
         return Promise.resolve(result)

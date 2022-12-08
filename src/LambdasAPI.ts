@@ -7,7 +7,7 @@ export type ServerMetadata = {
 }
 
 export interface LambdasAPI {
-  fetchProfiles(ethAddresses: string[], profileOptions?: ProfileOptions, options?: RequestOptions): Promise<any[]>
+  fetchProfiles(ethAddresses: string[], options?: RequestOptions): Promise<any[]>
   fetchWearables(filters: WearablesFilters, options?: RequestOptions): Promise<any[]>
   fetchOwnedWearables<B extends boolean>(
     ethAddress: string,
@@ -35,21 +35,6 @@ export interface LambdasAPI {
   fetchCatalystsApprovedByDAO(options?: RequestOptions): Promise<ServerMetadata[]>
   fetchLambdasStatus(options?: RequestOptions): Promise<{ contentServerUrl: string }>
   getLambdasUrl(): string
-}
-
-export type ProfileOptions = {
-  versions?: number[]
-  fields?: ProfileFields
-}
-
-export class ProfileFields {
-  static readonly ONLY_SNAPSHOTS = new ProfileFields(['snapshots'])
-
-  private constructor(private readonly fields: string[]) {}
-
-  getFields(): string {
-    return this.fields.join(',')
-  }
 }
 
 export type ItemFilters = {
