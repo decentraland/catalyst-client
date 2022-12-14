@@ -1,6 +1,6 @@
 import { hashV0, hashV1 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
-import { Fetcher, mergeRequestOptions, RequestOptions, retry, ServerStatus } from 'dcl-catalyst-commons'
+import { Fetcher, mergeRequestOptions, RequestOptions, retry } from 'dcl-catalyst-commons'
 import FormData from 'form-data'
 import { AvailableContentResult, ContentAPI } from './ContentAPI'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
@@ -135,14 +135,6 @@ export class ContentClient implements ContentAPI {
     return entities[0]
   }
 
-  fetchAuditInfo(type: EntityType, id: string, options?: RequestOptions) {
-    return this.fetchJson(`/audit/${type}/${id}`, options)
-  }
-
-  fetchContentStatus(options?: RequestOptions): Promise<ServerStatus> {
-    return this.fetchJson('/status', options)
-  }
-
   async downloadContent(contentHash: string, options?: Partial<RequestOptions>): Promise<Buffer> {
     const { attempts = 3, waitTime = '0.5s' } = options ? options : {}
     const timeout = options?.timeout ? { timeout: options.timeout } : {}
@@ -162,41 +154,6 @@ export class ContentClient implements ContentAPI {
       attempts,
       waitTime
     )
-  }
-
-  async pipeContent(
-    contentHash: string,
-    writeTo: any,
-    options?: Partial<RequestOptions>
-  ): Promise<Map<string, string>> {
-    return this.onlyKnownHeaders(
-      await this.fetcher.fetchPipe(`${this.contentUrl}/contents/${contentHash}`, writeTo, options)
-    )
-  }
-
-  private KNOWN_HEADERS: string[] = [
-    'Content-Type',
-    'Access-Control-Allow-Origin',
-    'Access-Control-Expose-Headers',
-    'ETag',
-    'Date',
-    'Content-Length',
-    'Cache-Control'
-  ]
-
-  private fixHeaderNameCase(headerName: string): string | undefined {
-    return this.KNOWN_HEADERS.find((item) => item.toLowerCase() === headerName.toLowerCase())
-  }
-
-  private onlyKnownHeaders(headersFromResponse: Headers): Map<string, string> {
-    const headers: Map<string, string> = new Map()
-    headersFromResponse?.forEach((headerValue, headerName) => {
-      const fixedHeader = this.fixHeaderNameCase(headerName)
-      if (fixedHeader) {
-        headers.set(fixedHeader, headerValue)
-      }
-    })
-    return headers
   }
 
   isContentAvailable(cids: string[], options?: RequestOptions): Promise<AvailableContentResult> {
@@ -225,10 +182,6 @@ export class ContentClient implements ContentAPI {
     const alreadyUploaded = result.filter(($) => $.available).map(({ cid }) => cid)
 
     return new Set(alreadyUploaded)
-  }
-
-  private async fetchJson(path: string, options?: Partial<RequestOptions>): Promise<any> {
-    return (await this.fetcher.fetch(`${this.contentUrl}${path}`, options)).json()
   }
 }
 

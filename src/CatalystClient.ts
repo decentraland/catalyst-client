@@ -1,13 +1,5 @@
-import { Entity, EntityType } from '@dcl/schemas'
-import {
-  AuditInfo,
-  AvailableContentResult,
-  Fetcher,
-  HealthStatus,
-  RequestOptions,
-  ServerStatus
-} from 'dcl-catalyst-commons'
-import { Writable } from 'stream'
+import { Entity } from '@dcl/schemas'
+import { Fetcher, HealthStatus, RequestOptions } from 'dcl-catalyst-commons'
 import { CatalystAPI } from './CatalystAPI'
 import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient } from './ContentClient'
 import { EmotesFilters, OwnedItems, ServerMetadata, WearablesFilters } from './LambdasAPI'
@@ -73,24 +65,8 @@ export class CatalystClient implements CatalystAPI {
     return this.contentClient.fetchEntityById(id, options)
   }
 
-  fetchAuditInfo(type: EntityType, id: string, options?: RequestOptions): Promise<AuditInfo> {
-    return this.contentClient.fetchAuditInfo(type, id, options)
-  }
-
-  fetchContentStatus(options?: RequestOptions): Promise<ServerStatus> {
-    return this.contentClient.fetchContentStatus(options)
-  }
-
-  isContentAvailable(cids: string[], options?: RequestOptions): Promise<AvailableContentResult> {
-    return this.contentClient.isContentAvailable(cids, options)
-  }
-
   downloadContent(contentHash: string, options?: RequestOptions): Promise<Buffer> {
     return this.contentClient.downloadContent(contentHash, options)
-  }
-
-  pipeContent(contentHash: string, writeTo: Writable, options?: RequestOptions): Promise<Map<string, string>> {
-    return this.contentClient.pipeContent(contentHash, writeTo, options)
   }
 
   fetchProfiles(ethAddresses: string[], options?: RequestOptions): Promise<any[]> {
