@@ -1,6 +1,6 @@
 import { hashV0, hashV1 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
-import { Fetcher, mergeRequestOptions, RequestOptions, retry } from 'dcl-catalyst-commons'
+import { Fetcher, RequestOptions, retry } from 'dcl-catalyst-commons'
 import FormData from 'form-data'
 import { AvailableContentResult, ContentAPI } from './ContentAPI'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
@@ -89,24 +89,24 @@ export class ContentClient implements ContentAPI {
   async deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
     const form = await this.buildEntityFormDataForDeployment(deployData, options)
 
-    const requestOptions = mergeRequestOptions(options ? options : {}, {
-      body: form as any,
-      method: 'POST'
-    })
-
-    return await this.fetcher.fetch(`${this.contentUrl}/entities`, requestOptions)
+    return await this.fetcher.fetch(`${this.contentUrl}/entities`, { ...options, body: form as any, method: 'POST' })
   }
 
   async fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]> {
     if (pointers.length === 0) {
       return Promise.reject(`You must set at least one pointer.`)
     }
-    const requestOptions = mergeRequestOptions(options ? options : {}, {
-      body: JSON.stringify({ pointers: pointers }),
-      method: 'POST'
-    })
 
-    return (await this.fetcher.fetch(`${this.contentUrl}/entities/active`, requestOptions)).json()
+    return (
+      await this.fetcher.fetch(`${this.contentUrl}/entities/active`, {
+        ...options,
+        body: JSON.stringify({ pointers }),
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+    ).json()
   }
 
   async fetchEntitiesByIds(ids: string[], options?: RequestOptions): Promise<Entity[]> {
@@ -114,12 +114,13 @@ export class ContentClient implements ContentAPI {
       return Promise.reject(`You must set at least one id.`)
     }
 
-    const requestOptions = mergeRequestOptions(options ? options : {}, {
-      body: JSON.stringify({ ids: ids }),
-      method: 'POST'
-    })
-
-    return (await this.fetcher.fetch(`${this.contentUrl}/entities/active`, requestOptions)).json()
+    return (
+      await this.fetcher.fetch(`${this.contentUrl}/entities/active`, {
+        ...options,
+        body: JSON.stringify({ ids: ids }),
+        method: 'POST'
+      })
+    ).json()
   }
 
   async fetchEntityById(id: string, options?: RequestOptions): Promise<Entity> {
