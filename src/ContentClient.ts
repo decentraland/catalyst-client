@@ -1,6 +1,6 @@
 import { hashV0, hashV1 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
-import { Fetcher, RequestOptions, retry } from 'dcl-catalyst-commons'
+import { Fetcher, mergeRequestOptions, RequestOptions, retry } from 'dcl-catalyst-commons'
 import FormData from 'form-data'
 import { AvailableContentResult, ContentAPI } from './ContentAPI'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
@@ -86,10 +86,28 @@ export class ContentClient implements ContentAPI {
     return form
   }
 
+  async deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<number> {
+    const form = await this.buildEntityFormDataForDeployment(deployData, options)
+
+    const requestOptions = mergeRequestOptions(options ? options : {}, {
+      body: form as any
+    })
+
+    const { creationTimestamp } = (await this.fetcher.postForm(
+      `${this.contentUrl}/entities${fix ? '?fix=true' : ''}`,
+      requestOptions
+    )) as any
+    return creationTimestamp
+  }
+
   async deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
     const form = await this.buildEntityFormDataForDeployment(deployData, options)
 
-    return await this.fetcher.fetch(`${this.contentUrl}/entities`, { ...options, body: form as any, method: 'POST' })
+    return await this.fetcher.fetch(`${this.contentUrl}/entities`, {
+      ...options,
+      body: form as any,
+      method: 'POST'
+    })
   }
 
   async fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]> {
@@ -103,6 +121,7 @@ export class ContentClient implements ContentAPI {
         body: JSON.stringify({ pointers }),
         method: 'POST',
         headers: {
+          ...options?.headers,
           'Content-Type': 'application/json'
         }
       })
@@ -117,6 +136,10 @@ export class ContentClient implements ContentAPI {
     return (
       await this.fetcher.fetch(`${this.contentUrl}/entities/active`, {
         ...options,
+        headers: {
+          ...options?.headers,
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({ ids: ids }),
         method: 'POST'
       })

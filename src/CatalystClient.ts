@@ -44,6 +44,11 @@ export class CatalystClient implements CatalystAPI {
     return this.contentClient.buildEntityWithoutNewFiles(options)
   }
 
+  /** @deprecated use deploy instead */
+  deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<number> {
+    return this.contentClient.deployEntity(deployData, fix, options)
+  }
+
   deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
     return this.contentClient.deploy(deployData, options)
   }
