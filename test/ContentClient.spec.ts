@@ -2,7 +2,6 @@ import { hashV0 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
 import { Fetcher } from 'dcl-catalyst-commons'
 import { Headers } from 'node-fetch'
-import { Readable } from 'stream'
 import { anything, deepEqual, instance, mock, verify, when } from 'ts-mockito'
 import { AvailableContentResult } from '../src/ContentAPI'
 import { ContentClient } from '../src/ContentClient'
@@ -285,44 +284,6 @@ describe('ContentClient', () => {
 
     await expect(client.isContentAvailable([])).rejects.toEqual(`You must set at least one cid.`)
     verify(mocked.fetchJson(anything())).never()
-  })
-
-  it('When a fetch is piped without headers then none is returned', async () => {
-    const contentHash = 'abc123'
-    const mockedResponse = instance(mock<Readable>())
-    const { instance: fetcher } = mockPipeFetcher(new Headers())
-    const client = buildClient(URL, fetcher)
-
-    const result = await client.pipeContent(contentHash, mockedResponse)
-
-    expect(result).toEqual(new Map())
-  })
-
-  it('When a fetch is piped with a non recognized header then none is returned', async () => {
-    const contentHash = 'abc123'
-    const mockedResponse = instance(mock<Readable>())
-    const headers: Headers = new Headers()
-    headers.set('invalid', 'val')
-    const { instance: fetcher } = mockPipeFetcher(headers)
-    const client = buildClient(URL, fetcher)
-
-    const result = await client.pipeContent(contentHash, mockedResponse)
-
-    expect(result).toEqual(new Map())
-  })
-
-  it('When a fetch is piped then only sanitized headers of the response are returned', async () => {
-    const contentHash = 'abc123'
-    const mockedResponse = instance(mock<Readable>())
-    const headers: Headers = new Headers()
-    headers.set('invalid', 'val')
-    headers.set('content-length', '200')
-    const { instance: fetcher } = mockPipeFetcher(headers)
-    const client = buildClient(URL, fetcher)
-
-    const result = await client.pipeContent(contentHash, mockedResponse)
-
-    expect(result.has('Content-Length')).toBe(true)
   })
 
   function someEntity(): Entity {

@@ -50,6 +50,6 @@ runServerBasedE2ETest('test client post', ({ components }) => {
     files.set('QmA', new Uint8Array([111, 112, 113]))
     files.set('QmB', Buffer.from('asd', 'utf-8'))
 
-    await client.deployEntity({ authChain: [], entityId: 'QmENTITY', files })
+    await client.deploy({ authChain: [], entityId: 'QmENTITY', files })
   })
 })
