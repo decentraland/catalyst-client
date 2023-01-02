@@ -2,7 +2,6 @@ import { hashV0 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
 import { Fetcher } from 'dcl-catalyst-commons'
 import { Headers } from 'node-fetch'
-import { Readable } from 'stream'
 import { anything, deepEqual, instance, mock, verify, when } from 'ts-mockito'
 import { AvailableContentResult } from '../src/ContentAPI'
 import { ContentClient } from '../src/ContentClient'
@@ -153,10 +152,10 @@ describe('ContentClient', () => {
   it('When building a deployment, then the deployment is built', async () => {
     const requestResult: Entity[] = [someEntity()]
     const pointer = 'P'
-    const { instance: fetcher } = mockFetcherJson(`/entities/profile?pointer=${pointer}`, requestResult)
+    const { instance: fetcher } = mockFetcherFetch('/entities/active', { pointers: [pointer] }, requestResult)
 
     const client = buildClient(URL, fetcher)
-    const result = await client.fetchEntitiesByPointers(EntityType.PROFILE, [pointer])
+    const result = await client.fetchEntitiesByPointers([pointer])
 
     expect(result).toEqual(requestResult)
   })
@@ -165,7 +164,7 @@ describe('ContentClient', () => {
     const { mock: mocked, instance: fetcher } = mockFetcherJson()
 
     const client = buildClient(URL, fetcher)
-    const result = client.fetchEntitiesByPointers(EntityType.PROFILE, [])
+    const result = client.fetchEntitiesByPointers([])
 
     await expect(result).rejects.toEqual(`You must set at least one pointer.`)
     verify(mocked.fetchJson(anything())).never()
@@ -174,10 +173,10 @@ describe('ContentClient', () => {
   it('When fetching by pointers, then the result is as expected', async () => {
     const requestResult: Entity[] = [someEntity()]
     const pointer = 'P'
-    const { instance: fetcher } = mockFetcherJson(`/entities/profile?pointer=${pointer}`, requestResult)
+    const { instance: fetcher } = mockFetcherFetch('/entities/active', { pointers: [pointer] }, requestResult)
 
     const client = buildClient(URL, fetcher)
-    const result = await client.fetchEntitiesByPointers(EntityType.PROFILE, [pointer])
+    const result = await client.fetchEntitiesByPointers([pointer])
 
     expect(result).toEqual(requestResult)
   })
@@ -186,7 +185,7 @@ describe('ContentClient', () => {
     const { mock: mocked, instance: fetcher } = mockFetcherJson()
 
     const client = buildClient(URL, fetcher)
-    const result = client.fetchEntitiesByIds(EntityType.PROFILE, [])
+    const result = client.fetchEntitiesByIds([])
 
     await expect(result).rejects.toEqual(`You must set at least one id.`)
     verify(mocked.fetchJson(anything())).never()
@@ -195,33 +194,31 @@ describe('ContentClient', () => {
   it('When fetching by ids, then the result is as expected', async () => {
     const requestResult: Entity[] = [someEntity()]
     const id = 'Id'
-    const { instance: fetcher } = mockFetcherJson(`/entities/profile?id=${id}`, requestResult)
+    const { instance: fetcher } = mockFetcherFetch(`/entities/active`, { ids: [id] }, requestResult)
 
     const client = buildClient(URL, fetcher)
-    const result = await client.fetchEntitiesByIds(EntityType.PROFILE, [id])
+    const result = await client.fetchEntitiesByIds([id])
 
     expect(result).toEqual(requestResult)
   })
 
   it('When fetching by id, if there are no results, then an error is thrown', async () => {
     const id = 'Id'
-    const { instance: fetcher } = mockFetcherJson(`/entities/profile?id=${id}`, [])
+    const { instance: fetcher } = mockFetcherFetch(`/entities/active`, { ids: [id] }, [])
 
     const client = buildClient(URL, fetcher)
 
-    await expect(client.fetchEntityById(EntityType.PROFILE, id)).rejects.toEqual(
-      `Failed to find an entity with type '${EntityType.PROFILE}' and id '${id}'.`
-    )
+    await expect(client.fetchEntityById(id)).rejects.toEqual(`Failed to find an entity with id '${id}'.`)
   })
 
   it('When fetching by id, then the result is as expected', async () => {
     const entity = someEntity()
     const requestResult: Entity[] = [entity]
     const id = 'Id'
-    const { instance: fetcher } = mockFetcherJson(`/entities/profile?id=${id}`, requestResult)
+    const { instance: fetcher } = mockFetcherFetch('/entities/active', { ids: [id] }, requestResult)
 
     const client = buildClient(URL, fetcher)
-    const result = await client.fetchEntityById(EntityType.PROFILE, id)
+    const result = await client.fetchEntityById(id)
 
     expect(result).toEqual(entity)
   })
@@ -289,44 +286,6 @@ describe('ContentClient', () => {
     verify(mocked.fetchJson(anything())).never()
   })
 
-  it('When a fetch is piped without headers then none is returned', async () => {
-    const contentHash = 'abc123'
-    const mockedResponse = instance(mock<Readable>())
-    const { instance: fetcher } = mockPipeFetcher(new Headers())
-    const client = buildClient(URL, fetcher)
-
-    const result = await client.pipeContent(contentHash, mockedResponse)
-
-    expect(result).toEqual(new Map())
-  })
-
-  it('When a fetch is piped with a non recognized header then none is returned', async () => {
-    const contentHash = 'abc123'
-    const mockedResponse = instance(mock<Readable>())
-    const headers: Headers = new Headers()
-    headers.set('invalid', 'val')
-    const { instance: fetcher } = mockPipeFetcher(headers)
-    const client = buildClient(URL, fetcher)
-
-    const result = await client.pipeContent(contentHash, mockedResponse)
-
-    expect(result).toEqual(new Map())
-  })
-
-  it('When a fetch is piped then only sanitized headers of the response are returned', async () => {
-    const contentHash = 'abc123'
-    const mockedResponse = instance(mock<Readable>())
-    const headers: Headers = new Headers()
-    headers.set('invalid', 'val')
-    headers.set('content-length', '200')
-    const { instance: fetcher } = mockPipeFetcher(headers)
-    const client = buildClient(URL, fetcher)
-
-    const result = await client.pipeContent(contentHash, mockedResponse)
-
-    expect(result.has('Content-Length')).toBe(true)
-  })
-
   function someEntity(): Entity {
     return {
       version: 'v3',
@@ -336,6 +295,26 @@ describe('ContentClient', () => {
       content: [],
       timestamp: 10
     }
+  }
+
+  function mockFetcherFetch<T>(path: string, body: any, result: T) {
+    // Create mock
+    const mockedFetcher: Fetcher = mock(Fetcher)
+
+    function mockUrl(path: string, result: any) {
+      when(mockedFetcher.fetch(anything(), anything())).thenCall((url, body, _) => {
+        expect(url).toEqual(`${URL}${path}`)
+        expect(body).toEqual(body)
+        return Promise.resolve({ json: () => result })
+      })
+    }
+
+    if (path) {
+      mockUrl(path, result)
+    }
+
+    // Getting instance from mock
+    return { mock: mockedFetcher, instance: instance(mockedFetcher), mockUrl }
   }
 
   function mockFetcherJson<T>(path?: string, result?: T) {

@@ -1,6 +1,6 @@
 import { hashV0, hashV1 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
-import { Fetcher, mergeRequestOptions, RequestOptions, retry, ServerStatus } from 'dcl-catalyst-commons'
+import { Fetcher, mergeRequestOptions, RequestOptions, retry } from 'dcl-catalyst-commons'
 import FormData from 'form-data'
 import { AvailableContentResult, ContentAPI } from './ContentAPI'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
@@ -86,65 +86,72 @@ export class ContentClient implements ContentAPI {
     return form
   }
 
-  async deployEntity(deployData: DeploymentData, _fix: boolean = false, options?: RequestOptions): Promise<number> {
-    const { creationTimestamp } = (await this.deploy(deployData, options)) as { creationTimestamp: number }
-    return creationTimestamp
-  }
-
-  async deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
+  async deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<number> {
     const form = await this.buildEntityFormDataForDeployment(deployData, options)
 
     const requestOptions = mergeRequestOptions(options ? options : {}, {
       body: form as any
     })
 
-    return await this.fetcher.postForm(`${this.contentUrl}/entities`, requestOptions)
+    const { creationTimestamp } = (await this.fetcher.postForm(
+      `${this.contentUrl}/entities${fix ? '?fix=true' : ''}`,
+      requestOptions
+    )) as any
+    return creationTimestamp
   }
 
-  fetchEntitiesByPointers(type: EntityType, pointers: string[], options?: RequestOptions): Promise<Entity[]> {
+  async deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
+    const form = await this.buildEntityFormDataForDeployment(deployData, options)
+
+    return await this.fetcher.fetch(`${this.contentUrl}/entities`, {
+      ...options,
+      body: form as any,
+      method: 'POST'
+    })
+  }
+
+  async fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]> {
     if (pointers.length === 0) {
       return Promise.reject(`You must set at least one pointer.`)
     }
 
-    return splitAndFetch<Entity>({
-      fetcher: this.fetcher,
-      baseUrl: this.contentUrl,
-      path: `/entities/${type}`,
-      queryParams: { name: 'pointer', values: pointers },
-      uniqueBy: 'id',
-      options
-    })
+    return (
+      await this.fetcher.fetch(`${this.contentUrl}/entities/active`, {
+        ...options,
+        body: JSON.stringify({ pointers }),
+        method: 'POST',
+        headers: {
+          ...options?.headers,
+          'Content-Type': 'application/json'
+        }
+      })
+    ).json()
   }
 
-  fetchEntitiesByIds(type: EntityType, ids: string[], options?: RequestOptions): Promise<Entity[]> {
+  async fetchEntitiesByIds(ids: string[], options?: RequestOptions): Promise<Entity[]> {
     if (ids.length === 0) {
       return Promise.reject(`You must set at least one id.`)
     }
 
-    return splitAndFetch<Entity>({
-      fetcher: this.fetcher,
-      baseUrl: this.contentUrl,
-      path: `/entities/${type}`,
-      queryParams: { name: 'id', values: ids },
-      uniqueBy: 'id',
-      options
-    })
+    return (
+      await this.fetcher.fetch(`${this.contentUrl}/entities/active`, {
+        ...options,
+        headers: {
+          ...options?.headers,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ ids: ids }),
+        method: 'POST'
+      })
+    ).json()
   }
 
-  async fetchEntityById(type: EntityType, id: string, options?: RequestOptions): Promise<Entity> {
-    const entities: Entity[] = await this.fetchEntitiesByIds(type, [id], options)
+  async fetchEntityById(id: string, options?: RequestOptions): Promise<Entity> {
+    const entities: Entity[] = await this.fetchEntitiesByIds([id], options)
     if (entities.length === 0) {
-      return Promise.reject(`Failed to find an entity with type '${type}' and id '${id}'.`)
+      return Promise.reject(`Failed to find an entity with id '${id}'.`)
     }
     return entities[0]
-  }
-
-  fetchAuditInfo(type: EntityType, id: string, options?: RequestOptions) {
-    return this.fetchJson(`/audit/${type}/${id}`, options)
-  }
-
-  fetchContentStatus(options?: RequestOptions): Promise<ServerStatus> {
-    return this.fetchJson('/status', options)
   }
 
   async downloadContent(contentHash: string, options?: Partial<RequestOptions>): Promise<Buffer> {
@@ -166,41 +173,6 @@ export class ContentClient implements ContentAPI {
       attempts,
       waitTime
     )
-  }
-
-  async pipeContent(
-    contentHash: string,
-    writeTo: any,
-    options?: Partial<RequestOptions>
-  ): Promise<Map<string, string>> {
-    return this.onlyKnownHeaders(
-      await this.fetcher.fetchPipe(`${this.contentUrl}/contents/${contentHash}`, writeTo, options)
-    )
-  }
-
-  private KNOWN_HEADERS: string[] = [
-    'Content-Type',
-    'Access-Control-Allow-Origin',
-    'Access-Control-Expose-Headers',
-    'ETag',
-    'Date',
-    'Content-Length',
-    'Cache-Control'
-  ]
-
-  private fixHeaderNameCase(headerName: string): string | undefined {
-    return this.KNOWN_HEADERS.find((item) => item.toLowerCase() === headerName.toLowerCase())
-  }
-
-  private onlyKnownHeaders(headersFromResponse: Headers): Map<string, string> {
-    const headers: Map<string, string> = new Map()
-    headersFromResponse?.forEach((headerValue, headerName) => {
-      const fixedHeader = this.fixHeaderNameCase(headerName)
-      if (fixedHeader) {
-        headers.set(fixedHeader, headerValue)
-      }
-    })
-    return headers
   }
 
   isContentAvailable(cids: string[], options?: RequestOptions): Promise<AvailableContentResult> {
@@ -229,10 +201,6 @@ export class ContentClient implements ContentAPI {
     const alreadyUploaded = result.filter(($) => $.available).map(({ cid }) => cid)
 
     return new Set(alreadyUploaded)
-  }
-
-  private fetchJson(path: string, options?: Partial<RequestOptions>): Promise<any> {
-    return this.fetcher.fetchJson(`${this.contentUrl}${path}`, options)
   }
 }
 

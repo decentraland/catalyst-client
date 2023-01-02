@@ -1,16 +1,8 @@
-import { Entity, EntityType } from '@dcl/schemas'
-import {
-  AuditInfo,
-  AvailableContentResult,
-  Fetcher,
-  HealthStatus,
-  RequestOptions,
-  ServerStatus
-} from 'dcl-catalyst-commons'
-import { Writable } from 'stream'
+import { Entity } from '@dcl/schemas'
+import { Fetcher, HealthStatus, RequestOptions } from 'dcl-catalyst-commons'
 import { CatalystAPI } from './CatalystAPI'
 import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient } from './ContentClient'
-import { EmotesFilters, OwnedItems, ProfileOptions, ServerMetadata, WearablesFilters } from './LambdasAPI'
+import { EmotesFilters, OwnedItems, ServerMetadata, WearablesFilters } from './LambdasAPI'
 import { LambdasClient } from './LambdasClient'
 import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
@@ -61,40 +53,24 @@ export class CatalystClient implements CatalystAPI {
     return this.contentClient.deploy(deployData, options)
   }
 
-  fetchEntitiesByPointers(type: EntityType, pointers: string[], options?: RequestOptions): Promise<Entity[]> {
-    return this.contentClient.fetchEntitiesByPointers(type, pointers, options)
+  fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]> {
+    return this.contentClient.fetchEntitiesByPointers(pointers, options)
   }
 
-  fetchEntitiesByIds(type: EntityType, ids: string[], options?: RequestOptions): Promise<Entity[]> {
-    return this.contentClient.fetchEntitiesByIds(type, ids, options)
+  fetchEntitiesByIds(ids: string[], options?: RequestOptions): Promise<Entity[]> {
+    return this.contentClient.fetchEntitiesByIds(ids, options)
   }
 
-  fetchEntityById(type: EntityType, id: string, options?: RequestOptions): Promise<Entity> {
-    return this.contentClient.fetchEntityById(type, id, options)
-  }
-
-  fetchAuditInfo(type: EntityType, id: string, options?: RequestOptions): Promise<AuditInfo> {
-    return this.contentClient.fetchAuditInfo(type, id, options)
-  }
-
-  fetchContentStatus(options?: RequestOptions): Promise<ServerStatus> {
-    return this.contentClient.fetchContentStatus(options)
-  }
-
-  isContentAvailable(cids: string[], options?: RequestOptions): Promise<AvailableContentResult> {
-    return this.contentClient.isContentAvailable(cids, options)
+  fetchEntityById(id: string, options?: RequestOptions): Promise<Entity> {
+    return this.contentClient.fetchEntityById(id, options)
   }
 
   downloadContent(contentHash: string, options?: RequestOptions): Promise<Buffer> {
     return this.contentClient.downloadContent(contentHash, options)
   }
 
-  pipeContent(contentHash: string, writeTo: Writable, options?: RequestOptions): Promise<Map<string, string>> {
-    return this.contentClient.pipeContent(contentHash, writeTo, options)
-  }
-
-  fetchProfiles(ethAddresses: string[], profileOptions?: ProfileOptions, options?: RequestOptions): Promise<any[]> {
-    return this.lambdasClient.fetchProfiles(ethAddresses, profileOptions, options)
+  fetchProfiles(ethAddresses: string[], options?: RequestOptions): Promise<any[]> {
+    return this.lambdasClient.fetchProfiles(ethAddresses, options)
   }
 
   fetchWearables(filters: WearablesFilters, options?: RequestOptions): Promise<any[]> {
