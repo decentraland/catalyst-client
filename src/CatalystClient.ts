@@ -1,5 +1,6 @@
 import { Entity } from '@dcl/schemas'
 import { Fetcher, HealthStatus, RequestOptions } from 'dcl-catalyst-commons'
+import * as nodeFetch from 'node-fetch'
 import { CatalystAPI } from './CatalystAPI'
 import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient } from './ContentClient'
 import { EmotesFilters, OwnedItems, ServerMetadata, WearablesFilters } from './LambdasAPI'
@@ -53,15 +54,15 @@ export class CatalystClient implements CatalystAPI {
     return this.contentClient.deploy(deployData, options)
   }
 
-  fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]> {
+  fetchEntitiesByPointers(pointers: string[], options?: nodeFetch.RequestInit): Promise<Entity[]> {
     return this.contentClient.fetchEntitiesByPointers(pointers, options)
   }
 
-  fetchEntitiesByIds(ids: string[], options?: RequestOptions): Promise<Entity[]> {
+  fetchEntitiesByIds(ids: string[], options?: nodeFetch.RequestInit): Promise<Entity[]> {
     return this.contentClient.fetchEntitiesByIds(ids, options)
   }
 
-  fetchEntityById(id: string, options?: RequestOptions): Promise<Entity> {
+  fetchEntityById(id: string, options?: nodeFetch.RequestInit): Promise<Entity> {
     return this.contentClient.fetchEntityById(id, options)
   }
 
@@ -69,7 +70,7 @@ export class CatalystClient implements CatalystAPI {
     return this.contentClient.downloadContent(contentHash, options)
   }
 
-  fetchProfiles(ethAddresses: string[], options?: RequestOptions): Promise<any[]> {
+  fetchProfiles(ethAddresses: string[], options?: nodeFetch.RequestInit): Promise<any[]> {
     return this.lambdasClient.fetchProfiles(ethAddresses, options)
   }
 
@@ -115,15 +116,15 @@ export class CatalystClient implements CatalystAPI {
     return this.lambdasClient.fetchOwnedThirdPartyEmotes(ethAddress, thirdPartyId, includeDefinitions, options)
   }
 
-  fetchCatalystsApprovedByDAO(options?: RequestOptions): Promise<ServerMetadata[]> {
+  fetchCatalystsApprovedByDAO(options?: nodeFetch.RequestInit): Promise<ServerMetadata[]> {
     return this.lambdasClient.fetchCatalystsApprovedByDAO(options)
   }
 
-  fetchLambdasStatus(options?: RequestOptions): Promise<{ contentServerUrl: string }> {
+  fetchLambdasStatus(options?: nodeFetch.RequestInit): Promise<{ contentServerUrl: string }> {
     return this.lambdasClient.fetchLambdasStatus(options)
   }
 
-  fetchPeerHealth(options?: RequestOptions): Promise<Record<string, HealthStatus>> {
+  fetchPeerHealth(options?: nodeFetch.RequestInit): Promise<Record<string, HealthStatus>> {
     return this.lambdasClient.fetchPeerHealth(options)
   }
 

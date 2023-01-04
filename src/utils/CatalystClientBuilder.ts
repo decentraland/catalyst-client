@@ -5,7 +5,7 @@ import { CatalystClient, CatalystConnectOptions } from '../CatalystClient'
 import { getUpdatedApprovedListWithoutQueryingContract } from './catalystList'
 import { shuffleArray } from './common'
 
-const FETCH_HEALTH_TIMEOUT = '10s'
+const FETCH_HEALTH_TIMEOUT = 10000
 
 function getApprovedListFromContract(network: string) {
   const provider = new HTTPProvider(

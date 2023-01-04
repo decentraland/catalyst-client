@@ -1,16 +1,22 @@
+import { IFetchComponent } from '@well-known-components/http-server'
 import { Fetcher } from 'dcl-catalyst-commons'
 import { anything, instance, mock, verify, when } from 'ts-mockito'
-import { LambdasClient } from '../src/index'
+import { LambdasClient, createFetchComponent } from '../src/index'
 
 describe('LambdasClient', () => {
   const URL = 'https://url.com'
 
+  // TODO: refactor mocks to use IFetchComponent
   it('When fetching for many profiles, then the result is as expected', async () => {
     const requestResult = [someResult()]
     const [ethAddress1, ethAddress2] = ['ethAddress1', 'ethAddress2']
-    const { instance: fetcher } = mockFetcher(`/profiles`, requestResult)
 
-    const client = buildClient(URL, fetcher)
+    const customFetcher = createFetchComponent()
+    customFetcher.fetch = jest.fn().mockResolvedValueOnce({
+      json: jest.fn().mockReturnValueOnce(requestResult)
+    })
+
+    const client = buildClient(URL, undefined, customFetcher)
     const result = await client.fetchProfiles([ethAddress1, ethAddress2])
 
     expect(result).toEqual(requestResult)
@@ -160,8 +166,9 @@ describe('LambdasClient', () => {
 
   it('When fetching catalysts approved by DAO, then the result is as expected', async () => {
     const requestResult = [{ baseUrl: 'baseUrl', owner: 'owner', id: 'id' }]
-    const { instance: fetcher } = mockFetcher(`/contracts/servers`, requestResult)
-    const client = buildClient(URL, fetcher)
+    const fetcher = createFetchComponent()
+    fetcher.fetch = jest.fn().mockResolvedValueOnce({ json: () => requestResult })
+    const client = buildClient(URL, null, fetcher)
 
     const result = await client.fetchCatalystsApprovedByDAO()
 
@@ -170,8 +177,9 @@ describe('LambdasClient', () => {
 
   it('When fetching lambdas statuses, then the result is as expected', async () => {
     const requestResult = 'contentServerUrl'
-    const { instance: fetcher } = mockFetcher(`/status`, requestResult)
-    const client = buildClient(URL, fetcher)
+    const fetcher = createFetchComponent()
+    fetcher.fetch = jest.fn().mockResolvedValueOnce({ json: () => requestResult })
+    const client = buildClient(URL, null, fetcher)
 
     const result = await client.fetchLambdasStatus()
 
@@ -182,8 +190,9 @@ describe('LambdasClient', () => {
     const requestResult = {
       aKey: 'Healthy'
     }
-    const { instance: fetcher } = mockFetcher(`/health`, requestResult)
-    const client = buildClient(URL, fetcher)
+    const fetcher = createFetchComponent()
+    fetcher.fetch = jest.fn().mockResolvedValueOnce({ json: () => requestResult })
+    const client = buildClient(URL, null, fetcher)
 
     const result = await client.fetchPeerHealth()
 
@@ -202,6 +211,22 @@ describe('LambdasClient', () => {
     return {
       someKey: 'someValue'
     }
+  }
+
+  function mockCustomFetcher<T>(path?: string, result?: T): { mock: IFetchComponent; instance: IFetchComponent } {
+    // Create mock
+    const mockedFetcher: IFetchComponent = mock(createFetchComponent())
+    console.log(`\n\n Mocked Fetcher -> ${Object.keys(mockedFetcher)}`)
+
+    if (path) {
+      when(mockedFetcher.fetch(anything(), anything())).thenCall((url, _) => {
+        expect(url).toEqual(`${URL}${path}`)
+        return Promise.resolve({ json: () => result })
+      })
+    }
+
+    // Getting instance from mock
+    return { mock: mockedFetcher, instance: instance(mockedFetcher) }
   }
 
   function mockFetcher<T>(path?: string, result?: T): { mock: Fetcher; instance: Fetcher } {
@@ -224,7 +249,7 @@ describe('LambdasClient', () => {
     return { mock: mockedFetcher, instance: instance(mockedFetcher) }
   }
 
-  function buildClient(URL: string, fetcher: Fetcher): LambdasClient {
-    return new LambdasClient({ lambdasUrl: URL, fetcher: fetcher })
+  function buildClient(URL: string, fetcher: Fetcher, customFetcher?: IFetchComponent): LambdasClient {
+    return new LambdasClient({ lambdasUrl: URL, fetcher: fetcher, customFetcher })
   }
 })

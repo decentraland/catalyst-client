@@ -1,8 +1,10 @@
 import { hashV0 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
+import { IFetchComponent } from '@well-known-components/http-server'
 import { Fetcher } from 'dcl-catalyst-commons'
 import { Headers } from 'node-fetch'
 import { anything, deepEqual, instance, mock, verify, when } from 'ts-mockito'
+import { createFetchComponent } from '../src'
 import { AvailableContentResult } from '../src/ContentAPI'
 import { ContentClient } from '../src/ContentClient'
 import { DeploymentBuilder } from '../src/utils/DeploymentBuilder'
@@ -33,7 +35,7 @@ describe('ContentClient', () => {
         })
       ).thenResolve()
 
-      const client = buildClient(URL, fetcher, instance(deploymentBuilderClassMock))
+      const client = buildClient(URL, fetcher, undefined, instance(deploymentBuilderClassMock))
       await client.buildEntityWithoutNewFiles({ type, pointers, hashesByKey, metadata, timestamp: currentTime })
     })
 
@@ -130,7 +132,7 @@ describe('ContentClient', () => {
         })
       ).thenResolve()
 
-      client = buildClient(URL, fetcher, instance(deploymentBuilderClassMock))
+      client = buildClient(URL, fetcher, undefined, instance(deploymentBuilderClassMock))
       await client.buildEntity({ type, pointers, files, metadata, timestamp: currentTime })
     })
 
@@ -152,9 +154,10 @@ describe('ContentClient', () => {
   it('When building a deployment, then the deployment is built', async () => {
     const requestResult: Entity[] = [someEntity()]
     const pointer = 'P'
-    const { instance: fetcher } = mockFetcherFetch('/entities/active', { pointers: [pointer] }, requestResult)
+    const fetcher = createFetchComponent()
+    fetcher.fetch = jest.fn().mockResolvedValueOnce({ json: () => requestResult })
+    const client = buildClient(URL, null, fetcher)
 
-    const client = buildClient(URL, fetcher)
     const result = await client.fetchEntitiesByPointers([pointer])
 
     expect(result).toEqual(requestResult)
@@ -173,9 +176,11 @@ describe('ContentClient', () => {
   it('When fetching by pointers, then the result is as expected', async () => {
     const requestResult: Entity[] = [someEntity()]
     const pointer = 'P'
-    const { instance: fetcher } = mockFetcherFetch('/entities/active', { pointers: [pointer] }, requestResult)
+    const fetcher = createFetchComponent()
 
-    const client = buildClient(URL, fetcher)
+    fetcher.fetch = jest.fn().mockResolvedValueOnce({ json: () => requestResult })
+
+    const client = buildClient(URL, null, fetcher)
     const result = await client.fetchEntitiesByPointers([pointer])
 
     expect(result).toEqual(requestResult)
@@ -194,9 +199,11 @@ describe('ContentClient', () => {
   it('When fetching by ids, then the result is as expected', async () => {
     const requestResult: Entity[] = [someEntity()]
     const id = 'Id'
-    const { instance: fetcher } = mockFetcherFetch(`/entities/active`, { ids: [id] }, requestResult)
 
-    const client = buildClient(URL, fetcher)
+    const fetcher = createFetchComponent()
+    fetcher.fetch = jest.fn().mockResolvedValueOnce({ json: () => requestResult })
+    const client = buildClient(URL, undefined, fetcher)
+
     const result = await client.fetchEntitiesByIds([id])
 
     expect(result).toEqual(requestResult)
@@ -204,9 +211,10 @@ describe('ContentClient', () => {
 
   it('When fetching by id, if there are no results, then an error is thrown', async () => {
     const id = 'Id'
-    const { instance: fetcher } = mockFetcherFetch(`/entities/active`, { ids: [id] }, [])
 
-    const client = buildClient(URL, fetcher)
+    const fetcher = createFetchComponent()
+    fetcher.fetch = jest.fn().mockResolvedValueOnce({ json: () => [] })
+    const client = buildClient(URL, undefined, fetcher)
 
     await expect(client.fetchEntityById(id)).rejects.toEqual(`Failed to find an entity with id '${id}'.`)
   })
@@ -215,9 +223,11 @@ describe('ContentClient', () => {
     const entity = someEntity()
     const requestResult: Entity[] = [entity]
     const id = 'Id'
-    const { instance: fetcher } = mockFetcherFetch('/entities/active', { ids: [id] }, requestResult)
 
-    const client = buildClient(URL, fetcher)
+    const fetcher = createFetchComponent()
+    fetcher.fetch = jest.fn().mockResolvedValueOnce({ json: () => requestResult })
+    const client = buildClient(URL, undefined, fetcher)
+
     const result = await client.fetchEntityById(id)
 
     expect(result).toEqual(entity)
@@ -349,11 +359,13 @@ describe('ContentClient', () => {
   function buildClient(
     URL: string,
     fetcher?: Fetcher,
+    customFetcher?: IFetchComponent,
     deploymentBuilderClass?: typeof DeploymentBuilder
   ): ContentClient {
     return new ContentClient({
       contentUrl: URL,
       fetcher: fetcher,
+      customFetcher: customFetcher,
       deploymentBuilderClass: deploymentBuilderClass
     })
   }
