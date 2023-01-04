@@ -1,20 +1,26 @@
 import { hashV0, hashV1 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
-import { Fetcher, mergeRequestOptions, RequestOptions, retry } from 'dcl-catalyst-commons'
+import { Fetcher, RequestOptions, mergeRequestOptions, retry } from 'dcl-catalyst-commons'
 import FormData from 'form-data'
 import { AvailableContentResult, ContentAPI } from './ContentAPI'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 import { addModelToFormData, getHeadersWithUserAgent, isNode, sanitizeUrl, splitAndFetch } from './utils/Helper'
 
+import { IFetchComponent } from '@well-known-components/http-server'
+import * as nodeFetch from 'node-fetch'
+import { createFetchComponent } from './utils'
+
 export type ContentClientOptions = {
   contentUrl: string
   fetcher?: Fetcher
+  customFetcher?: IFetchComponent
   deploymentBuilderClass?: typeof DeploymentBuilder
 }
 
 export class ContentClient implements ContentAPI {
   private readonly contentUrl: string
   private readonly fetcher: Fetcher
+  private readonly customFetcher: IFetchComponent
   private readonly deploymentBuilderClass: typeof DeploymentBuilder
 
   constructor(options: ContentClientOptions) {
@@ -25,6 +31,7 @@ export class ContentClient implements ContentAPI {
           headers: getHeadersWithUserAgent('content-client')
         })
     this.deploymentBuilderClass = options.deploymentBuilderClass ? options.deploymentBuilderClass : DeploymentBuilder
+    this.customFetcher = options.customFetcher ? options.customFetcher : createFetchComponent()
   }
 
   async buildEntityWithoutNewFiles({
@@ -110,13 +117,13 @@ export class ContentClient implements ContentAPI {
     })
   }
 
-  async fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]> {
+  async fetchEntitiesByPointers(pointers: string[], options?: nodeFetch.RequestInit): Promise<Entity[]> {
     if (pointers.length === 0) {
       return Promise.reject(`You must set at least one pointer.`)
     }
 
     return (
-      await this.fetcher.fetch(`${this.contentUrl}/entities/active`, {
+      await this.customFetcher.fetch(`${this.contentUrl}/entities/active`, {
         ...options,
         body: JSON.stringify({ pointers }),
         method: 'POST',
@@ -128,13 +135,13 @@ export class ContentClient implements ContentAPI {
     ).json()
   }
 
-  async fetchEntitiesByIds(ids: string[], options?: RequestOptions): Promise<Entity[]> {
+  async fetchEntitiesByIds(ids: string[], options?: nodeFetch.RequestInit): Promise<Entity[]> {
     if (ids.length === 0) {
       return Promise.reject(`You must set at least one id.`)
     }
 
     return (
-      await this.fetcher.fetch(`${this.contentUrl}/entities/active`, {
+      await this.customFetcher.fetch(`${this.contentUrl}/entities/active`, {
         ...options,
         headers: {
           ...options?.headers,
@@ -146,7 +153,7 @@ export class ContentClient implements ContentAPI {
     ).json()
   }
 
-  async fetchEntityById(id: string, options?: RequestOptions): Promise<Entity> {
+  async fetchEntityById(id: string, options?: nodeFetch.RequestInit): Promise<Entity> {
     const entities: Entity[] = await this.fetchEntitiesByIds([id], options)
     if (entities.length === 0) {
       return Promise.reject(`Failed to find an entity with id '${id}'.`)

@@ -1,4 +1,4 @@
-import { Fetcher, HealthStatus, mergeRequestOptions, RequestOptions } from 'dcl-catalyst-commons'
+import { Fetcher, HealthStatus, RequestOptions } from 'dcl-catalyst-commons'
 import {
   EmotesFilters,
   LambdasAPI,
@@ -16,14 +16,21 @@ import {
   splitAndFetchPaginated
 } from './utils/Helper'
 
+// import { IFetchComponent } from '@well-known-components/http-server'
+import { IFetchComponent } from '@well-known-components/http-server'
+import * as nodeFetch from 'node-fetch'
+import { createFetchComponent } from './utils'
+
 export type LambdasClientOptions = {
   lambdasUrl: string
   fetcher?: Fetcher
+  customFetcher?: IFetchComponent
 }
 
 export class LambdasClient implements LambdasAPI {
   private readonly lambdasUrl: string
   private readonly fetcher: Fetcher
+  private readonly customFetcher: IFetchComponent
 
   constructor(options: LambdasClientOptions) {
     this.lambdasUrl = sanitizeUrl(options.lambdasUrl)
@@ -32,20 +39,22 @@ export class LambdasClient implements LambdasAPI {
       : new Fetcher({
           headers: getHeadersWithUserAgent('lambdas-client')
         })
+    this.customFetcher = options.customFetcher ? options.customFetcher : createFetchComponent()
   }
 
-  async fetchProfiles(ethAddresses: string[], options?: RequestOptions): Promise<any[]> {
+  async fetchProfiles(ethAddresses: string[], options?: nodeFetch.RequestInit): Promise<any[]> {
     if (ethAddresses.length === 0) {
       return Promise.resolve([])
     }
 
-    const requestOptions = mergeRequestOptions(options ? options : {}, {
+    const requestOptions = {
+      ...(options || {}),
       body: JSON.stringify({ ids: ethAddresses }),
       headers: { 'Content-Type': 'application/json' },
       method: 'POST'
-    })
+    }
 
-    return (await this.fetcher.fetch(`${this.lambdasUrl}/profiles`, requestOptions)).json()
+    return (await this.customFetcher.fetch(`${this.lambdasUrl}/profiles`, requestOptions)).json()
   }
 
   fetchWearables(filters: WearablesFilters, options?: RequestOptions): Promise<any[]> {
@@ -148,16 +157,16 @@ export class LambdasClient implements LambdasAPI {
     })
   }
 
-  fetchCatalystsApprovedByDAO(options?: RequestOptions): Promise<ServerMetadata[]> {
-    return this.fetcher.fetchJson(`${this.lambdasUrl}/contracts/servers`, options) as any
+  fetchCatalystsApprovedByDAO(options?: nodeFetch.RequestInit): Promise<ServerMetadata[]> {
+    return this.customFetcher.fetch(`${this.lambdasUrl}/contracts/servers`, options).then((result) => result.json())
   }
 
-  fetchLambdasStatus(options?: RequestOptions): Promise<{ contentServerUrl: string }> {
-    return this.fetcher.fetchJson(`${this.lambdasUrl}/status`, options) as any
+  fetchLambdasStatus(options?: nodeFetch.RequestInit): Promise<{ contentServerUrl: string }> {
+    return this.customFetcher.fetch(`${this.lambdasUrl}/status`, options).then((result) => result.json())
   }
 
-  fetchPeerHealth(options?: RequestOptions): Promise<Record<string, HealthStatus>> {
-    return this.fetcher.fetchJson(`${this.lambdasUrl}/health`, options) as any
+  fetchPeerHealth(options?: nodeFetch.RequestInit): Promise<Record<string, HealthStatus>> {
+    return this.customFetcher.fetch(`${this.lambdasUrl}/health`, options).then((result) => result.json())
   }
 
   getLambdasUrl(): string {

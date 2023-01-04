@@ -89,7 +89,7 @@ async function fetchCatalystsApprovedByDAO(catalystUrl: string): Promise<string[
     catalystUrl
   })
   try {
-    const servers = await client.fetchCatalystsApprovedByDAO({ timeout: '10s' })
+    const servers = await client.fetchCatalystsApprovedByDAO({ timeout: 10000 })
     return servers.map(({ baseUrl }) => baseUrl)
   } catch {
     return undefined
