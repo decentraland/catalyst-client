@@ -1,6 +1,6 @@
-import { Fetcher, RequestOptions } from 'dcl-catalyst-commons'
 import type FormData from 'form-data'
 import { RUNNING_VERSION } from './Environment'
+import { IFetchComponent, RequestOptions, createFetchComponent } from './fetcher'
 
 export function addModelToFormData(model: any, form: FormData, namespace = ''): FormData {
   for (const propertyName in model) {
@@ -35,12 +35,12 @@ export async function splitAndFetch<E>({
   baseUrl,
   path,
   queryParams,
-  fetcher,
+  fetcher: fetcher,
   uniqueBy,
   options
 }: Omit<SplitAndFetchParams<E>, 'elementsProperty'>): Promise<E[]> {
   // Adding default
-  fetcher = fetcher ? fetcher : new Fetcher()
+  fetcher = fetcher ? fetcher : createFetchComponent()
 
   // Split values into different queries
   const queries = splitValuesIntoManyQueries({ baseUrl, path, queryParams })
@@ -48,7 +48,9 @@ export async function splitAndFetch<E>({
   const results: Map<any, E> = new Map()
   for (const query of queries) {
     // Perform the different queries
-    const elements: E[] = (await fetcher.fetchJson(query, options)) as any
+    const elements: E[] = (await (
+      await fetcher.fetch(query, { ...options, headers: { 'Content-Type': 'application/json' } })
+    ).json()) as any
 
     // Group by unique property (if set), or add all of them to the map
     elements.forEach((element) => results.set(uniqueBy ? element[uniqueBy] : results.size, element))
@@ -64,16 +66,16 @@ const CHARS_LEFT_FOR_OFFSET = 7
  * This method should be used if the result is paginated, and needs to be queries many times
  */
 export async function splitAndFetchPaginated<E>({
-  fetcher,
   baseUrl,
   path,
   queryParams,
   elementsProperty,
   uniqueBy,
-  options
+  options,
+  fetcher
 }: RequiredOne<SplitAndFetchParams<E>, 'uniqueBy'>): Promise<E[]> {
   // Set default
-  fetcher = fetcher ? fetcher : new Fetcher()
+  fetcher = fetcher ? fetcher : createFetchComponent()
 
   // Reserve a few chars to send the offset
   const reservedParams = new Map([['offset', CHARS_LEFT_FOR_OFFSET]])
@@ -90,7 +92,7 @@ export async function splitAndFetchPaginated<E>({
       try {
         const response: {
           pagination: { limit: number; next?: string }
-        } = (await fetcher.fetchJson(url, options)) as any
+        } = (await fetcher.fetch(url, options)).json() as any
         const elements: E[] = response[elementsProperty]
         elements.forEach((element) => foundElements.set(element[uniqueBy], element))
         const nextRelative = response.pagination.next
@@ -240,8 +242,8 @@ type SplitAndFetchParams<E> = {
   path: string
   queryParams: QueryParams
   elementsProperty: string
-  fetcher?: Fetcher
   uniqueBy?: keyof E
+  fetcher?: IFetchComponent
   options?: RequestOptions
 }
 

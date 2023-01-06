@@ -1,8 +1,6 @@
 import { AuthChain, Entity } from '@dcl/schemas'
-import { RequestOptions } from 'dcl-catalyst-commons'
-import * as nodeFetch from 'node-fetch'
 import { BuildEntityOptions, BuildEntityWithoutFilesOptions } from './ContentClient'
-import { DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
+import { DeploymentData, DeploymentPreparationData, RequestOptions } from './utils'
 
 export type AvailableContentResult = Array<{
   cid: string
@@ -25,9 +23,9 @@ export interface ContentAPI {
   }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData>
 
   /** Retrieve / Download */
-  fetchEntitiesByPointers(pointers: string[], options?: nodeFetch.RequestInit): Promise<Entity[]>
-  fetchEntitiesByIds(ids: string[], options?: nodeFetch.RequestInit): Promise<Entity[]>
-  fetchEntityById(id: string, options?: nodeFetch.RequestInit): Promise<Entity>
+  fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]>
+  fetchEntitiesByIds(ids: string[], options?: RequestOptions): Promise<Entity[]>
+  fetchEntityById(id: string, options?: RequestOptions): Promise<Entity>
   downloadContent(contentHash: string, options?: RequestOptions): Promise<Buffer>
 
   /** @deprecated use deploy instead */

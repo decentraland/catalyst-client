@@ -1,11 +1,10 @@
-import { Fetcher } from 'dcl-catalyst-commons'
-import { mock, when, anything, instance, verify } from 'ts-mockito'
+import { createFetchComponent } from '../../src'
 import {
-  sanitizeUrl,
-  splitValuesIntoManyQueries,
   MAX_URL_LENGTH,
   convertFiltersToQueryParams,
-  splitAndFetchPaginated
+  sanitizeUrl,
+  splitAndFetchPaginated,
+  splitValuesIntoManyQueries
 } from '../../src/utils/Helper'
 
 describe('Helper', () => {
@@ -128,18 +127,22 @@ describe('Helper', () => {
     const queryParams = { name: 'someName', values: ['value1', 'value2'] }
     const next = `?someName=value1&someName=value3`
 
-    const mockedFetcher: Fetcher = mock(Fetcher)
-    when(mockedFetcher.fetchJson(`${baseUrl}${path}?someName=value1&someName=value2`, anything())).thenResolve({
-      elements: [{ id: 'id1' }, { id: 'id2' }],
-      pagination: { limit: 2, next }
-    })
-    when(mockedFetcher.fetchJson(`${baseUrl}${path}${next}`, anything())).thenResolve({
-      elements: [{ id: 'id2' }, { id: 'id3' }],
-      pagination: { limit: 2 }
+    const customFetcher = createFetchComponent()
+    customFetcher.fetch = jest.fn().mockResolvedValue({
+      json: jest
+        .fn()
+        .mockReturnValueOnce({
+          elements: [{ id: 'id1' }, { id: 'id2' }],
+          pagination: { limit: 2, next }
+        })
+        .mockReturnValueOnce({
+          elements: [{ id: 'id2' }, { id: 'id3' }],
+          pagination: { limit: 2 }
+        })
     })
 
     const result = await splitAndFetchPaginated<{ id: string }>({
-      fetcher: instance(mockedFetcher),
+      fetcher: customFetcher,
       baseUrl,
       path,
       queryParams,
@@ -147,7 +150,7 @@ describe('Helper', () => {
       uniqueBy: 'id'
     })
 
-    verify(mockedFetcher.fetchJson(anything(), anything())).twice()
+    expect(customFetcher.fetch).toHaveBeenCalledTimes(2)
     expect(result).toEqual([{ id: 'id1' }, { id: 'id2' }, { id: 'id3' }])
   })
 
