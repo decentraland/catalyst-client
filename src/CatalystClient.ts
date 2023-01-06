@@ -1,19 +1,26 @@
 import { Entity } from '@dcl/schemas'
-import { Fetcher, HealthStatus, RequestOptions } from 'dcl-catalyst-commons'
-import * as nodeFetch from 'node-fetch'
+import { HealthStatus } from 'dcl-catalyst-commons'
 import { CatalystAPI } from './CatalystAPI'
 import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient } from './ContentClient'
 import { EmotesFilters, OwnedItems, ServerMetadata, WearablesFilters } from './LambdasAPI'
 import { LambdasClient } from './LambdasClient'
+import {
+  DeploymentBuilder,
+  DeploymentData,
+  DeploymentPreparationData,
+  IFetchComponent,
+  RequestOptions,
+  createFetchComponent,
+  sanitizeUrl
+} from './utils'
 import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
-import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
-import { getHeadersWithUserAgent, sanitizeUrl } from './utils/Helper'
 
 export type CatalystClientOptions = {
   catalystUrl: string
-  fetcher?: Fetcher
+  fetcher?: IFetchComponent
   deploymentBuilderClass?: typeof DeploymentBuilder
 }
+
 export class CatalystClient implements CatalystAPI {
   private readonly contentClient: ContentClient
   private readonly lambdasClient: LambdasClient
@@ -21,11 +28,7 @@ export class CatalystClient implements CatalystAPI {
 
   constructor(options: CatalystClientOptions) {
     this.catalystUrl = sanitizeUrl(options.catalystUrl)
-    const fetcher = options.fetcher
-      ? options.fetcher
-      : new Fetcher({
-          headers: getHeadersWithUserAgent('catalyst-client')
-        })
+    const fetcher = options.fetcher ? options.fetcher : createFetchComponent()
     this.contentClient = new ContentClient({
       contentUrl: this.catalystUrl + '/content',
       fetcher: fetcher,
@@ -54,15 +57,15 @@ export class CatalystClient implements CatalystAPI {
     return this.contentClient.deploy(deployData, options)
   }
 
-  fetchEntitiesByPointers(pointers: string[], options?: nodeFetch.RequestInit): Promise<Entity[]> {
+  fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]> {
     return this.contentClient.fetchEntitiesByPointers(pointers, options)
   }
 
-  fetchEntitiesByIds(ids: string[], options?: nodeFetch.RequestInit): Promise<Entity[]> {
+  fetchEntitiesByIds(ids: string[], options?: RequestOptions): Promise<Entity[]> {
     return this.contentClient.fetchEntitiesByIds(ids, options)
   }
 
-  fetchEntityById(id: string, options?: nodeFetch.RequestInit): Promise<Entity> {
+  fetchEntityById(id: string, options?: RequestOptions): Promise<Entity> {
     return this.contentClient.fetchEntityById(id, options)
   }
 
@@ -70,7 +73,7 @@ export class CatalystClient implements CatalystAPI {
     return this.contentClient.downloadContent(contentHash, options)
   }
 
-  fetchProfiles(ethAddresses: string[], options?: nodeFetch.RequestInit): Promise<any[]> {
+  fetchProfiles(ethAddresses: string[], options?: RequestOptions): Promise<any[]> {
     return this.lambdasClient.fetchProfiles(ethAddresses, options)
   }
 
@@ -116,15 +119,15 @@ export class CatalystClient implements CatalystAPI {
     return this.lambdasClient.fetchOwnedThirdPartyEmotes(ethAddress, thirdPartyId, includeDefinitions, options)
   }
 
-  fetchCatalystsApprovedByDAO(options?: nodeFetch.RequestInit): Promise<ServerMetadata[]> {
+  fetchCatalystsApprovedByDAO(options?: RequestOptions): Promise<ServerMetadata[]> {
     return this.lambdasClient.fetchCatalystsApprovedByDAO(options)
   }
 
-  fetchLambdasStatus(options?: nodeFetch.RequestInit): Promise<{ contentServerUrl: string }> {
+  fetchLambdasStatus(options?: RequestOptions): Promise<{ contentServerUrl: string }> {
     return this.lambdasClient.fetchLambdasStatus(options)
   }
 
-  fetchPeerHealth(options?: nodeFetch.RequestInit): Promise<Record<string, HealthStatus>> {
+  fetchPeerHealth(options?: RequestOptions): Promise<Record<string, HealthStatus>> {
     return this.lambdasClient.fetchPeerHealth(options)
   }
 

@@ -1,4 +1,4 @@
-import { Fetcher, HealthStatus, RequestOptions } from 'dcl-catalyst-commons'
+import { HealthStatus } from 'dcl-catalyst-commons'
 import {
   EmotesFilters,
   LambdasAPI,
@@ -16,45 +16,33 @@ import {
   splitAndFetchPaginated
 } from './utils/Helper'
 
-// import { IFetchComponent } from '@well-known-components/http-server'
-import { IFetchComponent } from '@well-known-components/http-server'
-import * as nodeFetch from 'node-fetch'
-import { createFetchComponent } from './utils'
+import { IFetchComponent, RequestOptions, createFetchComponent } from './utils'
 
 export type LambdasClientOptions = {
   lambdasUrl: string
-  fetcher?: Fetcher
-  customFetcher?: IFetchComponent
+  fetcher?: IFetchComponent
 }
 
 export class LambdasClient implements LambdasAPI {
   private readonly lambdasUrl: string
-  private readonly fetcher: Fetcher
-  private readonly customFetcher: IFetchComponent
+  private readonly fetcher: IFetchComponent
 
   constructor(options: LambdasClientOptions) {
     this.lambdasUrl = sanitizeUrl(options.lambdasUrl)
-    this.fetcher = options.fetcher
-      ? options.fetcher
-      : new Fetcher({
-          headers: getHeadersWithUserAgent('lambdas-client')
-        })
-    this.customFetcher = options.customFetcher ? options.customFetcher : createFetchComponent()
+    this.fetcher = options.fetcher ? options.fetcher : createFetchComponent()
   }
 
-  async fetchProfiles(ethAddresses: string[], options?: nodeFetch.RequestInit): Promise<any[]> {
+  async fetchProfiles(ethAddresses: string[], options?: RequestOptions): Promise<any[]> {
     if (ethAddresses.length === 0) {
       return Promise.resolve([])
     }
 
-    const requestOptions = {
-      ...(options || {}),
+    const requestOptions = this.fetcher.mergeRequestOptions(options ? options : {}, {
       body: JSON.stringify({ ids: ethAddresses }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'POST'
-    }
+      headers: { ...getHeadersWithUserAgent('lambdas-client'), 'Content-Type': 'application/json' }
+    })
 
-    return (await this.customFetcher.fetch(`${this.lambdasUrl}/profiles`, requestOptions)).json()
+    return (await this.fetcher.fetch(`${this.lambdasUrl}/profiles`, requestOptions)).json()
   }
 
   fetchWearables(filters: WearablesFilters, options?: RequestOptions): Promise<any[]> {
@@ -64,13 +52,13 @@ export class LambdasClient implements LambdasAPI {
     }
 
     return splitAndFetchPaginated({
-      fetcher: this.fetcher,
       baseUrl: this.lambdasUrl,
       path: '/collections/wearables',
       queryParams,
       uniqueBy: 'id',
       elementsProperty: 'wearables',
-      options
+      options: options,
+      fetcher: this.fetcher
     })
   }
 
@@ -80,11 +68,11 @@ export class LambdasClient implements LambdasAPI {
     options?: RequestOptions
   ): Promise<OwnedItems<B>> {
     return splitAndFetch<B extends false ? OwnedItemsWithoutDefinition : OwnedItemsWithDefinition>({
-      fetcher: this.fetcher,
       baseUrl: this.lambdasUrl,
       path: `/collections/wearables-by-owner/${ethAddress}`,
       queryParams: { name: 'includeDefinitions', values: [`${includeDefinitions}`] },
-      options
+      fetcher: this.fetcher,
+      options: options
     })
   }
 
@@ -99,11 +87,11 @@ export class LambdasClient implements LambdasAPI {
       ['includeDefinitions', [`${includeDefinitions}`]]
     ])
     return splitAndFetch<B extends false ? OwnedItemsWithoutDefinition : OwnedItemsWithDefinition>({
-      fetcher: this.fetcher,
       baseUrl: this.lambdasUrl,
       path: `/collections/wearables-by-owner/${ethAddress}`,
       queryParams,
-      options
+      options: options,
+      fetcher: this.fetcher
     })
   }
 
@@ -114,13 +102,13 @@ export class LambdasClient implements LambdasAPI {
     }
 
     return splitAndFetchPaginated({
-      fetcher: this.fetcher,
       baseUrl: this.lambdasUrl,
       path: '/collections/emotes',
       queryParams,
       uniqueBy: 'id',
       elementsProperty: 'emotes',
-      options
+      options: options,
+      fetcher: this.fetcher
     })
   }
 
@@ -130,11 +118,11 @@ export class LambdasClient implements LambdasAPI {
     options?: RequestOptions
   ): Promise<OwnedItems<B>> {
     return splitAndFetch<B extends false ? OwnedItemsWithoutDefinition : OwnedItemsWithDefinition>({
-      fetcher: this.fetcher,
       baseUrl: this.lambdasUrl,
       path: `/collections/emotes-by-owner/${ethAddress}`,
       queryParams: { name: 'includeDefinitions', values: [`${includeDefinitions}`] },
-      options
+      options: options,
+      fetcher: this.fetcher
     })
   }
 
@@ -149,24 +137,24 @@ export class LambdasClient implements LambdasAPI {
       ['includeDefinitions', [`${includeDefinitions}`]]
     ])
     return splitAndFetch<B extends false ? OwnedItemsWithoutDefinition : OwnedItemsWithDefinition>({
-      fetcher: this.fetcher,
       baseUrl: this.lambdasUrl,
       path: `/collections/emotes-by-owner/${ethAddress}`,
       queryParams,
-      options
+      options: options,
+      fetcher: this.fetcher
     })
   }
 
-  fetchCatalystsApprovedByDAO(options?: nodeFetch.RequestInit): Promise<ServerMetadata[]> {
-    return this.customFetcher.fetch(`${this.lambdasUrl}/contracts/servers`, options).then((result) => result.json())
+  fetchCatalystsApprovedByDAO(options?: RequestOptions): Promise<ServerMetadata[]> {
+    return this.fetcher.fetch(`${this.lambdasUrl}/contracts/servers`, options).then((result) => result.json())
   }
 
-  fetchLambdasStatus(options?: nodeFetch.RequestInit): Promise<{ contentServerUrl: string }> {
-    return this.customFetcher.fetch(`${this.lambdasUrl}/status`, options).then((result) => result.json())
+  fetchLambdasStatus(options?: RequestOptions): Promise<{ contentServerUrl: string }> {
+    return this.fetcher.fetch(`${this.lambdasUrl}/status`, options).then((result) => result.json())
   }
 
-  fetchPeerHealth(options?: nodeFetch.RequestInit): Promise<Record<string, HealthStatus>> {
-    return this.customFetcher.fetch(`${this.lambdasUrl}/health`, options).then((result) => result.json())
+  fetchPeerHealth(options?: RequestOptions): Promise<Record<string, HealthStatus>> {
+    return this.fetcher.fetch(`${this.lambdasUrl}/health`, options).then((result) => result.json())
   }
 
   getLambdasUrl(): string {

@@ -1,5 +1,4 @@
-import { RequestOptions } from 'dcl-catalyst-commons'
-import * as nodeFetch from 'node-fetch'
+import { RequestOptions } from './utils'
 
 export type ServerMetadata = {
   baseUrl: string
@@ -8,7 +7,7 @@ export type ServerMetadata = {
 }
 
 export interface LambdasAPI {
-  fetchProfiles(ethAddresses: string[], options?: nodeFetch.RequestInit): Promise<any[]>
+  fetchProfiles(ethAddresses: string[], options?: RequestOptions): Promise<any[]>
   fetchWearables(filters: WearablesFilters, options?: RequestOptions): Promise<any[]>
   fetchOwnedWearables<B extends boolean>(
     ethAddress: string,
@@ -33,8 +32,8 @@ export interface LambdasAPI {
     includeDefinitions: B,
     options?: RequestOptions
   ): Promise<OwnedItems<B>>
-  fetchCatalystsApprovedByDAO(options?: nodeFetch.RequestInit): Promise<ServerMetadata[]>
-  fetchLambdasStatus(options?: nodeFetch.RequestInit): Promise<{ contentServerUrl: string }>
+  fetchCatalystsApprovedByDAO(options?: RequestOptions): Promise<ServerMetadata[]>
+  fetchLambdasStatus(options?: RequestOptions): Promise<{ contentServerUrl: string }>
   getLambdasUrl(): string
 }
 
