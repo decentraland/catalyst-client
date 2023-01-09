@@ -1,6 +1,7 @@
+import { IFetchComponent } from '@well-known-components/http-server'
 import type FormData from 'form-data'
 import { RUNNING_VERSION } from './Environment'
-import { IFetchComponent, RequestOptions, createFetchComponent } from './fetcher'
+import { RequestOptions, createFetchComponent } from './fetcher'
 
 export function addModelToFormData(model: any, form: FormData, namespace = ''): FormData {
   for (const propertyName in model) {
@@ -35,7 +36,7 @@ export async function splitAndFetch<E>({
   baseUrl,
   path,
   queryParams,
-  fetcher: fetcher,
+  fetcher,
   uniqueBy,
   options
 }: Omit<SplitAndFetchParams<E>, 'elementsProperty'>): Promise<E[]> {
@@ -202,6 +203,19 @@ export function getHeadersWithUserAgent(client: string) {
   return isNode()
     ? { 'User-Agent': `${client}/${RUNNING_VERSION} (+https://github.com/decentraland/catalyst-client)` }
     : undefined
+}
+
+export function mergeRequestOptions(target: RequestOptions, source?: RequestOptions): RequestOptions {
+  const combinedHeaders = {
+    ...target?.headers,
+    ...source?.headers
+  }
+
+  return {
+    ...target,
+    ...source,
+    headers: combinedHeaders
+  }
 }
 
 function isValidQueryParamValue(value: any): boolean {
