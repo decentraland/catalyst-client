@@ -1,5 +1,6 @@
+import { IFetchComponent } from '@well-known-components/http-server'
 import { LambdasClient } from '../src/index'
-import { IFetchComponent, createFetchComponent } from './../src/utils'
+import { createFetchComponent } from './../src/utils'
 
 describe('LambdasClient', () => {
   const URL = 'https://url.com'

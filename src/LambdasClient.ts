@@ -11,12 +11,14 @@ import {
 import {
   convertFiltersToQueryParams,
   getHeadersWithUserAgent,
+  mergeRequestOptions,
   sanitizeUrl,
   splitAndFetch,
   splitAndFetchPaginated
 } from './utils/Helper'
 
-import { IFetchComponent, RequestOptions, createFetchComponent } from './utils'
+import { IFetchComponent } from '@well-known-components/http-server'
+import { RequestOptions, createFetchComponent } from './utils'
 
 export type LambdasClientOptions = {
   lambdasUrl: string
@@ -37,7 +39,7 @@ export class LambdasClient implements LambdasAPI {
       return Promise.resolve([])
     }
 
-    const requestOptions = this.fetcher.mergeRequestOptions(options ? options : {}, {
+    const requestOptions = mergeRequestOptions(options ? options : {}, {
       body: JSON.stringify({ ids: ethAddresses }),
       headers: { ...getHeadersWithUserAgent('lambdas-client'), 'Content-Type': 'application/json' }
     })

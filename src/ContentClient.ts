@@ -1,9 +1,10 @@
 import { hashV0, hashV1 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
+import { IFetchComponent } from '@well-known-components/http-server'
 import { retry } from 'dcl-catalyst-commons'
 import FormData from 'form-data'
 import { AvailableContentResult, ContentAPI } from './ContentAPI'
-import { IFetchComponent, RequestOptions, createFetchComponent } from './utils'
+import { RequestOptions, createFetchComponent, mergeRequestOptions } from './utils'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 import { addModelToFormData, getHeadersWithUserAgent, isNode, sanitizeUrl, splitAndFetch } from './utils/Helper'
 
@@ -86,7 +87,7 @@ export class ContentClient implements ContentAPI {
   async deployEntity(deployData: DeploymentData, fix: boolean = false, options?: RequestOptions): Promise<number> {
     const form = await this.buildEntityFormDataForDeployment(deployData, options)
 
-    const requestOptions = this.fetcher.mergeRequestOptions(options ? options : {}, {
+    const requestOptions = mergeRequestOptions(options ? options : {}, {
       body: form as any,
       method: 'POST',
       headers: getHeadersWithUserAgent('content-client')
@@ -102,7 +103,7 @@ export class ContentClient implements ContentAPI {
   async deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
     const form = await this.buildEntityFormDataForDeployment(deployData, options)
 
-    const requestOptions = this.fetcher.mergeRequestOptions(options ? options : {}, {
+    const requestOptions = mergeRequestOptions(options ? options : {}, {
       body: form as any,
       method: 'POST',
       headers: getHeadersWithUserAgent('content-client')
@@ -116,7 +117,7 @@ export class ContentClient implements ContentAPI {
       return Promise.reject(`You must set at least one pointer.`)
     }
 
-    const requestOptions = this.fetcher.mergeRequestOptions(options ? options : {}, {
+    const requestOptions = mergeRequestOptions(options ? options : {}, {
       body: JSON.stringify({ pointers }),
       method: 'POST',
       headers: { ...getHeadersWithUserAgent('content-client'), 'Content-Type': 'application/json' }
@@ -130,7 +131,7 @@ export class ContentClient implements ContentAPI {
       return Promise.reject(`You must set at least one id.`)
     }
 
-    const requestOptions = this.fetcher.mergeRequestOptions(options ? options : {}, {
+    const requestOptions = mergeRequestOptions(options ? options : {}, {
       body: JSON.stringify({ ids }),
       method: 'POST',
       headers: { ...getHeadersWithUserAgent('content-client'), 'Content-Type': 'application/json' }
@@ -149,7 +150,7 @@ export class ContentClient implements ContentAPI {
 
   async downloadContent(contentHash: string, options?: Partial<RequestOptions>): Promise<Buffer> {
     const { attempts = 3, waitTime = '0.5s' } = options ? options : {}
-    const timeout = options?.timeOut ? { timeOut: options.timeOut } : {}
+    const timeout = options?.timeout ? { timeout: options.timeout } : {}
 
     return retry(
       async () => {

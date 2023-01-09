@@ -1,10 +1,11 @@
 import { hashV0 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
+import { IFetchComponent } from '@well-known-components/http-server'
 import { deepEqual, instance, mock, verify, when } from 'ts-mockito'
 import { AvailableContentResult } from '../src/ContentAPI'
 import { ContentClient } from '../src/ContentClient'
 import { DeploymentBuilder } from '../src/utils/DeploymentBuilder'
-import { IFetchComponent, createFetchComponent } from './../src/utils'
+import { createFetchComponent } from './../src/utils'
 
 describe('ContentClient', () => {
   const URL = 'https://url.com'
