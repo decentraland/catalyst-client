@@ -45,7 +45,7 @@
   "dependencies": {
     "@dcl/catalyst-contracts": "^3.0.0",
     "@dcl/hashing": "^1.1.0",
-    "@dcl/schemas": "^5.5.0",
+    "@dcl/schemas": "^6.4.1",
     "@types/form-data": "^2.5.0",
     "cookie": "^0.5.0",
     "dcl-catalyst-commons": "^9.0.6",
