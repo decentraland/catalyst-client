@@ -31,7 +31,7 @@ export class LambdasClient implements LambdasAPI {
 
   constructor(options: LambdasClientOptions) {
     this.lambdasUrl = sanitizeUrl(options.lambdasUrl)
-    this.fetcher = options.fetcher ? options.fetcher : createFetchComponent()
+    this.fetcher = options.fetcher ? options.fetcher : createFetchComponent(getHeadersWithUserAgent('lambdas-client'))
   }
 
   async fetchProfiles(ethAddresses: string[], options?: RequestOptions): Promise<any[]> {
@@ -41,7 +41,7 @@ export class LambdasClient implements LambdasAPI {
 
     const requestOptions = mergeRequestOptions(options ? options : {}, {
       body: JSON.stringify({ ids: ethAddresses }),
-      headers: { ...getHeadersWithUserAgent('lambdas-client'), 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' }
     })
 
     return (await this.fetcher.fetch(`${this.lambdasUrl}/profiles`, requestOptions)).json()

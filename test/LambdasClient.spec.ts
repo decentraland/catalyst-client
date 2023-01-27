@@ -5,7 +5,6 @@ import { createFetchComponent } from './../src/utils'
 describe('LambdasClient', () => {
   const URL = 'https://url.com'
 
-  // TODO: refactor mocks to use IFetchComponent
   it('When fetching for many profiles, then the result is as expected', async () => {
     const requestResult = [someResult()]
     const [ethAddress1, ethAddress2] = ['ethAddress1', 'ethAddress2']

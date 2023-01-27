@@ -237,40 +237,39 @@ describe('ContentClient', () => {
     const realBuffer = Buffer.from('Real')
     const fileHash = await hashV0(realBuffer)
 
-    const customFetcher = createFetchComponent()
-    customFetcher.fetch = jest.fn().mockResolvedValue({
+    const fetcher = createFetchComponent()
+    fetcher.fetch = jest.fn().mockResolvedValue({
       buffer: jest.fn().mockResolvedValueOnce(failBuffer).mockResolvedValueOnce(realBuffer)
     })
-    const client = buildClient(URL, customFetcher)
+    const client = buildClient(URL, fetcher)
 
-    // TODO: fix to support waitTime
-    // const result = await client.downloadContent(fileHash, { waitTime: '20' })
-    const result = await client.downloadContent(fileHash)
+    const result = await client.downloadContent(fileHash, { waitTime: '20' })
 
     // Assert that the correct buffer is returned, and that there was a retry attempt
     expect(result).toEqual(realBuffer)
-    expect(customFetcher.fetch).toHaveBeenCalledTimes(2)
+    expect(fetcher.fetch).toHaveBeenCalledTimes(2)
   })
 
-  // TODO: Fix this
-  // it('When a file is downloaded and all attempts failed, then an exception is thrown', async () => {
-  //   const failBuffer = Buffer.from('Fail')
-  //   const fileHash = 'Hash'
+  it('When a file is downloaded and all attempts failed, then an exception is thrown', async () => {
+    const failBuffer = Buffer.from('Fail')
+    const fileHash = 'Hash'
 
-  //   // Create mock, and return the wrong buffer always
-  //   const mockedFetcher: Fetcher = mock(Fetcher)
-  //   when(mockedFetcher.fetchBuffer(`${URL}/contents/${fileHash}`, anything())).thenReturn(Promise.resolve(failBuffer))
-  //   const fetcher = instance(mockedFetcher)
+    // Create mock, and return the wrong buffer always
+    const fetcher = createFetchComponent()
+    fetcher.fetch = jest.fn().mockResolvedValue({
+      buffer: jest.fn().mockResolvedValueOnce(failBuffer).mockResolvedValueOnce(failBuffer)
+    })
 
-  //   const client = buildClient(URL, fetcher)
+    const client = buildClient(URL, fetcher)
 
-  //   // Assert that the request failed, and that the client tried many times as expected
-  //   await expect(client.downloadContent(fileHash, { attempts: 2, waitTime: '20' })).rejects.toEqual(
-  //     new Error(`Failed to fetch file with hash ${fileHash} from ${URL}`)
-  //   )
+    // Assert that the request failed, and that the client tried many times as expected
+    await expect(client.downloadContent(fileHash, { attempts: 2, waitTime: '20' })).rejects.toEqual(
+      new Error(`Failed to fetch file with hash ${fileHash} from ${URL}`)
+    )
 
-  //   verify(mockedFetcher.fetchBuffer(`${URL}/contents/${fileHash}`, anything())).times(2)
-  // })
+    expect(fetcher.fetch).toHaveBeenNthCalledWith(1, `${URL}/contents/${fileHash}`, expect.anything())
+    expect(fetcher.fetch).toHaveBeenNthCalledWith(2, `${URL}/contents/${fileHash}`, expect.anything())
+  })
 
   it('When checking if content is available, then the result is as expected', async () => {
     const [hash1, hash2] = ['hash1', 'hash2']
@@ -279,11 +278,11 @@ describe('ContentClient', () => {
       { cid: hash2, available: false }
     ]
 
-    const customFetcher = createFetchComponent()
-    customFetcher.fetch = jest.fn().mockResolvedValue({
+    const fetcher = createFetchComponent()
+    fetcher.fetch = jest.fn().mockResolvedValue({
       json: jest.fn().mockReturnValue(requestResult)
     })
-    const client = buildClient(URL, customFetcher)
+    const client = buildClient(URL, fetcher)
 
     const result = await client.isContentAvailable([hash1, hash2])
 
@@ -291,14 +290,14 @@ describe('ContentClient', () => {
   })
 
   it('When checking if content is available, if none is set, then an error is thrown', async () => {
-    const customFetcher = createFetchComponent()
-    customFetcher.fetch = jest.fn().mockResolvedValue({
+    const fetcher = createFetchComponent()
+    fetcher.fetch = jest.fn().mockResolvedValue({
       json: jest.fn().mockReturnValue({})
     })
-    const client = buildClient(URL, customFetcher)
+    const client = buildClient(URL, fetcher)
 
     await expect(client.isContentAvailable([])).rejects.toEqual(`You must set at least one cid.`)
-    expect(customFetcher.fetch).not.toHaveBeenCalled()
+    expect(fetcher.fetch).not.toHaveBeenCalled()
   })
 
   function someEntity(): Entity {

@@ -11,7 +11,7 @@ export type RequestInfo = nodeFetch.RequestInfo
 
 export type Response = nodeFetch.Response
 
-export function createFetchComponent(): IFetchComponent {
+export function createFetchComponent(defaultHeaders?: HeadersInit): IFetchComponent {
   async function internalFetch(url: RequestInfo, init: RequestOptions): Promise<Response> {
     const controller = new AbortController()
     const timeoutTime = init.timeout
@@ -21,7 +21,7 @@ export function createFetchComponent(): IFetchComponent {
       : 0
 
     try {
-      const response = (await crossFetch.default(url.toString(), init as any)) as any
+      const response = (await crossFetch.default(url.toString(), { headers: defaultHeaders, ...(init as any) })) as any
 
       if (response.ok) {
         return response

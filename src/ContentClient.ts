@@ -22,7 +22,7 @@ export class ContentClient implements ContentAPI {
   constructor(options: ContentClientOptions) {
     this.contentUrl = sanitizeUrl(options.contentUrl)
     this.deploymentBuilderClass = options.deploymentBuilderClass ? options.deploymentBuilderClass : DeploymentBuilder
-    this.fetcher = options.fetcher ? options.fetcher : createFetchComponent()
+    this.fetcher = options.fetcher ? options.fetcher : createFetchComponent(getHeadersWithUserAgent('content-client'))
   }
 
   async buildEntityWithoutNewFiles({
@@ -89,8 +89,7 @@ export class ContentClient implements ContentAPI {
 
     const requestOptions = mergeRequestOptions(options ? options : {}, {
       body: form as any,
-      method: 'POST',
-      headers: getHeadersWithUserAgent('content-client')
+      method: 'POST'
     })
 
     const { creationTimestamp } = (await this.fetcher.fetch(
@@ -105,8 +104,7 @@ export class ContentClient implements ContentAPI {
 
     const requestOptions = mergeRequestOptions(options ? options : {}, {
       body: form as any,
-      method: 'POST',
-      headers: getHeadersWithUserAgent('content-client')
+      method: 'POST'
     })
 
     return await this.fetcher.fetch(`${this.contentUrl}/entities`, requestOptions)
@@ -120,7 +118,7 @@ export class ContentClient implements ContentAPI {
     const requestOptions = mergeRequestOptions(options ? options : {}, {
       body: JSON.stringify({ pointers }),
       method: 'POST',
-      headers: { ...getHeadersWithUserAgent('content-client'), 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' }
     })
 
     return (await this.fetcher.fetch(`${this.contentUrl}/entities/active`, requestOptions)).json()
@@ -134,7 +132,7 @@ export class ContentClient implements ContentAPI {
     const requestOptions = mergeRequestOptions(options ? options : {}, {
       body: JSON.stringify({ ids }),
       method: 'POST',
-      headers: { ...getHeadersWithUserAgent('content-client'), 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' }
     })
 
     return (await this.fetcher.fetch(`${this.contentUrl}/entities/active`, requestOptions)).json()
