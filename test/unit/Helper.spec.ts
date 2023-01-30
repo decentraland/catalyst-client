@@ -127,8 +127,8 @@ describe('Helper', () => {
     const queryParams = { name: 'someName', values: ['value1', 'value2'] }
     const next = `?someName=value1&someName=value3`
 
-    const customFetcher = createFetchComponent()
-    customFetcher.fetch = jest.fn().mockResolvedValue({
+    const fetcher = createFetchComponent()
+    fetcher.fetch = jest.fn().mockResolvedValue({
       json: jest
         .fn()
         .mockReturnValueOnce({
@@ -142,7 +142,7 @@ describe('Helper', () => {
     })
 
     const result = await splitAndFetchPaginated<{ id: string }>({
-      fetcher: customFetcher,
+      fetcher,
       baseUrl,
       path,
       queryParams,
@@ -150,7 +150,7 @@ describe('Helper', () => {
       uniqueBy: 'id'
     })
 
-    expect(customFetcher.fetch).toHaveBeenCalledTimes(2)
+    expect(fetcher.fetch).toHaveBeenCalledTimes(2)
     expect(result).toEqual([{ id: 'id1' }, { id: 'id2' }, { id: 'id3' }])
   })
 

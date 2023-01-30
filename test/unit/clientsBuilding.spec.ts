@@ -13,18 +13,18 @@ describe('When building', () => {
   it('the ContentClient should set the fetcher to use with default User-Agent header', () => {
     new ContentClient({ contentUrl: 'anUrl' })
 
-    expect(mockCreateFetchComponent).toHaveBeenCalledWith(getHeadersWithUserAgent('content-client'))
+    expect(mockCreateFetchComponent).toHaveBeenCalledWith({ headers: getHeadersWithUserAgent('content-client') })
   })
 
   it('the LambdasClient should set the fetcher to use with default User-Agent header', () => {
     new LambdasClient({ lambdasUrl: 'anUrl' })
 
-    expect(mockCreateFetchComponent).toHaveBeenCalledWith(getHeadersWithUserAgent('lambdas-client'))
+    expect(mockCreateFetchComponent).toHaveBeenCalledWith({ headers: getHeadersWithUserAgent('lambdas-client') })
   })
 
   it('the CatalystClient should set the fetcher to use with default User-Agent header', () => {
     new CatalystClient({ catalystUrl: 'anUrl' })
 
-    expect(mockCreateFetchComponent).toHaveBeenCalledWith(getHeadersWithUserAgent('catalyst-client'))
+    expect(mockCreateFetchComponent).toHaveBeenCalledWith({ headers: getHeadersWithUserAgent('catalyst-client') })
   })
 })

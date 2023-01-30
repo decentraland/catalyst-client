@@ -31,7 +31,9 @@ export class LambdasClient implements LambdasAPI {
 
   constructor(options: LambdasClientOptions) {
     this.lambdasUrl = sanitizeUrl(options.lambdasUrl)
-    this.fetcher = options.fetcher ? options.fetcher : createFetchComponent(getHeadersWithUserAgent('lambdas-client'))
+    this.fetcher = options.fetcher
+      ? options.fetcher
+      : createFetchComponent({ headers: getHeadersWithUserAgent('lambdas-client') })
   }
 
   async fetchProfiles(ethAddresses: string[], options?: RequestOptions): Promise<any[]> {
@@ -41,6 +43,7 @@ export class LambdasClient implements LambdasAPI {
 
     const requestOptions = mergeRequestOptions(options ? options : {}, {
       body: JSON.stringify({ ids: ethAddresses }),
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     })
 
@@ -54,13 +57,13 @@ export class LambdasClient implements LambdasAPI {
     }
 
     return splitAndFetchPaginated({
+      fetcher: this.fetcher,
+      options,
       baseUrl: this.lambdasUrl,
       path: '/collections/wearables',
       queryParams,
       uniqueBy: 'id',
-      elementsProperty: 'wearables',
-      options: options,
-      fetcher: this.fetcher
+      elementsProperty: 'wearables'
     })
   }
 
@@ -89,11 +92,11 @@ export class LambdasClient implements LambdasAPI {
       ['includeDefinitions', [`${includeDefinitions}`]]
     ])
     return splitAndFetch<B extends false ? OwnedItemsWithoutDefinition : OwnedItemsWithDefinition>({
+      fetcher: this.fetcher,
+      options,
       baseUrl: this.lambdasUrl,
       path: `/collections/wearables-by-owner/${ethAddress}`,
-      queryParams,
-      options: options,
-      fetcher: this.fetcher
+      queryParams
     })
   }
 
@@ -104,13 +107,13 @@ export class LambdasClient implements LambdasAPI {
     }
 
     return splitAndFetchPaginated({
+      fetcher: this.fetcher,
+      options,
       baseUrl: this.lambdasUrl,
       path: '/collections/emotes',
       queryParams,
       uniqueBy: 'id',
-      elementsProperty: 'emotes',
-      options: options,
-      fetcher: this.fetcher
+      elementsProperty: 'emotes'
     })
   }
 
@@ -120,11 +123,11 @@ export class LambdasClient implements LambdasAPI {
     options?: RequestOptions
   ): Promise<OwnedItems<B>> {
     return splitAndFetch<B extends false ? OwnedItemsWithoutDefinition : OwnedItemsWithDefinition>({
+      fetcher: this.fetcher,
+      options,
       baseUrl: this.lambdasUrl,
       path: `/collections/emotes-by-owner/${ethAddress}`,
-      queryParams: { name: 'includeDefinitions', values: [`${includeDefinitions}`] },
-      options: options,
-      fetcher: this.fetcher
+      queryParams: { name: 'includeDefinitions', values: [`${includeDefinitions}`] }
     })
   }
 
@@ -139,11 +142,11 @@ export class LambdasClient implements LambdasAPI {
       ['includeDefinitions', [`${includeDefinitions}`]]
     ])
     return splitAndFetch<B extends false ? OwnedItemsWithoutDefinition : OwnedItemsWithDefinition>({
+      fetcher: this.fetcher,
+      options,
       baseUrl: this.lambdasUrl,
       path: `/collections/emotes-by-owner/${ethAddress}`,
-      queryParams,
-      options: options,
-      fetcher: this.fetcher
+      queryParams
     })
   }
 

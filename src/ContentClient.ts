@@ -22,7 +22,9 @@ export class ContentClient implements ContentAPI {
   constructor(options: ContentClientOptions) {
     this.contentUrl = sanitizeUrl(options.contentUrl)
     this.deploymentBuilderClass = options.deploymentBuilderClass ? options.deploymentBuilderClass : DeploymentBuilder
-    this.fetcher = options.fetcher ? options.fetcher : createFetchComponent(getHeadersWithUserAgent('content-client'))
+    this.fetcher = options.fetcher
+      ? options.fetcher
+      : createFetchComponent({ headers: getHeadersWithUserAgent('content-client') })
   }
 
   async buildEntityWithoutNewFiles({
@@ -92,10 +94,9 @@ export class ContentClient implements ContentAPI {
       method: 'POST'
     })
 
-    const { creationTimestamp } = (await this.fetcher.fetch(
-      `${this.contentUrl}/entities${fix ? '?fix=true' : ''}`,
-      requestOptions
-    )) as any
+    const { creationTimestamp } = (await (
+      await this.fetcher.fetch(`${this.contentUrl}/entities${fix ? '?fix=true' : ''}`, requestOptions)
+    ).json()) as any
     return creationTimestamp
   }
 
@@ -173,12 +174,12 @@ export class ContentClient implements ContentAPI {
     }
 
     return splitAndFetch<{ cid: string; available: boolean }>({
+      fetcher: this.fetcher,
+      options,
       baseUrl: this.contentUrl,
       path: `/available-content`,
       queryParams: { name: 'cid', values: cids },
-      uniqueBy: 'cid',
-      fetcher: this.fetcher,
-      options: options
+      uniqueBy: 'cid'
     })
   }
 
