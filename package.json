@@ -69,9 +69,10 @@
     "validate-commit-msg": "^1.1.3"
   },
   "prettier": {
+    "printWidth": 120,
     "semi": false,
     "singleQuote": true,
-    "printWidth": 120,
-    "trailingComma": "none"
+    "trailingComma": "none",
+    "tabWidth": 2
   }
 }
