@@ -13,3 +13,5 @@ updates:
     - dependency-name: "@well-known-components/*"
     - dependency-name: "dcl-*"
   versioning-strategy: auto
+  commit-message:
+    prefix: "chore: "
