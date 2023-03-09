@@ -1,10 +1,9 @@
 import { hashV0, hashV1 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
-import { IFetchComponent } from '@well-known-components/http-server'
 import { retry } from 'dcl-catalyst-commons'
 import FormData from 'form-data'
 import { AvailableContentResult, ContentAPI } from './ContentAPI'
-import { RequestOptions, createFetchComponent, mergeRequestOptions } from './utils'
+import { IFetchComponent, RequestOptions, createFetchComponent, mergeRequestOptions } from './utils'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 import { addModelToFormData, getHeadersWithUserAgent, isNode, sanitizeUrl, splitAndFetch } from './utils/Helper'
 

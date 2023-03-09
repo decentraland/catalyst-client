@@ -17,8 +17,7 @@ import {
   splitAndFetchPaginated
 } from './utils/Helper'
 
-import { IFetchComponent } from '@well-known-components/http-server'
-import { RequestOptions, createFetchComponent } from './utils'
+import { IFetchComponent, RequestOptions, createFetchComponent } from './utils'
 
 export type LambdasClientOptions = {
   lambdasUrl: string

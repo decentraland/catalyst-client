@@ -1,5 +1,4 @@
 import { Entity } from '@dcl/schemas'
-import { IFetchComponent } from '@well-known-components/http-server'
 import { HealthStatus } from 'dcl-catalyst-commons'
 import { CatalystAPI } from './CatalystAPI'
 import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient } from './ContentClient'
@@ -9,6 +8,7 @@ import {
   DeploymentBuilder,
   DeploymentData,
   DeploymentPreparationData,
+  IFetchComponent,
   RequestOptions,
   createFetchComponent,
   getHeadersWithUserAgent,

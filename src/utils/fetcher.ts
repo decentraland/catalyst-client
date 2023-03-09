@@ -1,4 +1,3 @@
-import { IFetchComponent } from '@well-known-components/http-server'
 import * as crossFetch from 'cross-fetch'
 import * as nodeFetch from 'node-fetch'
 
@@ -10,6 +9,10 @@ export type RequestOptions = nodeFetch.RequestInit & {
 export type RequestInfo = nodeFetch.RequestInfo
 
 export type Response = nodeFetch.Response
+
+export type IFetchComponent = {
+  fetch(url: RequestInfo, init?: RequestOptions): Promise<Response>
+}
 
 export function createFetchComponent(defaultOptions: RequestOptions = { timeout: 0 }): IFetchComponent {
   async function internalFetch(url: RequestInfo, init: RequestOptions): Promise<Response> {

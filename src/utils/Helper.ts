@@ -1,7 +1,6 @@
-import { IFetchComponent } from '@well-known-components/http-server'
 import type FormData from 'form-data'
 import { RUNNING_VERSION } from './Environment'
-import { RequestOptions, createFetchComponent } from './fetcher'
+import { IFetchComponent, RequestOptions, createFetchComponent } from './fetcher'
 
 export function addModelToFormData(model: any, form: FormData, namespace = ''): FormData {
   for (const propertyName in model) {
