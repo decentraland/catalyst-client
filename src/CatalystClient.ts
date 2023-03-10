@@ -1,18 +1,27 @@
 import { Entity } from '@dcl/schemas'
-import { Fetcher, HealthStatus, RequestOptions } from 'dcl-catalyst-commons'
+import { HealthStatus } from 'dcl-catalyst-commons'
 import { CatalystAPI } from './CatalystAPI'
 import { BuildEntityOptions, BuildEntityWithoutFilesOptions, ContentClient } from './ContentClient'
 import { EmotesFilters, OwnedItems, ServerMetadata, WearablesFilters } from './LambdasAPI'
 import { LambdasClient } from './LambdasClient'
+import {
+  DeploymentBuilder,
+  DeploymentData,
+  DeploymentPreparationData,
+  IFetchComponent,
+  RequestOptions,
+  createFetchComponent,
+  getHeadersWithUserAgent,
+  sanitizeUrl
+} from './utils'
 import { clientConnectedToCatalystIn } from './utils/CatalystClientBuilder'
-import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
-import { getHeadersWithUserAgent, sanitizeUrl } from './utils/Helper'
 
 export type CatalystClientOptions = {
   catalystUrl: string
-  fetcher?: Fetcher
+  fetcher?: IFetchComponent
   deploymentBuilderClass?: typeof DeploymentBuilder
 }
+
 export class CatalystClient implements CatalystAPI {
   private readonly contentClient: ContentClient
   private readonly lambdasClient: LambdasClient
@@ -22,9 +31,7 @@ export class CatalystClient implements CatalystAPI {
     this.catalystUrl = sanitizeUrl(options.catalystUrl)
     const fetcher = options.fetcher
       ? options.fetcher
-      : new Fetcher({
-          headers: getHeadersWithUserAgent('catalyst-client')
-        })
+      : createFetchComponent({ headers: getHeadersWithUserAgent('catalyst-client') })
     this.contentClient = new ContentClient({
       contentUrl: this.catalystUrl + '/content',
       fetcher: fetcher,

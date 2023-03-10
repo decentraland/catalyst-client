@@ -1,30 +1,29 @@
 import { hashV0, hashV1 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
-import { Fetcher, mergeRequestOptions, RequestOptions, retry } from 'dcl-catalyst-commons'
+import { retry } from 'dcl-catalyst-commons'
 import FormData from 'form-data'
 import { AvailableContentResult, ContentAPI } from './ContentAPI'
+import { IFetchComponent, RequestOptions, createFetchComponent, mergeRequestOptions } from './utils'
 import { DeploymentBuilder, DeploymentData, DeploymentPreparationData } from './utils/DeploymentBuilder'
 import { addModelToFormData, getHeadersWithUserAgent, isNode, sanitizeUrl, splitAndFetch } from './utils/Helper'
 
 export type ContentClientOptions = {
   contentUrl: string
-  fetcher?: Fetcher
+  fetcher?: IFetchComponent
   deploymentBuilderClass?: typeof DeploymentBuilder
 }
 
 export class ContentClient implements ContentAPI {
   private readonly contentUrl: string
-  private readonly fetcher: Fetcher
+  private readonly fetcher: IFetchComponent
   private readonly deploymentBuilderClass: typeof DeploymentBuilder
 
   constructor(options: ContentClientOptions) {
     this.contentUrl = sanitizeUrl(options.contentUrl)
+    this.deploymentBuilderClass = options.deploymentBuilderClass ? options.deploymentBuilderClass : DeploymentBuilder
     this.fetcher = options.fetcher
       ? options.fetcher
-      : new Fetcher({
-          headers: getHeadersWithUserAgent('content-client')
-        })
-    this.deploymentBuilderClass = options.deploymentBuilderClass ? options.deploymentBuilderClass : DeploymentBuilder
+      : createFetchComponent({ headers: getHeadersWithUserAgent('content-client') })
   }
 
   async buildEntityWithoutNewFiles({
@@ -90,24 +89,25 @@ export class ContentClient implements ContentAPI {
     const form = await this.buildEntityFormDataForDeployment(deployData, options)
 
     const requestOptions = mergeRequestOptions(options ? options : {}, {
-      body: form as any
+      body: form as any,
+      method: 'POST'
     })
 
-    const { creationTimestamp } = (await this.fetcher.postForm(
-      `${this.contentUrl}/entities${fix ? '?fix=true' : ''}`,
-      requestOptions
-    )) as any
+    const { creationTimestamp } = (await (
+      await this.fetcher.fetch(`${this.contentUrl}/entities${fix ? '?fix=true' : ''}`, requestOptions)
+    ).json()) as any
     return creationTimestamp
   }
 
   async deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
     const form = await this.buildEntityFormDataForDeployment(deployData, options)
 
-    return await this.fetcher.fetch(`${this.contentUrl}/entities`, {
-      ...options,
+    const requestOptions = mergeRequestOptions(options ? options : {}, {
       body: form as any,
       method: 'POST'
     })
+
+    return await this.fetcher.fetch(`${this.contentUrl}/entities`, requestOptions)
   }
 
   async fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]> {
@@ -115,17 +115,13 @@ export class ContentClient implements ContentAPI {
       return Promise.reject(`You must set at least one pointer.`)
     }
 
-    return (
-      await this.fetcher.fetch(`${this.contentUrl}/entities/active`, {
-        ...options,
-        body: JSON.stringify({ pointers }),
-        method: 'POST',
-        headers: {
-          ...options?.headers,
-          'Content-Type': 'application/json'
-        }
-      })
-    ).json()
+    const requestOptions = mergeRequestOptions(options ? options : {}, {
+      body: JSON.stringify({ pointers }),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+
+    return (await this.fetcher.fetch(`${this.contentUrl}/entities/active`, requestOptions)).json()
   }
 
   async fetchEntitiesByIds(ids: string[], options?: RequestOptions): Promise<Entity[]> {
@@ -133,17 +129,13 @@ export class ContentClient implements ContentAPI {
       return Promise.reject(`You must set at least one id.`)
     }
 
-    return (
-      await this.fetcher.fetch(`${this.contentUrl}/entities/active`, {
-        ...options,
-        headers: {
-          ...options?.headers,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ ids: ids }),
-        method: 'POST'
-      })
-    ).json()
+    const requestOptions = mergeRequestOptions(options ? options : {}, {
+      body: JSON.stringify({ ids }),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+
+    return (await this.fetcher.fetch(`${this.contentUrl}/entities/active`, requestOptions)).json()
   }
 
   async fetchEntityById(id: string, options?: RequestOptions): Promise<Entity> {
@@ -160,7 +152,7 @@ export class ContentClient implements ContentAPI {
 
     return retry(
       async () => {
-        const content = await this.fetcher.fetchBuffer(`${this.contentUrl}/contents/${contentHash}`, timeout)
+        const content = await (await this.fetcher.fetch(`${this.contentUrl}/contents/${contentHash}`, timeout)).buffer()
         const downloadedHash = contentHash.startsWith('Qm') ? await hashV0(content) : await hashV1(content)
 
         // Sometimes, the downloaded file is not complete, so the hash turns out to be different.
@@ -182,11 +174,11 @@ export class ContentClient implements ContentAPI {
 
     return splitAndFetch<{ cid: string; available: boolean }>({
       fetcher: this.fetcher,
+      options,
       baseUrl: this.contentUrl,
       path: `/available-content`,
       queryParams: { name: 'cid', values: cids },
-      uniqueBy: 'cid',
-      options
+      uniqueBy: 'cid'
     })
   }
 
@@ -195,7 +187,7 @@ export class ContentClient implements ContentAPI {
   }
 
   /** Given an array of file hashes, return a set with those already uploaded on the server */
-  private async hashesAlreadyOnServer(hashes: string[], options: RequestOptions | undefined): Promise<Set<string>> {
+  private async hashesAlreadyOnServer(hashes: string[], options?: RequestOptions): Promise<Set<string>> {
     const result: AvailableContentResult = await this.isContentAvailable(hashes, options)
 
     const alreadyUploaded = result.filter(($) => $.available).map(({ cid }) => cid)

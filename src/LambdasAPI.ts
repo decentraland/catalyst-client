@@ -1,4 +1,4 @@
-import { RequestOptions } from 'dcl-catalyst-commons'
+import { RequestOptions } from './utils'
 
 export type ServerMetadata = {
   baseUrl: string

@@ -60,19 +60,19 @@ export = (
     ],
     "goerli": [
         {
+            "address": "https://peer-ap1.decentraland.zone",
+            "owner": "0xE4747cc0606a622E9388BecbDf528ABE94E68F1c",
+            "id": "0xdac0e1d5e7bf7311873e0d2f05eaade8b96a162f80fb9ff631984f397904fc2c"
+        },
+        {
             "address": "https://peer.decentraland.zone",
             "owner": "0x079BED9C31CB772c4C156F86E1CFf15bf751ADd0",
-            "id": "0xcf660ac37597dcaf97b3cc1613deb0cda68246901786cd30d09d91f8db79ab8e"
+            "id": "0x3ab65b7710c476a899412fc8bfcd6f4d55fa68f5a58bb548bb8dbff9f3ae76be"
         },
         {
             "address": "https://peer-ue-2.decentraland.zone",
             "owner": "0xe355ec3f4ac741fCEf88719001c825fe5138f0E1",
-            "id": "0x9d9c1367fc02b487c2f9e26df5eff0a5f366857e75529a241ef22ba9cfcfc841"
-        },
-        {
-            "address": "https://peer-ap1.decentraland.zone",
-            "owner": "0xE4747cc0606a622E9388BecbDf528ABE94E68F1c",
-            "id": "0xdac0e1d5e7bf7311873e0d2f05eaade8b96a162f80fb9ff631984f397904fc2c"
+            "id": "0x420dee17fad0e311afa59ffb8dc2dd724700e508fc9ccf47806ce1763b152394"
         }
     ]
 }
