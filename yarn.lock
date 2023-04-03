@@ -347,9 +347,9 @@
     ajv-keywords "^5.1.0"
 
 "@dcl/schemas@^6.4.2":
-  version "6.4.2"
-  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-6.4.2.tgz#0f318b7b74943cae9288b24b3ebd8881aea057d3"
-  integrity sha512-yO8GgC7RIU17951VBGIx2tA0xMVRv6Ia7rR6V97yY77/fYLAIn1FqW/20MEmonDzyJJ5YnuDa/8gVk3XusIXYA==
+  version "6.14.0"
+  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-6.14.0.tgz#ea530ecb5843190d4b5fffc066169ce66006c581"
+  integrity sha512-ZBzYwAJ6tOxYx1kF8pqr1Ybc99ww0UnGneVhKg6bXXIop6ItWuxXy15voU5ctcjtbG+/f327EquTkD4rBfi3Tg==
   dependencies:
     ajv "^8.11.0"
     ajv-errors "^3.0.0"
