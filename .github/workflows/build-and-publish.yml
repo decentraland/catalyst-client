@@ -9,6 +9,7 @@ on:
     types:
       - created
 
+
 jobs:
   build-publish:
     uses: decentraland/platform-actions/.github/workflows/libs-build-and-publish.yml@main
