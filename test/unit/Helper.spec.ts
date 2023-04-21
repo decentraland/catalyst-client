@@ -1,11 +1,11 @@
-import { createFetchComponent } from '../../src'
+import { createFetchComponent } from '../../src/client/utils/fetcher'
 import {
   MAX_URL_LENGTH,
   convertFiltersToQueryParams,
   sanitizeUrl,
   splitAndFetchPaginated,
   splitValuesIntoManyQueries
-} from '../../src/utils/Helper'
+} from '../../src/client/utils/Helper'
 
 describe('Helper', () => {
   it('When has spaces and trailing slash, they are removed', () => {

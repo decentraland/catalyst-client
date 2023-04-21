@@ -1,57 +1,12 @@
 import { hashV0 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
 import { IFetchComponent } from '@well-known-components/http-server'
-import { deepEqual, instance, mock, verify, when } from 'ts-mockito'
-import { AvailableContentResult } from '../src/ContentAPI'
-import { ContentClient } from '../src/ContentClient'
-import { DeploymentBuilder } from '../src/utils/DeploymentBuilder'
-import { createFetchComponent } from './../src/utils'
+import { AvailableContentResult } from 'dcl-catalyst-commons'
+import { createContentClient, ContentClient } from '../src'
+import { createFetchComponent } from '../src/client/utils/fetcher'
 
 describe('ContentClient', () => {
   const URL = 'https://url.com'
-
-  describe('When calling buildEntityWithoutNewFiles', () => {
-    let fetcher
-    const type = EntityType.PROFILE
-    const pointers = ['p1']
-    const hashesByKey = undefined
-    const metadata = {}
-    const currentTime = 100
-    let deploymentBuilderClassMock: typeof DeploymentBuilder
-
-    beforeEach(async () => {
-      deploymentBuilderClassMock = mock<typeof DeploymentBuilder>(DeploymentBuilder)
-
-      when(
-        deploymentBuilderClassMock.buildEntityWithoutNewFiles({
-          type,
-          pointers,
-          hashesByKey,
-          metadata,
-          timestamp: currentTime,
-          contentUrl: URL
-        })
-      ).thenResolve()
-
-      const client = buildClient(URL, fetcher, instance(deploymentBuilderClassMock))
-      await client.buildEntityWithoutNewFiles({ type, pointers, hashesByKey, metadata, timestamp: currentTime })
-    })
-
-    it('should call the deployer builder with the expected parameters', () => {
-      verify(
-        deploymentBuilderClassMock.buildEntityWithoutNewFiles(
-          deepEqual({
-            type,
-            pointers,
-            hashesByKey,
-            metadata,
-            timestamp: currentTime,
-            contentUrl: URL
-          })
-        )
-      ).once()
-    })
-  })
 
   describe('buildEntityFormDataForDeployment', () => {
     it('works as expected', async () => {
@@ -101,50 +56,6 @@ describe('ContentClient', () => {
           .replace(/^(\s*\|\s)*/gm, '') // scala, I miss you buddy...
           .trim()
       )
-    })
-  })
-
-  describe('When calling buildDeployment', () => {
-    let fetcher: IFetchComponent
-    const type = EntityType.PROFILE
-    const pointers = ['p1']
-    const files = new Map<string, Uint8Array>()
-    files.set('QmA', new Uint8Array([1, 2, 3]))
-    files.set('QmB', Buffer.from('asd', 'utf-8'))
-    const metadata = {}
-    const currentTime = 100
-    let client: ContentClient
-    let deploymentBuilderClassMock: typeof DeploymentBuilder
-
-    beforeEach(async () => {
-      deploymentBuilderClassMock = mock<typeof DeploymentBuilder>(DeploymentBuilder)
-
-      when(
-        deploymentBuilderClassMock.buildEntity({
-          type,
-          pointers,
-          files,
-          metadata,
-          timestamp: currentTime
-        })
-      ).thenResolve()
-
-      client = buildClient(URL, fetcher, instance(deploymentBuilderClassMock))
-      await client.buildEntity({ type, pointers, files, metadata, timestamp: currentTime })
-    })
-
-    it('should call the deployer builder with the expected parameters', () => {
-      verify(
-        deploymentBuilderClassMock.buildEntity(
-          deepEqual({
-            type,
-            pointers,
-            files,
-            metadata,
-            timestamp: currentTime
-          })
-        )
-      ).once()
     })
   })
 
@@ -311,15 +222,7 @@ describe('ContentClient', () => {
     }
   }
 
-  function buildClient(
-    URL: string,
-    fetcher?: IFetchComponent,
-    deploymentBuilderClass?: typeof DeploymentBuilder
-  ): ContentClient {
-    return new ContentClient({
-      contentUrl: URL,
-      fetcher,
-      deploymentBuilderClass: deploymentBuilderClass
-    })
+  function buildClient(url: string, fetcher: IFetchComponent): ContentClient {
+    return createContentClient({ url, fetcher })
   }
 })

@@ -2,4 +2,4 @@ dist
 jest.config.js
 scripts
 coverage
-src/CatalystsList.ts
+src/contracts/data.ts

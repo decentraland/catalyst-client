@@ -1,6 +1,7 @@
 import type FormData from 'form-data'
-import { RUNNING_VERSION } from './Environment'
 import { IFetchComponent, RequestOptions, createFetchComponent } from './fetcher'
+
+export const RUNNING_VERSION = process.env.CURRENT_VERSION ? process.env.CURRENT_VERSION : 'v3'
 
 export function addModelToFormData(model: any, form: FormData, namespace = ''): FormData {
   for (const propertyName in model) {

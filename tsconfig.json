@@ -10,7 +10,7 @@
     ],
     "types": [],
     "sourceMap": true,
-    "moduleResolution": "node",
+    "moduleResolution": "node16",
     "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,
     "noImplicitReturns": true,

@@ -1,11 +1,11 @@
 import { hashV1 } from '@dcl/hashing'
 import { Avatar } from '@dcl/schemas'
 import { EntityType, EntityVersion } from 'dcl-catalyst-commons'
-import { DeploymentBuilder } from '../../src/utils/DeploymentBuilder'
+import * as builder from '../../src/client/utils/DeploymentBuilder'
 
 describe('Deployment Builder', () => {
   it('When an entity is built with no pointers, then an exception is thrown', async () => {
-    await expect(DeploymentBuilder.buildEntity({ type: EntityType.PROFILE, pointers: [] })).rejects.toEqual(
+    await expect(builder.buildEntity({ type: EntityType.PROFILE, pointers: [] })).rejects.toEqual(
       new Error('All entities must have at least one pointer.')
     )
   })
@@ -22,7 +22,7 @@ describe('Deployment Builder', () => {
     const contentFiles = new Map([[fileId, fileContent]])
     const date = 100
 
-    const { entityId, files } = await DeploymentBuilder.buildEntity({
+    const { entityId, files } = await builder.buildEntity({
       type: EntityType.PROFILE,
       pointers: [pointer],
       files: contentFiles,
@@ -57,7 +57,7 @@ describe('Deployment Builder', () => {
 describe('EntityFactory', () => {
   it('When an entity is built with no pointers, then an exception is thrown', async () => {
     await expect(
-      DeploymentBuilder.buildEntityAndFile({
+      builder.buildEntityAndFile({
         type: EntityType.PROFILE,
         pointers: [],
         timestamp: 20,
@@ -67,7 +67,7 @@ describe('EntityFactory', () => {
   })
 
   it('When a v3 entity is built, CIDv1 is used', async () => {
-    const { entity, entityFile } = await DeploymentBuilder.buildEntityAndFile({
+    const { entity, entityFile } = await builder.buildEntityAndFile({
       type: EntityType.PROFILE,
       pointers: ['P1'],
       timestamp: 20,
@@ -81,7 +81,7 @@ describe('EntityFactory', () => {
   it('Fails on filesystem name collision', async () => {
     let didFail: any = null
     try {
-      await DeploymentBuilder.buildEntityAndFile({
+      await builder.buildEntityAndFile({
         type: EntityType.PROFILE,
         pointers: ['P1'],
         timestamp: 20,
@@ -99,7 +99,7 @@ describe('EntityFactory', () => {
   })
 
   it('Does not fail on correct filesystem', async () => {
-    await DeploymentBuilder.buildEntityAndFile({
+    await builder.buildEntityAndFile({
       type: EntityType.PROFILE,
       pointers: ['P1'],
       timestamp: 20,
@@ -111,7 +111,7 @@ describe('EntityFactory', () => {
   })
 
   it('When an entity without version, CIDv1 is used and default version is v3', async () => {
-    const { entity, entityFile } = await DeploymentBuilder.buildEntityAndFile({
+    const { entity, entityFile } = await builder.buildEntityAndFile({
       type: EntityType.PROFILE,
       pointers: ['P1'],
       timestamp: 20,
@@ -149,7 +149,7 @@ describe('EntityFactory', () => {
       interests: []
     }
 
-    const { entity, entityFile } = await DeploymentBuilder.buildEntityAndFile({
+    const { entity, entityFile } = await builder.buildEntityAndFile({
       type: EntityType.PROFILE,
       pointers: ['P1'],
       timestamp: 20,

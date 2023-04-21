@@ -1,6 +1,6 @@
 import { IFetchComponent } from '@well-known-components/http-server'
-import { LambdasClient } from '../src/index'
-import { createFetchComponent } from './../src/utils'
+import { createLambdasClient, LambdasClient } from '../src'
+import { createFetchComponent } from '../src/client/utils/fetcher'
 
 describe('LambdasClient', () => {
   const URL = 'https://url.com'
@@ -194,34 +194,13 @@ describe('LambdasClient', () => {
     expect(result).toEqual(requestResult)
   })
 
-  it('When fetching peer health, then the result is as expected', async () => {
-    const requestResult = {
-      aKey: 'Healthy'
-    }
-    const fetcher = createFetchComponent()
-    fetcher.fetch = jest.fn().mockResolvedValueOnce({ json: () => requestResult })
-    const client = buildClient(URL, fetcher)
-
-    const result = await client.fetchPeerHealth()
-
-    expect(result).toEqual(requestResult)
-  })
-
-  it('When retrieving lambdas url, then the result is as expected', () => {
-    const client = buildClient(URL, undefined)
-
-    const result = client.getLambdasUrl()
-
-    expect(result).toEqual(URL)
-  })
-
   function someResult() {
     return {
       someKey: 'someValue'
     }
   }
 
-  function buildClient(URL: string, fetcher?: IFetchComponent): LambdasClient {
-    return new LambdasClient({ lambdasUrl: URL, fetcher })
+  function buildClient(url: string, fetcher: IFetchComponent): LambdasClient {
+    return createLambdasClient({ url, fetcher })
   }
 })
