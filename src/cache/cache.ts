@@ -1,6 +1,7 @@
-import { CatalystServerInfo } from '..//types'
+import { CatalystServerInfo } from '../types'
 import { cache } from './data'
-import { Network } from './types'
+
+export type Network = 'mainnet' | 'goerli'
 
 export function getCatalystServersFromCache(network: Network): CatalystServerInfo[] {
   return cache.catalysts[network]
