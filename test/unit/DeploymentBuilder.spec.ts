@@ -1,6 +1,5 @@
 import { hashV1 } from '@dcl/hashing'
-import { Avatar } from '@dcl/schemas'
-import { EntityType, EntityVersion } from 'dcl-catalyst-commons'
+import { Avatar, EntityType } from '@dcl/schemas'
 import * as builder from '../../src/client/utils/DeploymentBuilder'
 
 describe('Deployment Builder', () => {
@@ -118,7 +117,6 @@ describe('EntityFactory', () => {
       content: []
     })
 
-    expect(entity.version).toEqual(EntityVersion.V3)
     expect(entity.id).toEqual(await hashV1(entityFile))
     expect(entity.id).toEqual('bafkreidsn6yrxu6lpuk4sdaluysuil33ihpgq2ry7kawehb2d3ogedaikm')
   })

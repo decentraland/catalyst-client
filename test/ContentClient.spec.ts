@@ -1,8 +1,7 @@
 import { hashV0 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
 import { IFetchComponent } from '@well-known-components/http-server'
-import { AvailableContentResult } from 'dcl-catalyst-commons'
-import { createContentClient, ContentClient } from '../src'
+import { createContentClient, ContentClient, AvailableContentResult } from '../src'
 import { createFetchComponent } from '../src/client/utils/fetcher'
 
 describe('ContentClient', () => {
@@ -154,7 +153,7 @@ describe('ContentClient', () => {
     })
     const client = buildClient(URL, fetcher)
 
-    const result = await client.downloadContent(fileHash, { waitTime: '20' })
+    const result = await client.downloadContent(fileHash, { waitTime: 20 })
 
     // Assert that the correct buffer is returned, and that there was a retry attempt
     expect(result).toEqual(realBuffer)
@@ -174,7 +173,7 @@ describe('ContentClient', () => {
     const client = buildClient(URL, fetcher)
 
     // Assert that the request failed, and that the client tried many times as expected
-    await expect(client.downloadContent(fileHash, { attempts: 2, waitTime: '20' })).rejects.toEqual(
+    await expect(client.downloadContent(fileHash, { attempts: 2, waitTime: 20 })).rejects.toEqual(
       new Error(`Failed to fetch file with hash ${fileHash} from ${URL}`)
     )
 

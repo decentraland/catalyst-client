@@ -1,6 +1,5 @@
 import { hashV0, hashV1 } from '@dcl/hashing'
 import { Entity } from '@dcl/schemas'
-import { retry } from 'dcl-catalyst-commons'
 import FormData from 'form-data'
 import {
   BuildEntityOptions,
@@ -10,9 +9,9 @@ import {
   DeploymentPreparationData
 } from './types'
 import { RequestOptions } from './utils/fetcher'
+import { retry } from './utils/retry'
 import * as builder from './utils/DeploymentBuilder'
 import { addModelToFormData, isNode, mergeRequestOptions, sanitizeUrl, splitAndFetch } from './utils/Helper'
-import { AvailableContentResult } from 'dcl-catalyst-commons'
 
 function arrayBufferFrom(value: Buffer | Uint8Array) {
   if (value.buffer) {
@@ -20,6 +19,11 @@ function arrayBufferFrom(value: Buffer | Uint8Array) {
   }
   return value
 }
+
+export type AvailableContentResult = {
+  cid: string
+  available: boolean
+}[]
 
 export type ContentClient = {
   /** Build entities */
@@ -58,7 +62,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
     timestamp
   }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData> {
     const result = timestamp ? timestamp : Date.now()
-    return builder.buildEntityWithoutNewFiles({
+    return builder.buildEntityWithoutNewFiles(fetcher, {
       type,
       pointers,
       hashesByKey,
@@ -160,10 +164,11 @@ export function createContentClient(options: ClientOptions): ContentClient {
   }
 
   async function downloadContent(contentHash: string, options?: Partial<RequestOptions>): Promise<Buffer> {
-    const { attempts = 3, waitTime = '0.5s' } = options ? options : {}
+    const { attempts = 3, waitTime = 500 } = options ? options : {}
     const timeout = options?.timeout ? { timeout: options.timeout } : {}
 
     return retry(
+      `fetch file with hash ${contentHash} from ${contentUrl}`,
       async () => {
         const content = await (await fetcher.fetch(`${contentUrl}/contents/${contentHash}`, timeout)).buffer()
         const downloadedHash = contentHash.startsWith('Qm') ? await hashV0(content) : await hashV1(content)

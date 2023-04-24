@@ -3,7 +3,7 @@ import * as nodeFetch from 'node-fetch'
 
 export type RequestOptions = nodeFetch.RequestInit & {
   attempts?: number
-  waitTime?: string
+  waitTime?: number
 }
 
 export type RequestInfo = nodeFetch.RequestInfo

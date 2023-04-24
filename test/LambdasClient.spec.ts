@@ -1,5 +1,5 @@
-import { IFetchComponent } from '@well-known-components/http-server'
 import { createLambdasClient, LambdasClient } from '../src'
+import { IFetchComponent } from '../src/client/types'
 import { createFetchComponent } from '../src/client/utils/fetcher'
 
 describe('LambdasClient', () => {
