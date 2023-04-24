@@ -41,7 +41,7 @@ async function main(): Promise<void> {
 
   const s = `export const cache = ${JSON.stringify(content, null, 4)}`
 
-  await fs.promises.writeFile('src/contracts/data.ts', Buffer.from(s))
+  await fs.promises.writeFile('src/cache/data.ts', Buffer.from(s))
 
   console.log('Cache updated')
 }
