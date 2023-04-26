@@ -11,19 +11,19 @@ import { connectedToRandomCatalyst } from 'dcl-catalyst-client'
 import { getCatalystServersFromCache } from './../dist/cache/cache'
 import { createFetchComponent } from './../dist/client/utils/fetcher'
 
-async function run() {
-  // Connect to a catalyst randomly choosen from the catalyst-client snapshot
-  const fetcher = createFetchComponent()
-  const nodes = getCatalystServersFromCache('mainnet')
-  const catalyst = await connectedToRandomCatalyst(nodes, { fetcher })
-  const catalystInfo = await catalyst?.getAbout(100)
-  const contentClient = await catalyst?.getContentClient()
-  const lambdasClient = await catalyst?.getLambdasClient()
+// Connect to a catalyst randomly choosen from the catalyst-client snapshot
+const fetcher = createFetchComponent()
+const nodes = getCatalystServersFromCache('mainnet')
+const catalyst = await connectedToRandomCatalyst(nodes, { fetcher })
 
-  return { catalystInfo, contentClient, lambdasClient }
+if (!catalyst) {
+  console.log("No catalyst node is available right now")
+  return
 }
 
-run()
+const catalystInfo = await catalyst?.getAbout(100)
+const contentClient = await catalyst?.getContentClient()
+const lambdasClient = await catalyst?.getLambdasClient()
 ```
 
 ## Deploy an entity
@@ -46,32 +46,24 @@ async function resolveClient() {
   return await catalyst.getContentClient()
 }
 
-async function run(params: { identity: { privateKey: string, address: string } }) {
-  const { identity } = params
+const identity = { privateKey: 'privatekey', address: '0xfbf2b0392d969db533189b596708ba9ba7f4e3cd' }
 
-  const content = await resolveClient()
+const content = await resolveClient()
 
-  const { entityId, files } = await content.buildEntity({
-    type: EntityType.PROFILE,
-    pointers: PROFILE_POINTERS,
-    metadata: PROFILE_METADATA
-  })
+const { entityId, files } = await content.buildEntity({
+  type: EntityType.PROFILE,
+  pointers: PROFILE_POINTERS,
+  metadata: PROFILE_METADATA
+})
 
-  // This is up to you. You will need to figure out how to make the owner of the pointer sign the entity id
-  const messageHash = Authenticator.createEthereumMessageHash(entityId)
-  const signature = EthCrypto.sign(identity.privateKey, Buffer.from(messageHash).toString('hex'))
+// This is up to you. You will need to figure out how to make the owner of the pointer sign the entity id
+const messageHash = Authenticator.createEthereumMessageHash(entityId)
+const signature = EthCrypto.sign(identity.privateKey, Buffer.from(messageHash).toString('hex'))
 
-  // You can then create a simple auth chain like this, or a more complex one.
-  const authChain = Authenticator.createSimpleAuthChain(entityId, identity.address, signature)
-  const deployData = { entityId, files, authChain }
+// You can then create a simple auth chain like this, or a more complex one.
+const authChain = Authenticator.createSimpleAuthChain(entityId, identity.address, signature)
+const deployData = { entityId, files, authChain }
 
-  // Deploy the actual entity
-  await content.deploy(deployData)
-}
-
-const receivedParams = {
-  identity: { privateKey: 'privatekey', address: '0xfbf2b0392d969db533189b596708ba9ba7f4e3cd' }
-}
-
-run(receivedParams)
+// Deploy the actual entity
+await content.deploy(deployData)
 ```
