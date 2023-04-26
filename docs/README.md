@@ -2,11 +2,15 @@
 
 The examples in this document illustrate the implementation of common workflows using the second version of `catalyst-client`.
 
-## Coonect to random Catalyst
+## Connect to random Catalyst
 
 The following section outlines the steps to successfully connect to a random catalyst when there is no need to communicate with any particular node.
 
 ```javascript
+import { connectedToRandomCatalyst } from 'dcl-catalyst-client'
+import { getCatalystServersFromCache } from './../dist/cache/cache'
+import { createFetchComponent } from './../dist/client/utils/fetcher'
+
 async function run() {
   // Connect to a catalyst randomly choosen from the catalyst-client snapshot
   const fetcher = createFetchComponent()
@@ -18,15 +22,30 @@ async function run() {
 
   return { catalystInfo, contentClient, lambdasClient }
 }
+
+run()
 ```
 
-_Refer to its [implementation file](./examples/connect-to-random-catalyst.ts) for more details._
-
-## Deploy
+## Deploy an entity
 
 The following section outlines the steps to deploy an entity to the Decentraland network.
 
 ```javascript
+import { Authenticator } from '@dcl/crypto'
+import { createCatalystClient } from 'dcl-catalyst-client'
+import { createFetchComponent } from 'dcl-catalyst-client/dist/client/utils/fetcher'
+import * as EthCrypto from 'eth-crypto'
+import { EntityType } from '@dcl/schemas'
+import { PROFILE_METADATA, PROFILE_POINTERS } from './data/inputs'
+
+async function resolveClient() {
+  // Build the client, Node is harcoded for simplicity
+  const fetcher = createFetchComponent()
+  const catalyst = await createCatalystClient({ url: 'https://peer-ec2.decentraland.org', fetcher })
+
+  return await catalyst.getContentClient()
+}
+
 async function run(params: { identity: { privateKey: string, address: string } }) {
   const { identity } = params
 
@@ -49,6 +68,10 @@ async function run(params: { identity: { privateKey: string, address: string } }
   // Deploy the actual entity
   await content.deploy(deployData)
 }
-```
 
-_Refer to its [implementation file](./examples/deploy.ts) for more details._
+const receivedParams = {
+  identity: { privateKey: 'privatekey', address: '0xfbf2b0392d969db533189b596708ba9ba7f4e3cd' }
+}
+
+run(receivedParams)
+```
