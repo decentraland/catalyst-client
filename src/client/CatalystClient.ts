@@ -1,4 +1,5 @@
-import { About, ClientOptions } from './types'
+import { ClientOptions } from './types'
+import { AboutResponse } from '@dcl/protocol/out-js/decentraland/realm/about.gen'
 import { sanitizeUrl } from './utils/Helper'
 import { createContentClient, ContentClient } from './ContentClient'
 import { createLambdasClient, LambdasClient } from './LambdasClient'
@@ -13,7 +14,7 @@ function shuffleArray<T>(arr: T[]): T[] {
 }
 
 export type CatalystClient = {
-  getAbout(ttl: number): Promise<About>
+  fetchAbout(): Promise<AboutResponse>
   getContentClient(): Promise<ContentClient>
   getLambdasClient(): Promise<LambdasClient>
 }
@@ -24,16 +25,14 @@ export async function createCatalystClient(options: ClientOptions): Promise<Cata
 
   let contentClient: undefined | ContentClient = undefined
   let lambdasClient: undefined | LambdasClient = undefined
-  let about: About | undefined = undefined
+  let about: AboutResponse | undefined = undefined
 
-  async function getAbout(ttl: number): Promise<About> {
-    if (!about || Date.now() - about.timestamp > ttl) {
-      const result = await fetcher.fetch(catalystUrl + '/about')
-      about = await result.json()
+  async function fetchAbout(): Promise<AboutResponse> {
+    const result = await fetcher.fetch(catalystUrl + '/about')
+    const about = await result.json()
 
-      if (!about) {
-        throw new Error('Invalid about response')
-      }
+    if (!about) {
+      throw new Error('Invalid about response')
     }
 
     return about
@@ -45,10 +44,10 @@ export async function createCatalystClient(options: ClientOptions): Promise<Cata
     }
 
     if (!about) {
-      about = await getAbout(0)
+      about = await fetchAbout()
     }
 
-    contentClient = await createContentClient({
+    contentClient = createContentClient({
       url: about.content!.publicUrl,
       fetcher
     })
@@ -62,10 +61,10 @@ export async function createCatalystClient(options: ClientOptions): Promise<Cata
     }
 
     if (!about) {
-      about = await getAbout(0)
+      about = await fetchAbout()
     }
 
-    lambdasClient = await createLambdasClient({
+    lambdasClient = createLambdasClient({
       url: about.lambdas!.publicUrl,
       fetcher
     })
@@ -74,7 +73,7 @@ export async function createCatalystClient(options: ClientOptions): Promise<Cata
   }
 
   return {
-    getAbout,
+    fetchAbout,
     getContentClient,
     getLambdasClient
   }
@@ -88,7 +87,7 @@ export async function connectedToRandomCatalyst(
 
   for (const server of shuffled) {
     const client = await createCatalystClient({ ...options, url: server.address })
-    const about = await client.getAbout(0)
+    const about = await client.fetchAbout()
 
     if (about.healthy) {
       return client

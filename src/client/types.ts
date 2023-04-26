@@ -1,5 +1,4 @@
 import { AuthChain, EntityType } from '@dcl/schemas'
-import { AboutResponse } from '@dcl/protocol/out-js/decentraland/realm/about.gen'
 import * as fetch from 'node-fetch'
 
 export type DeploymentPreparationData = {
@@ -53,10 +52,6 @@ export type OwnedItemsWithDefinition = OwnedItemsWithoutDefinition & { definitio
 export type OwnedItemsWithoutDefinition = {
   urn: string
   amount: number
-}
-
-export type About = AboutResponse & {
-  timestamp: number
 }
 
 export type IFetchComponent = {

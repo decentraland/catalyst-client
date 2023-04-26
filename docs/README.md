@@ -21,7 +21,7 @@ if (!catalyst) {
   return
 }
 
-const catalystInfo = await catalyst.getAbout(100)
+const catalystInfo = await catalyst.fetchAbout()
 const contentClient = await catalyst.getContentClient()
 const lambdasClient = await catalyst.getLambdasClient()
 ```
