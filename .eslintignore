@@ -3,3 +3,4 @@ jest.config.js
 scripts
 coverage
 src/cache/data.ts
+docs
