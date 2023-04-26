@@ -21,9 +21,9 @@ if (!catalyst) {
   return
 }
 
-const catalystInfo = await catalyst?.getAbout(100)
-const contentClient = await catalyst?.getContentClient()
-const lambdasClient = await catalyst?.getLambdasClient()
+const catalystInfo = await catalyst.getAbout(100)
+const contentClient = await catalyst.getContentClient()
+const lambdasClient = await catalyst.getLambdasClient()
 ```
 
 ## Deploy an entity
