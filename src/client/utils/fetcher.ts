@@ -20,7 +20,7 @@ export function withClientAgentInjection(fetcher: IFetchComponent): IFetchCompon
   return {
     fetch: async (url: RequestInfo, init?: RequestOptions): Promise<Response> => {
       const optionsWithInjectedClientAgent = mergeRequestOptions(init ? init : {}, {
-        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown' }
+        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown' }
       })
 
       return await fetcher.fetch(url, optionsWithInjectedClientAgent)

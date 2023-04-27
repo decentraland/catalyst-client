@@ -95,7 +95,7 @@ describe('ContentClient', () => {
     expect(result).toEqual(requestResult)
   })
 
-  it('When fetching by pointers, then the Client-Agent default header is included', async () => {
+  it('When fetching by pointers, then the X-Requested-With default header is included', async () => {
     const requestResult: Entity[] = [someEntity()]
     const pointer = 'P'
     const fetcher = createFetchComponent()
@@ -108,7 +108,7 @@ describe('ContentClient', () => {
     expect(fetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
+        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
       })
     )
   })
@@ -137,7 +137,7 @@ describe('ContentClient', () => {
     expect(result).toEqual(requestResult)
   })
 
-  it('When fetching by ids, then the Client-Agent default header is included', async () => {
+  it('When fetching by ids, then the X-Requested-With default header is included', async () => {
     const requestResult: Entity[] = [someEntity()]
     const id = 'Id'
 
@@ -150,7 +150,7 @@ describe('ContentClient', () => {
     expect(fetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
+        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
       })
     )
   })
@@ -179,7 +179,7 @@ describe('ContentClient', () => {
     expect(result).toEqual(entity)
   })
 
-  it('When fetching by id, then the Client-Agent default header is included', async () => {
+  it('When fetching by id, then the X-Requested-With default header is included', async () => {
     const entity = someEntity()
     const requestResult: Entity[] = [entity]
     const id = 'Id'
@@ -193,7 +193,7 @@ describe('ContentClient', () => {
     expect(fetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
+        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
       })
     )
   })
@@ -237,7 +237,7 @@ describe('ContentClient', () => {
     expect(fetcher.fetch).toHaveBeenNthCalledWith(2, `${URL}/contents/${fileHash}`, expect.anything())
   })
 
-  it('When a file is downloaded, then the Client-Agent default header is included', async () => {
+  it('When a file is downloaded, then the X-Requested-With default header is included', async () => {
     const failBuffer = Buffer.from('Fail')
     const realBuffer = Buffer.from('Real')
     const fileHash = await hashV0(realBuffer)
@@ -253,7 +253,7 @@ describe('ContentClient', () => {
     expect(fetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown' }
+        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown' }
       })
     )
   })
@@ -287,7 +287,7 @@ describe('ContentClient', () => {
     expect(fetcher.fetch).not.toHaveBeenCalled()
   })
 
-  it('When checking if content is available, then the Client-Agent default header is included', async () => {
+  it('When checking if content is available, then the X-Requested-With default header is included', async () => {
     const [hash1, hash2] = ['hash1', 'hash2']
     const requestResult: AvailableContentResult = [
       { cid: hash1, available: true },
@@ -305,7 +305,7 @@ describe('ContentClient', () => {
     expect(fetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
+        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
       })
     )
   })

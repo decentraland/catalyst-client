@@ -57,7 +57,7 @@ describe('LambdasClient', () => {
     await expect(async () => client.fetchWearables(undefined)).rejects.toThrow('You must set at least one filter')
   })
 
-  it('When fetching for wearables, then the Client-Agent default header is included', async () => {
+  it('When fetching for wearables, then the X-Requested-With default header is included', async () => {
     const wearables = [{ id: 'wearableId' }]
     const requestResult = {
       wearables,
@@ -73,7 +73,7 @@ describe('LambdasClient', () => {
 
     expect(customFetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown' } })
+      expect.objectContaining({ headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown' } })
     )
   })
 
@@ -107,7 +107,7 @@ describe('LambdasClient', () => {
     expect(result).toEqual(requestResult)
   })
 
-  it('When fetching for owned wearables without definition, then the Client-Agent default header is included', async () => {
+  it('When fetching for owned wearables without definition, then the X-Requested-With default header is included', async () => {
     const ethAddress = 'ethAddress'
     const requestResult = [{ urn: 'urn', amount: 10 }]
 
@@ -122,7 +122,7 @@ describe('LambdasClient', () => {
     expect(customFetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
+        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
       })
     )
   })
@@ -151,7 +151,7 @@ describe('LambdasClient', () => {
     await expect(async () => client.fetchEmotes(undefined)).rejects.toThrow('You must set at least one filter')
   })
 
-  it('When fetching for emotes, then the Client-Agent default header is included', async () => {
+  it('When fetching for emotes, then the X-Requested-With default header is included', async () => {
     const emotes = [{ id: 'emoteId' }]
     const requestResult = {
       emotes,
@@ -169,7 +169,7 @@ describe('LambdasClient', () => {
     expect(customFetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown' }
+        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown' }
       })
     )
   })
@@ -204,7 +204,7 @@ describe('LambdasClient', () => {
     expect(result).toEqual(requestResult)
   })
 
-  it('When fetching for owned emotes, then the Client-Agent default header is included', async () => {
+  it('When fetching for owned emotes, then the X-Requested-With default header is included', async () => {
     const ethAddress = 'ethAddress'
     const requestResult = [{ urn: 'urn', amount: 10 }]
 
@@ -219,7 +219,7 @@ describe('LambdasClient', () => {
     expect(customFetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
+        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
       })
     )
   })
@@ -256,7 +256,7 @@ describe('LambdasClient', () => {
     expect(result).toEqual(requestResult)
   })
 
-  it('When fetching for owned third party wearables, then the Client-Agent default header is included', async () => {
+  it('When fetching for owned third party wearables, then the X-Requested-With default header is included', async () => {
     const ethAddress = 'ethAddress'
     const thirdPartyId = 'thirdPartyId'
     const requestResult = [{ urn: 'urn', amount: 10, definition: {} }]
@@ -272,7 +272,7 @@ describe('LambdasClient', () => {
     expect(customFetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
+        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
       })
     )
   })
@@ -288,7 +288,7 @@ describe('LambdasClient', () => {
     expect(result).toEqual(requestResult)
   })
 
-  it('When fetching catalysts approved by DAO, then the Client-Agent default header is included', async () => {
+  it('When fetching catalysts approved by DAO, then the X-Requested-With default header is included', async () => {
     const requestResult = [{ baseUrl: 'baseUrl', owner: 'owner', id: 'id' }]
     const fetcher = createFetchComponent()
     fetcher.fetch = jest.fn().mockResolvedValueOnce({ json: () => requestResult })
@@ -299,7 +299,7 @@ describe('LambdasClient', () => {
     expect(fetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown' }
+        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown' }
       })
     )
   })
@@ -315,7 +315,7 @@ describe('LambdasClient', () => {
     expect(result).toEqual(requestResult)
   })
 
-  it('When fetching lambdas statuses, then the Client-Agent default header is included', async () => {
+  it('When fetching lambdas statuses, then the X-Requested-With default header is included', async () => {
     const requestResult = 'contentServerUrl'
     const fetcher = createFetchComponent()
     fetcher.fetch = jest.fn().mockResolvedValueOnce({ json: () => requestResult })
@@ -326,7 +326,7 @@ describe('LambdasClient', () => {
     expect(fetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown' }
+        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown' }
       })
     )
   })
