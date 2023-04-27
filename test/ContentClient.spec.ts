@@ -230,7 +230,7 @@ describe('ContentClient', () => {
 
     // Assert that the request failed, and that the client tried many times as expected
     await expect(client.downloadContent(fileHash, { attempts: 2, waitTime: 20 })).rejects.toEqual(
-      new Error(`Failed to fetch file with hash ${fileHash} from ${URL}`)
+      new Error(`Failed to fetch file with hash ${fileHash} from ${URL}/contents`)
     )
 
     expect(fetcher.fetch).toHaveBeenNthCalledWith(1, `${URL}/contents/${fileHash}`, expect.anything())

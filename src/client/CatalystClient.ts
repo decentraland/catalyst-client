@@ -29,13 +29,15 @@ export async function createCatalystClient(options: ClientOptions): Promise<Cata
 
   async function fetchAbout(): Promise<AboutResponse> {
     const result = await fetcher.fetch(catalystUrl + '/about')
-    const about = await result.json()
+    const response = await result.json()
 
-    if (!about) {
+    if (!response) {
       throw new Error('Invalid about response')
     }
 
-    return about
+    about = response
+
+    return response
   }
 
   async function getContentClient(): Promise<ContentClient> {

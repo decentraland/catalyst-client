@@ -6,7 +6,8 @@ import {
   BuildEntityWithoutFilesOptions,
   ClientOptions,
   DeploymentData,
-  DeploymentPreparationData
+  DeploymentPreparationData,
+  IFetchComponent
 } from './types'
 import * as builder from './utils/DeploymentBuilder'
 import { addModelToFormData, isNode, mergeRequestOptions, sanitizeUrl, splitAndFetch } from './utils/Helper'
@@ -48,6 +49,33 @@ export type ContentClient = {
    * Deploys an entity to the content server.
    */
   deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown>
+}
+
+export async function downloadContent(
+  fetcher: IFetchComponent,
+  baseUrl: string,
+  contentHash: string,
+  options?: Partial<RequestOptions>
+): Promise<Buffer> {
+  const { attempts = 3, waitTime = 500 } = options ? options : {}
+  const timeout = options?.timeout ? { timeout: options.timeout } : {}
+
+  return retry(
+    `fetch file with hash ${contentHash} from ${baseUrl}`,
+    async () => {
+      const content = await (await fetcher.fetch(`${baseUrl}/${contentHash}`, timeout)).buffer()
+      const downloadedHash = contentHash.startsWith('Qm') ? await hashV0(content) : await hashV1(content)
+
+      // Sometimes, the downloaded file is not complete, so the hash turns out to be different.
+      // So we will check the hash before considering the download successful.
+      if (downloadedHash === contentHash) {
+        return content
+      }
+      throw new Error(`Failed to fetch file with hash ${contentHash} from ${baseUrl}`)
+    },
+    attempts,
+    waitTime
+  )
 }
 
 export function createContentClient(options: ClientOptions): ContentClient {
@@ -163,28 +191,6 @@ export function createContentClient(options: ClientOptions): ContentClient {
     return entities[0]
   }
 
-  async function downloadContent(contentHash: string, options?: Partial<RequestOptions>): Promise<Buffer> {
-    const { attempts = 3, waitTime = 500 } = options ? options : {}
-    const timeout = options?.timeout ? { timeout: options.timeout } : {}
-
-    return retry(
-      `fetch file with hash ${contentHash} from ${contentUrl}`,
-      async () => {
-        const content = await (await fetcher.fetch(`${contentUrl}/contents/${contentHash}`, timeout)).buffer()
-        const downloadedHash = contentHash.startsWith('Qm') ? await hashV0(content) : await hashV1(content)
-
-        // Sometimes, the downloaded file is not complete, so the hash turns out to be different.
-        // So we will check the hash before considering the download successful.
-        if (downloadedHash === contentHash) {
-          return content
-        }
-        throw new Error(`Failed to fetch file with hash ${contentHash} from ${contentUrl}`)
-      },
-      attempts,
-      waitTime
-    )
-  }
-
   function isContentAvailable(cids: string[], options?: RequestOptions): Promise<AvailableContentResult> {
     if (cids.length === 0) {
       return Promise.reject(`You must set at least one cid.`)
@@ -216,7 +222,9 @@ export function createContentClient(options: ClientOptions): ContentClient {
     fetchEntitiesByPointers,
     fetchEntitiesByIds,
     fetchEntityById,
-    downloadContent,
+    downloadContent: (contentHash: string, options?: Partial<RequestOptions>) => {
+      return downloadContent(fetcher, contentUrl + '/contents', contentHash, options)
+    },
     deploy,
     isContentAvailable
   }
