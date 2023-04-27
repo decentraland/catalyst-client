@@ -1,7 +1,8 @@
 import { hashV0 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
 import { IFetchComponent } from '@well-known-components/http-server'
-import { createContentClient, ContentClient, AvailableContentResult } from '../src'
+import { AvailableContentResult, ContentClient, createContentClient } from '../src'
+import { CURRENT_VERSION } from '../src/client/utils/data'
 import { createFetchComponent } from '../src/client/utils/fetcher'
 
 describe('ContentClient', () => {
@@ -94,6 +95,24 @@ describe('ContentClient', () => {
     expect(result).toEqual(requestResult)
   })
 
+  it('When fetching by pointers, then the Client-Agent default header is included', async () => {
+    const requestResult: Entity[] = [someEntity()]
+    const pointer = 'P'
+    const fetcher = createFetchComponent()
+
+    fetcher.fetch = jest.fn().mockResolvedValueOnce({ json: () => requestResult })
+
+    const client = buildClient(URL, fetcher)
+    await client.fetchEntitiesByPointers([pointer])
+
+    expect(fetcher.fetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
+      })
+    )
+  })
+
   it('When fetching by ids, if none is set, then an error is thrown', async () => {
     const fetcher = createFetchComponent()
     fetcher.fetch = jest.fn().mockResolvedValueOnce({ json: () => [] })
@@ -118,6 +137,24 @@ describe('ContentClient', () => {
     expect(result).toEqual(requestResult)
   })
 
+  it('When fetching by ids, then the Client-Agent default header is included', async () => {
+    const requestResult: Entity[] = [someEntity()]
+    const id = 'Id'
+
+    const fetcher = createFetchComponent()
+    fetcher.fetch = jest.fn().mockResolvedValueOnce({ json: () => requestResult })
+    const client = buildClient(URL, fetcher)
+
+    await client.fetchEntitiesByIds([id])
+
+    expect(fetcher.fetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
+      })
+    )
+  })
+
   it('When fetching by id, if there are no results, then an error is thrown', async () => {
     const id = 'Id'
 
@@ -140,6 +177,25 @@ describe('ContentClient', () => {
     const result = await client.fetchEntityById(id)
 
     expect(result).toEqual(entity)
+  })
+
+  it('When fetching by id, then the Client-Agent default header is included', async () => {
+    const entity = someEntity()
+    const requestResult: Entity[] = [entity]
+    const id = 'Id'
+
+    const fetcher = createFetchComponent()
+    fetcher.fetch = jest.fn().mockResolvedValueOnce({ json: () => requestResult })
+    const client = buildClient(URL, fetcher)
+
+    await client.fetchEntityById(id)
+
+    expect(fetcher.fetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
+      })
+    )
   })
 
   it('When a file is downloaded, then the client retries if the downloaded file is not as expected', async () => {
@@ -181,6 +237,27 @@ describe('ContentClient', () => {
     expect(fetcher.fetch).toHaveBeenNthCalledWith(2, `${URL}/contents/${fileHash}`, expect.anything())
   })
 
+  it('When a file is downloaded, then the Client-Agent default header is included', async () => {
+    const failBuffer = Buffer.from('Fail')
+    const realBuffer = Buffer.from('Real')
+    const fileHash = await hashV0(realBuffer)
+
+    const fetcher = createFetchComponent()
+    fetcher.fetch = jest.fn().mockResolvedValue({
+      buffer: jest.fn().mockResolvedValueOnce(failBuffer).mockResolvedValueOnce(realBuffer)
+    })
+    const client = buildClient(URL, fetcher)
+
+    await client.downloadContent(fileHash, { waitTime: 20 })
+
+    expect(fetcher.fetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown' }
+      })
+    )
+  })
+
   it('When checking if content is available, then the result is as expected', async () => {
     const [hash1, hash2] = ['hash1', 'hash2']
     const requestResult: AvailableContentResult = [
@@ -208,6 +285,29 @@ describe('ContentClient', () => {
 
     await expect(client.isContentAvailable([])).rejects.toEqual(`You must set at least one cid.`)
     expect(fetcher.fetch).not.toHaveBeenCalled()
+  })
+
+  it('When checking if content is available, then the Client-Agent default header is included', async () => {
+    const [hash1, hash2] = ['hash1', 'hash2']
+    const requestResult: AvailableContentResult = [
+      { cid: hash1, available: true },
+      { cid: hash2, available: false }
+    ]
+
+    const fetcher = createFetchComponent()
+    fetcher.fetch = jest.fn().mockResolvedValue({
+      json: jest.fn().mockReturnValue(requestResult)
+    })
+    const client = buildClient(URL, fetcher)
+
+    await client.isContentAvailable([hash1, hash2])
+
+    expect(fetcher.fetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
+      })
+    )
   })
 
   function someEntity(): Entity {

@@ -1,5 +1,7 @@
 import * as crossFetch from 'cross-fetch'
 import * as nodeFetch from 'node-fetch'
+import { mergeRequestOptions } from './Helper'
+import { CURRENT_VERSION } from './data'
 
 export type RequestOptions = nodeFetch.RequestInit & {
   attempts?: number
@@ -12,6 +14,18 @@ export type Response = nodeFetch.Response
 
 export type IFetchComponent = {
   fetch(url: RequestInfo, init?: RequestOptions): Promise<Response>
+}
+
+export function withClientAgentInjection(fetcher: IFetchComponent): IFetchComponent {
+  return {
+    fetch: async (url: RequestInfo, init?: RequestOptions): Promise<Response> => {
+      const optionsWithInjectedClientAgent = mergeRequestOptions(init ? init : {}, {
+        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown' }
+      })
+
+      return await fetcher.fetch(url, optionsWithInjectedClientAgent)
+    }
+  }
 }
 
 export function createFetchComponent(defaultOptions: RequestOptions = { timeout: 0 }): IFetchComponent {

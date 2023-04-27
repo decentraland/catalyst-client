@@ -2,5 +2,5 @@ dist
 jest.config.js
 scripts
 coverage
-src/cache/data.ts
+src/contracts-snapshots/data.ts
 docs

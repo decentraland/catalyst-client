@@ -6,8 +6,10 @@
   "typings": "./dist/index.d.ts",
   "scripts": {
     "prebuild": "rm -rf dist",
-    "generate-cache": "ts-node -T scripts/generate-cache.ts",
-    "build": "tsc --project tsconfig-build.json && yarn generate-cache",
+    "generate:snapshots": "ts-node -T scripts/generate-snapshots.ts",
+    "generate:version": "ts-node -T scripts/generate-version.ts",
+    "generate": "yarn generate:snapshots && yarn generate:version",
+    "build": "tsc --project tsconfig-build.json && yarn generate",
     "prewatch": "rm -rf dist",
     "watch": "tsc --watch --project tsconfig-build.json",
     "test": "jest --forceExit --detectOpenHandles --coverage --verbose",

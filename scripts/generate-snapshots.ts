@@ -1,5 +1,5 @@
-import fs from 'fs'
 import { JsonRpcProvider } from 'ethers'
+import fs from 'fs'
 import { getCatalystServersFromDAO, getNameDenylistFromContract, getPoiFromContract } from '../src/contracts/web3'
 
 async function main(): Promise<void> {
@@ -41,7 +41,7 @@ async function main(): Promise<void> {
 
   const s = `export const cache = ${JSON.stringify(content, null, 4)}`
 
-  await fs.promises.writeFile('src/cache/data.ts', Buffer.from(s))
+  await fs.promises.writeFile('src/contracts-snapshots/data.ts', Buffer.from(s))
 
   console.log('Cache updated')
 }

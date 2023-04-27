@@ -8,10 +8,10 @@ import {
   DeploymentData,
   DeploymentPreparationData
 } from './types'
-import { RequestOptions } from './utils/fetcher'
-import { retry } from './utils/retry'
 import * as builder from './utils/DeploymentBuilder'
 import { addModelToFormData, isNode, mergeRequestOptions, sanitizeUrl, splitAndFetch } from './utils/Helper'
+import { RequestOptions, withClientAgentInjection } from './utils/fetcher'
+import { retry } from './utils/retry'
 
 function arrayBufferFrom(value: Buffer | Uint8Array) {
   if (value.buffer) {
@@ -52,7 +52,7 @@ export type ContentClient = {
 
 export function createContentClient(options: ClientOptions): ContentClient {
   const contentUrl = sanitizeUrl(options.url)
-  const fetcher = options.fetcher
+  const fetcher = withClientAgentInjection(options.fetcher)
 
   async function buildEntityWithoutNewFiles({
     type,

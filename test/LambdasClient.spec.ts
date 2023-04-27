@@ -1,5 +1,6 @@
 import { createLambdasClient, LambdasClient } from '../src'
 import { IFetchComponent } from '../src/client/types'
+import { CURRENT_VERSION } from '../src/client/utils/data'
 import { createFetchComponent } from '../src/client/utils/fetcher'
 
 describe('LambdasClient', () => {
@@ -56,6 +57,26 @@ describe('LambdasClient', () => {
     await expect(async () => client.fetchWearables(undefined)).rejects.toThrow('You must set at least one filter')
   })
 
+  it('When fetching for wearables, then the Client-Agent default header is included', async () => {
+    const wearables = [{ id: 'wearableId' }]
+    const requestResult = {
+      wearables,
+      pagination: { offset: 0, limit: 0, moreData: false }
+    }
+
+    const customFetcher = createFetchComponent()
+    customFetcher.fetch = jest.fn().mockResolvedValueOnce({
+      json: jest.fn().mockReturnValueOnce(requestResult)
+    })
+    const client = buildClient(URL, customFetcher)
+    await client.fetchWearables({ wearableIds: ['id1', 'id2'], textSearch: 'text' })
+
+    expect(customFetcher.fetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown' } })
+    )
+  })
+
   it('When fetching for owned wearables without definition, then the result is as expected', async () => {
     const ethAddress = 'ethAddress'
     const requestResult = [{ urn: 'urn', amount: 10 }]
@@ -86,6 +107,26 @@ describe('LambdasClient', () => {
     expect(result).toEqual(requestResult)
   })
 
+  it('When fetching for owned wearables without definition, then the Client-Agent default header is included', async () => {
+    const ethAddress = 'ethAddress'
+    const requestResult = [{ urn: 'urn', amount: 10 }]
+
+    const customFetcher = createFetchComponent()
+    customFetcher.fetch = jest.fn().mockResolvedValueOnce({
+      json: jest.fn().mockReturnValueOnce(requestResult)
+    })
+    const client = buildClient(URL, customFetcher)
+
+    await client.fetchOwnedWearables(ethAddress, false)
+
+    expect(customFetcher.fetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
+      })
+    )
+  })
+
   it('When fetching for emotes, then the result is as expected', async () => {
     const emotes = [{ id: 'emoteId' }]
     const requestResult = {
@@ -108,6 +149,29 @@ describe('LambdasClient', () => {
     const client = buildClient(URL, undefined)
 
     await expect(async () => client.fetchEmotes(undefined)).rejects.toThrow('You must set at least one filter')
+  })
+
+  it('When fetching for emotes, then the Client-Agent default header is included', async () => {
+    const emotes = [{ id: 'emoteId' }]
+    const requestResult = {
+      emotes,
+      pagination: { offset: 0, limit: 0, moreData: false }
+    }
+
+    const customFetcher = createFetchComponent()
+    customFetcher.fetch = jest.fn().mockResolvedValueOnce({
+      json: jest.fn().mockReturnValueOnce(requestResult)
+    })
+    const client = buildClient(URL, customFetcher)
+
+    await client.fetchEmotes({ emoteIds: ['id1', 'id2'], textSearch: 'text' })
+
+    expect(customFetcher.fetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown' }
+      })
+    )
   })
 
   it('When fetching for owned emotes without definition, then the result is as expected', async () => {
@@ -138,6 +202,26 @@ describe('LambdasClient', () => {
     const result = await client.fetchOwnedEmotes(ethAddress, true)
 
     expect(result).toEqual(requestResult)
+  })
+
+  it('When fetching for owned emotes, then the Client-Agent default header is included', async () => {
+    const ethAddress = 'ethAddress'
+    const requestResult = [{ urn: 'urn', amount: 10 }]
+
+    const customFetcher = createFetchComponent()
+    customFetcher.fetch = jest.fn().mockResolvedValueOnce({
+      json: jest.fn().mockReturnValueOnce(requestResult)
+    })
+    const client = buildClient(URL, customFetcher)
+
+    await client.fetchOwnedEmotes(ethAddress, false)
+
+    expect(customFetcher.fetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
+      })
+    )
   })
 
   it('When fetching for owned third party wearables with definition, then the result is as expected', async () => {
@@ -172,6 +256,27 @@ describe('LambdasClient', () => {
     expect(result).toEqual(requestResult)
   })
 
+  it('When fetching for owned third party wearables, then the Client-Agent default header is included', async () => {
+    const ethAddress = 'ethAddress'
+    const thirdPartyId = 'thirdPartyId'
+    const requestResult = [{ urn: 'urn', amount: 10, definition: {} }]
+
+    const customFetcher = createFetchComponent()
+    customFetcher.fetch = jest.fn().mockResolvedValueOnce({
+      json: jest.fn().mockReturnValueOnce(requestResult)
+    })
+    const client = buildClient(URL, customFetcher)
+
+    await client.fetchOwnedThirdPartyWearables(ethAddress, thirdPartyId, true)
+
+    expect(customFetcher.fetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
+      })
+    )
+  })
+
   it('When fetching catalysts approved by DAO, then the result is as expected', async () => {
     const requestResult = [{ baseUrl: 'baseUrl', owner: 'owner', id: 'id' }]
     const fetcher = createFetchComponent()
@@ -183,6 +288,22 @@ describe('LambdasClient', () => {
     expect(result).toEqual(requestResult)
   })
 
+  it('When fetching catalysts approved by DAO, then the Client-Agent default header is included', async () => {
+    const requestResult = [{ baseUrl: 'baseUrl', owner: 'owner', id: 'id' }]
+    const fetcher = createFetchComponent()
+    fetcher.fetch = jest.fn().mockResolvedValueOnce({ json: () => requestResult })
+    const client = buildClient(URL, fetcher)
+
+    await client.fetchCatalystsApprovedByDAO()
+
+    expect(fetcher.fetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown' }
+      })
+    )
+  })
+
   it('When fetching lambdas statuses, then the result is as expected', async () => {
     const requestResult = 'contentServerUrl'
     const fetcher = createFetchComponent()
@@ -192,6 +313,22 @@ describe('LambdasClient', () => {
     const result = await client.fetchLambdasStatus()
 
     expect(result).toEqual(requestResult)
+  })
+
+  it('When fetching lambdas statuses, then the Client-Agent default header is included', async () => {
+    const requestResult = 'contentServerUrl'
+    const fetcher = createFetchComponent()
+    fetcher.fetch = jest.fn().mockResolvedValueOnce({ json: () => requestResult })
+    const client = buildClient(URL, fetcher)
+
+    await client.fetchLambdasStatus()
+
+    expect(fetcher.fetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        headers: { 'Client-Agent': CURRENT_VERSION || 'Unknown' }
+      })
+    )
   })
 
   function someResult() {
