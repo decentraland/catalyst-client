@@ -18,7 +18,7 @@ The following section outlines the steps to successfully connect to a random cat
 
 ```javascript
 import { connectedToRandomCatalyst } from 'dcl-catalyst-client'
-import { getCatalystServersFromCache } from './../dist/contracts-snapshots/index'
+import { getCatalystServersFromCache } from './../dist/contracts-snapshots'
 import { createFetchComponent } from './../dist/client/utils/fetcher'
 
 // Connect to a catalyst randomly choosen from the catalyst-client snapshot
