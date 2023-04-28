@@ -8,66 +8,72 @@ Welcome to the Catalyst Client library. This client can be used to interact with
 npm install dcl-catalyst-client
 ```
 
-## Usage
+### Implementations
 
-You can check the entire API [here](src/CatalystAPI.ts).
+The examples in this document illustrate the implementation of common workflows using the second version of `catalyst-client`.
 
-This library depends on two other Decentraland libraries:
+#### Connect to random Catalyst
 
-- [Decentraland Crypto](https://github.com/decentraland/decentraland-crypto/)
-- [Catalyst Commons](https://github.com/decentraland/catalyst-commons/)
+The following section outlines the steps to successfully connect to a random catalyst when there is no need to communicate with any particular node.
 
-### Deploying
+```javascript
+import { connectedToRandomCatalyst } from 'dcl-catalyst-client'
+import { getCatalystServersFromCache } from './../dist/contracts-snapshots'
+import { createFetchComponent } from './../dist/client/utils/fetcher'
 
-One of the most important aspects, is the ability to deploy new entities. Here is an example of how to do it:
+// Connect to a catalyst randomly choosen from the catalyst-client snapshot
+const fetcher = createFetchComponent()
+const nodes = getCatalystServersFromCache('mainnet')
+const catalyst = await connectedToRandomCatalyst(nodes, { fetcher })
 
+if (!catalyst) {
+  console.log('No catalyst node is available right now')
+  return
+}
+
+const catalystInfo = await catalyst.fetchAbout()
+const contentClient = await catalyst.getContentClient()
+const lambdasClient = await catalyst.getLambdasClient()
 ```
-import { CatalystClient, DeploymentBuilder } from 'dcl-catalyst-client'
-import { EntityType } from '@dcl/schemas'
-import { Authenticator } from '@dcl/crypto'
 
+#### Deploy an entity
+
+The following section outlines the steps to deploy an entity to the Decentraland network.
+
+```javascript
+import { Authenticator } from '@dcl/crypto'
+import { createCatalystClient } from 'dcl-catalyst-client'
+import { createFetchComponent } from 'dcl-catalyst-client/dist/client/utils/fetcher'
+import * as EthCrypto from 'eth-crypto'
+import { EntityType } from '@dcl/schemas'
+import { PROFILE_METADATA, PROFILE_POINTERS } from './data/inputs'
+
+async function resolveClient() {
+  // Build the client, Node is harcoded for simplicity
+  const fetcher = createFetchComponent()
+  const catalyst = await createCatalystClient({ url: 'https://peer-ec2.decentraland.org', fetcher })
+
+  return await catalyst.getContentClient()
+}
+
+const identity = { privateKey: 'privatekey', address: '0xfbf2b0392d969db533189b596708ba9ba7f4e3cd' }
+
+const content = await resolveClient()
+
+const { entityId, files } = await content.buildEntity({
+  type: EntityType.PROFILE,
+  pointers: PROFILE_POINTERS,
+  metadata: PROFILE_METADATA
+})
 
 // This is up to you. You will need to figure out how to make the owner of the pointer sign the entity id
-const { signature, address } = await sign(entityId)
+const messageHash = Authenticator.createEthereumMessageHash(entityId)
+const signature = EthCrypto.sign(identity.privateKey, Buffer.from(messageHash).toString('hex'))
 
 // You can then create a simple auth chain like this, or a more complex one.
-const authChain = Authenticator.createSimpleAuthChain(entityId, address, signature)
-
-// Build the client
-const catalyst = await CatalystClient.connectedToCatalystIn('mainnet')
-// Note: this operation is expensive, so try to store the created catalyst client somewhere, instead of re-building for each every request
-
-// Build entity and group all files
-const { entityId, files } = await catalyst.buildEntity({type: EntityType.*, pointers, files: contentFiles, metadata })
-
-// Build the deploy data
+const authChain = Authenticator.createSimpleAuthChain(entityId, identity.address, signature)
 const deployData = { entityId, files, authChain }
 
 // Deploy the actual entity
-await catalyst.deployEntity(deployData)
-
+await content.deploy(deployData)
 ```
-
-## Contributing
-
-### Build and test
-
-```
-npm install
-npm run build
-npm run test
-```
-
-### [Releases](https://registry.npmjs.org/dcl-catalyst-client)
-
-#### Stable Releases
-
-To publish a new release, a tag following [SemVer](https://semver.org/) must be done in `master` branch following the format: `MAJOR.MINOR.PATCH` and that will trigger a Github Workflow that publishes the new version of the library, tagging it as `latest`.
-
-#### Master Releases
-
-Every commit to `master` branch triggers a NPM Publish with the beta version following the convention `NEXT_MAJOR.NEXT_MINOR.NEXT_PATCH-TIMESTAMP.commit-COMMIT_SHA`, tagging it as `next`.
-
-#### Tag Releases
-
-If you need to publish a NPM package in a work in progress commit, then you can create a git tag, and that will trigger an automatically NPM publish following the convention `NEXT_MAJOR.NEXT_MINOR.NEXT_PATCH-TIMESTAMP.commit-COMMIT_SHA` and tagging it on NPM with your custom tag: `tag-CUSTOM_TAG`.

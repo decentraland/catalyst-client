@@ -10,7 +10,7 @@
     ],
     "types": [],
     "sourceMap": true,
-    "moduleResolution": "node",
+    "moduleResolution": "node16",
     "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,
     "noImplicitReturns": true,
@@ -25,7 +25,8 @@
         "name": "tslint-language-service"
       }
     ],
-    "declaration": true
+    "declaration": true,
+    "resolveJsonModule": true
   },
   "include": [
     "src"

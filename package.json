@@ -1,17 +1,17 @@
 {
   "name": "dcl-catalyst-client",
   "version": "0.0.0-development",
+  "commit": "Unknown",
   "description": "A client to query and perform changes on Decentraland's catalyst servers",
   "main": "dist/index.js",
   "typings": "./dist/index.d.ts",
   "scripts": {
-    "prebuild": "rm -rf dist && npm run catalysts-list",
-    "catalysts-list": "ts-node -T scripts/generate-catalysts-list.ts",
-    "build": "tsc --project tsconfig-build.json",
+    "prebuild": "rm -rf dist",
+    "generate:snapshots": "ts-node -T scripts/generate-snapshots.ts",
+    "build": "tsc --project tsconfig-build.json && yarn generate:snapshots",
     "prewatch": "rm -rf dist",
     "watch": "tsc --watch --project tsconfig-build.json",
     "test": "jest --forceExit --detectOpenHandles --coverage --verbose",
-    "commit-msg": "validate-commit-msg",
     "lint:fix": "eslint '**/*.{js,ts,tsx}' --quiet --fix",
     "lint:check": "eslint '**/*.{js,ts,tsx}' --quiet"
   },
@@ -43,31 +43,25 @@
   },
   "homepage": "https://github.com/decentraland/catalyst-client#readme",
   "dependencies": {
-    "@dcl/catalyst-contracts": "^3.0.0",
+    "@dcl/crypto": "^3.4.0",
     "@dcl/hashing": "^1.1.0",
+    "@dcl/protocol": "^1.0.0-4747376947.commit-d770e0d",
     "@dcl/schemas": "^6.4.2",
     "@types/form-data": "^2.5.0",
     "cookie": "^0.5.0",
     "cross-fetch": "^3.1.5",
-    "dcl-catalyst-commons": "^9.0.6",
     "form-data": "^4.0.0"
   },
   "devDependencies": {
     "@dcl/eslint-config": "^1.0.6",
-    "@types/jest": "^27.0.1",
     "@well-known-components/env-config-provider": "^1.1.1",
-    "@well-known-components/http-server": "^1.1.1",
+    "@well-known-components/http-server": "^1.1.6",
     "@well-known-components/interfaces": "^1.1.0",
     "@well-known-components/logger": "^3.0.0",
     "@well-known-components/test-helpers": "^1.2.1",
     "busboy": "^0.3.1",
-    "isomorphic-fetch": "^3.0.0",
-    "jest": "^27.3.1",
-    "ts-jest": "^27.0.7",
-    "ts-mockito": "^2.6.1",
     "ts-node": "^10.4.0",
-    "typescript": "^4.4.4",
-    "validate-commit-msg": "^1.1.3"
+    "typescript": "^4.4.4"
   },
   "prettier": {
     "printWidth": 120,
@@ -75,5 +69,8 @@
     "singleQuote": true,
     "trailingComma": "none",
     "tabWidth": 2
+  },
+  "optionalDependencies": {
+    "ethers": "6.2.3"
   }
 }

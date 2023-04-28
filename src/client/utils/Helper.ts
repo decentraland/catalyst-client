@@ -1,6 +1,10 @@
 import type FormData from 'form-data'
-import { RUNNING_VERSION } from './Environment'
+import { commit, version } from './../../../package.json'
 import { IFetchComponent, RequestOptions, createFetchComponent } from './fetcher'
+
+export function getCurrentVersion(): string {
+  return version || commit || 'Unknown'
+}
 
 export function addModelToFormData(model: any, form: FormData, namespace = ''): FormData {
   for (const propertyName in model) {
@@ -196,12 +200,6 @@ export function convertFiltersToQueryParams(filters?: Record<string, any>): Map<
 
 export function isNode() {
   return Object.prototype.toString.call(typeof process !== 'undefined' ? process : 0) === '[object process]'
-}
-
-export function getHeadersWithUserAgent(client: string) {
-  return isNode()
-    ? { 'User-Agent': `${client}/${RUNNING_VERSION} (+https://github.com/decentraland/catalyst-client)` }
-    : undefined
 }
 
 export function mergeRequestOptions(target: RequestOptions, source?: RequestOptions): RequestOptions {

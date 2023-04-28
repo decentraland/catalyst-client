@@ -1,4 +1,5 @@
-import { ContentClient } from '../src'
+import { createContentClient, ContentClient } from '../src'
+import { createFetchComponent } from '../src/client/utils/fetcher'
 import { runServerBasedE2ETest } from './components'
 import { multipartParserWrapper } from './utils'
 
@@ -40,8 +41,9 @@ runServerBasedE2ETest('test client post', ({ components }) => {
   })
 
   it('creates the client', async () => {
-    client = new ContentClient({
-      contentUrl: await components.getBaseUrl()
+    client = await createContentClient({
+      url: await components.getBaseUrl(),
+      fetcher: createFetchComponent()
     })
   })
 
