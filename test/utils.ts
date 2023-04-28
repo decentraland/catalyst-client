@@ -31,7 +31,7 @@ export function multipartParserWrapper<Ctx extends FormDataContext, T extends IH
   handler: (ctx: Ctx) => Promise<T>
 ): (ctx: IHttpServerComponent.DefaultContext) => Promise<T> {
   return async function (ctx): Promise<T> {
-    const formDataParser = new busboy({
+    const formDataParser = busboy({
       headers: {
         'content-type': ctx.request.headers.get('content-type')
       }
