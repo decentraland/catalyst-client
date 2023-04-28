@@ -1,15 +1,14 @@
 {
   "name": "dcl-catalyst-client",
   "version": "0.0.0-development",
+  "commit": "Unknown",
   "description": "A client to query and perform changes on Decentraland's catalyst servers",
   "main": "dist/index.js",
   "typings": "./dist/index.d.ts",
   "scripts": {
     "prebuild": "rm -rf dist",
     "generate:snapshots": "ts-node -T scripts/generate-snapshots.ts",
-    "generate:version": "ts-node -T scripts/generate-version.ts",
-    "generate": "yarn generate:snapshots && yarn generate:version",
-    "build": "tsc --project tsconfig-build.json && yarn generate",
+    "build": "tsc --project tsconfig-build.json && yarn generate:snapshots",
     "prewatch": "rm -rf dist",
     "watch": "tsc --watch --project tsconfig-build.json",
     "test": "jest --forceExit --detectOpenHandles --coverage --verbose",

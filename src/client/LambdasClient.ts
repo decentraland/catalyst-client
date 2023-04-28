@@ -15,7 +15,7 @@ import {
   ServerMetadata,
   WearablesFilters
 } from './types'
-import { RequestOptions, withClientAgentInjection } from './utils/fetcher'
+import { RequestOptions, withDefaultHeadersInjection } from './utils/fetcher'
 
 export type LambdasClient = {
   fetchProfiles(ethAddresses: string[], options?: RequestOptions): Promise<any[]>
@@ -49,7 +49,7 @@ export type LambdasClient = {
 
 export function createLambdasClient(options: ClientOptions): LambdasClient {
   const lambdasUrl = sanitizeUrl(options.url)
-  const fetcher = withClientAgentInjection(options.fetcher)
+  const fetcher = withDefaultHeadersInjection(options.fetcher)
 
   async function fetchProfiles(ethAddresses: string[], options?: RequestOptions): Promise<any[]> {
     if (ethAddresses.length === 0) {

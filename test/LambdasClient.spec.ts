@@ -1,6 +1,6 @@
-import { createLambdasClient, LambdasClient } from '../src'
+import { LambdasClient, createLambdasClient } from '../src'
 import { IFetchComponent } from '../src/client/types'
-import { CURRENT_VERSION } from '../src/client/utils/data'
+import { getCurrentVersion } from '../src/client/utils/Helper'
 import { createFetchComponent } from '../src/client/utils/fetcher'
 
 describe('LambdasClient', () => {
@@ -73,7 +73,7 @@ describe('LambdasClient', () => {
 
     expect(customFetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown' } })
+      expect.objectContaining({ headers: { 'X-Requested-With': getCurrentVersion() } })
     )
   })
 
@@ -122,7 +122,7 @@ describe('LambdasClient', () => {
     expect(customFetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
+        headers: { 'X-Requested-With': getCurrentVersion(), 'Content-Type': 'application/json' }
       })
     )
   })
@@ -169,7 +169,7 @@ describe('LambdasClient', () => {
     expect(customFetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown' }
+        headers: { 'X-Requested-With': getCurrentVersion() }
       })
     )
   })
@@ -219,7 +219,7 @@ describe('LambdasClient', () => {
     expect(customFetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
+        headers: { 'X-Requested-With': getCurrentVersion(), 'Content-Type': 'application/json' }
       })
     )
   })
@@ -272,7 +272,7 @@ describe('LambdasClient', () => {
     expect(customFetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
+        headers: { 'X-Requested-With': getCurrentVersion(), 'Content-Type': 'application/json' }
       })
     )
   })
@@ -299,7 +299,7 @@ describe('LambdasClient', () => {
     expect(fetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown' }
+        headers: { 'X-Requested-With': getCurrentVersion() }
       })
     )
   })
@@ -326,7 +326,7 @@ describe('LambdasClient', () => {
     expect(fetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown' }
+        headers: { 'X-Requested-With': getCurrentVersion() }
       })
     )
   })

@@ -2,7 +2,7 @@ import { hashV0 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
 import { IFetchComponent } from '@well-known-components/http-server'
 import { AvailableContentResult, ContentClient, createContentClient } from '../src'
-import { CURRENT_VERSION } from '../src/client/utils/data'
+import { getCurrentVersion } from '../src/client/utils/Helper'
 import { createFetchComponent } from '../src/client/utils/fetcher'
 
 describe('ContentClient', () => {
@@ -108,7 +108,7 @@ describe('ContentClient', () => {
     expect(fetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
+        headers: { 'X-Requested-With': getCurrentVersion(), 'Content-Type': 'application/json' }
       })
     )
   })
@@ -150,7 +150,7 @@ describe('ContentClient', () => {
     expect(fetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
+        headers: { 'X-Requested-With': getCurrentVersion(), 'Content-Type': 'application/json' }
       })
     )
   })
@@ -193,7 +193,7 @@ describe('ContentClient', () => {
     expect(fetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
+        headers: { 'X-Requested-With': getCurrentVersion(), 'Content-Type': 'application/json' }
       })
     )
   })
@@ -253,7 +253,7 @@ describe('ContentClient', () => {
     expect(fetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown' }
+        headers: { 'X-Requested-With': getCurrentVersion() }
       })
     )
   })
@@ -305,7 +305,7 @@ describe('ContentClient', () => {
     expect(fetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        headers: { 'X-Requested-With': CURRENT_VERSION || 'Unknown', 'Content-Type': 'application/json' }
+        headers: { 'X-Requested-With': getCurrentVersion(), 'Content-Type': 'application/json' }
       })
     )
   })

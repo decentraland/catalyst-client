@@ -11,7 +11,7 @@ import {
 } from './types'
 import * as builder from './utils/DeploymentBuilder'
 import { addModelToFormData, isNode, mergeRequestOptions, sanitizeUrl, splitAndFetch } from './utils/Helper'
-import { RequestOptions, withClientAgentInjection } from './utils/fetcher'
+import { RequestOptions, withDefaultHeadersInjection } from './utils/fetcher'
 import { retry } from './utils/retry'
 
 function arrayBufferFrom(value: Buffer | Uint8Array) {
@@ -80,7 +80,7 @@ export async function downloadContent(
 
 export function createContentClient(options: ClientOptions): ContentClient {
   const contentUrl = sanitizeUrl(options.url)
-  const fetcher = withClientAgentInjection(options.fetcher)
+  const fetcher = withDefaultHeadersInjection(options.fetcher)
 
   async function buildEntityWithoutNewFiles({
     type,

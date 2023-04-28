@@ -1,1 +1,0 @@
-export const CURRENT_VERSION = 'd7ea488bd06ecbf1191b70d17ce776586b3783a9'
