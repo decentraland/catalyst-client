@@ -1,6 +1,6 @@
 import { JsonRpcProvider } from 'ethers'
 import fs from 'fs'
-import { getCatalystServersFromDAO, getNameDenylistFromContract, getPoiFromContract } from '../src/contracts/web3'
+import { getCatalystServersFromDAO, getNameDenylistFromContract, getPoiFromContract } from '../src/contracts'
 
 async function main(): Promise<void> {
   console.log('Updating cache')
