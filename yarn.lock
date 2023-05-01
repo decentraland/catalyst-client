@@ -345,9 +345,9 @@
     multiformats "^9.6.3"
 
 "@dcl/protocol@^1.0.0-4747376947.commit-d770e0d":
-  version "1.0.0-4747376947.commit-d770e0d"
-  resolved "https://registry.npmjs.org/@dcl/protocol/-/protocol-1.0.0-4747376947.commit-d770e0d.tgz"
-  integrity sha512-+LClwHfLHYH6DCDFaHAtcKBbHyQKYuN1ZgfZfCRpf1lh+RliC42Q8exDtxtgkT46Io44CUGl9J3VLYlQAjZe/A==
+  version "1.0.0-4810686946.commit-7c034e3"
+  resolved "https://registry.yarnpkg.com/@dcl/protocol/-/protocol-1.0.0-4810686946.commit-7c034e3.tgz#b19bdd8b473c1f8230fbf3f807b526fff88fb0a2"
+  integrity sha512-WHOA9YUqojS9UlaOagDlUdL9ilfLWVHsF9S42+V6OYEsFfnZOazRZ0Wx4LAd7BwpfMWlZ+jyrlFrTSv4bWscmg==
   dependencies:
     ts-proto "^1.146.0"
 
