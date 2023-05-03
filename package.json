@@ -47,13 +47,13 @@
     "@dcl/hashing": "^1.1.0",
     "@dcl/protocol": "^1.0.0-4747376947.commit-d770e0d",
     "@dcl/schemas": "^6.4.2",
-    "@types/form-data": "^2.5.0",
     "cookie": "^0.5.0",
     "cross-fetch": "^3.1.5",
     "form-data": "^4.0.0"
   },
   "devDependencies": {
     "@dcl/eslint-config": "^1.0.6",
+    "@types/form-data": "^2.5.0",
     "@well-known-components/env-config-provider": "^1.1.1",
     "@well-known-components/http-server": "^1.1.6",
     "@well-known-components/interfaces": "^1.1.0",
