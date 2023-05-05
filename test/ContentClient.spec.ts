@@ -1,9 +1,9 @@
 import { hashV0 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
+import { createFetchComponent } from '@well-known-components/fetch-component'
 import { IFetchComponent } from '@well-known-components/http-server'
 import { AvailableContentResult, ContentClient, createContentClient } from '../src'
 import { getCurrentVersion } from '../src/client/utils/Helper'
-import { createFetchComponent } from '../src/client/utils/fetcher'
 
 describe('ContentClient', () => {
   const URL = 'https://url.com'
@@ -209,7 +209,7 @@ describe('ContentClient', () => {
     })
     const client = buildClient(URL, fetcher)
 
-    const result = await client.downloadContent(fileHash, { waitTime: 20 })
+    const result = await client.downloadContent(fileHash, { retryDelay: 20 })
 
     // Assert that the correct buffer is returned, and that there was a retry attempt
     expect(result).toEqual(realBuffer)
@@ -229,7 +229,7 @@ describe('ContentClient', () => {
     const client = buildClient(URL, fetcher)
 
     // Assert that the request failed, and that the client tried many times as expected
-    await expect(client.downloadContent(fileHash, { attempts: 2, waitTime: 20 })).rejects.toEqual(
+    await expect(client.downloadContent(fileHash, { attempts: 2, retryDelay: 20 })).rejects.toEqual(
       new Error(`Failed to fetch file with hash ${fileHash} from ${URL}/contents`)
     )
 
@@ -248,7 +248,7 @@ describe('ContentClient', () => {
     })
     const client = buildClient(URL, fetcher)
 
-    await client.downloadContent(fileHash, { waitTime: 20 })
+    await client.downloadContent(fileHash, { retryDelay: 20 })
 
     expect(fetcher.fetch).toHaveBeenCalledWith(
       expect.anything(),

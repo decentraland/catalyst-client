@@ -1,6 +1,6 @@
 import { hashV1 } from '@dcl/hashing'
 import { AuthChain, ContentMapping, Entity, EntityType, Profile } from '@dcl/schemas'
-import { IFetchComponent } from '../types'
+import { IFetchComponent } from '@well-known-components/interfaces'
 
 /**
  * Take all the entity's data, build the entity file with it, and calculate its id
