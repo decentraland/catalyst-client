@@ -1,4 +1,4 @@
-import { createFetchComponent } from '../../src/client/utils/fetcher'
+import { createFetchComponent } from '@well-known-components/fetch-component'
 import {
   MAX_URL_LENGTH,
   convertFiltersToQueryParams,

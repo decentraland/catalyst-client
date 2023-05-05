@@ -6,6 +6,7 @@ import {
   splitAndFetchPaginated
 } from './utils/Helper'
 
+import { RequestOptions } from '@well-known-components/interfaces'
 import {
   ClientOptions,
   EmotesFilters,
@@ -15,7 +16,7 @@ import {
   ServerMetadata,
   WearablesFilters
 } from './types'
-import { RequestOptions, withDefaultHeadersInjection } from './utils/fetcher'
+import { withDefaultHeadersInjection } from './utils/fetcher'
 
 export type LambdasClient = {
   fetchProfiles(ethAddresses: string[], options?: RequestOptions): Promise<any[]>

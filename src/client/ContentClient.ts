@@ -1,17 +1,17 @@
 import { hashV0, hashV1 } from '@dcl/hashing'
 import { Entity } from '@dcl/schemas'
+import { IFetchComponent, RequestOptions } from '@well-known-components/interfaces'
 import FormData from 'form-data'
 import {
   BuildEntityOptions,
   BuildEntityWithoutFilesOptions,
   ClientOptions,
   DeploymentData,
-  DeploymentPreparationData,
-  IFetchComponent
+  DeploymentPreparationData
 } from './types'
 import * as builder from './utils/DeploymentBuilder'
 import { addModelToFormData, isNode, mergeRequestOptions, sanitizeUrl, splitAndFetch } from './utils/Helper'
-import { RequestOptions, withDefaultHeadersInjection } from './utils/fetcher'
+import { withDefaultHeadersInjection } from './utils/fetcher'
 import { retry } from './utils/retry'
 
 function arrayBufferFrom(value: Buffer | Uint8Array) {
@@ -57,7 +57,7 @@ export async function downloadContent(
   contentHash: string,
   options?: Partial<RequestOptions>
 ): Promise<Buffer> {
-  const { attempts = 3, waitTime = 500 } = options ? options : {}
+  const { attempts = 3, retryDelay = 500 } = options ? options : {}
   const timeout = options?.timeout ? { timeout: options.timeout } : {}
 
   return retry(
@@ -74,7 +74,7 @@ export async function downloadContent(
       throw new Error(`Failed to fetch file with hash ${contentHash} from ${baseUrl}`)
     },
     attempts,
-    waitTime
+    retryDelay
   )
 }
 

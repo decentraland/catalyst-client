@@ -1,5 +1,5 @@
-import { createContentClient, ContentClient } from '../src'
-import { createFetchComponent } from '../src/client/utils/fetcher'
+import { createFetchComponent } from '@well-known-components/fetch-component'
+import { ContentClient, createContentClient } from '../src'
 import { runServerBasedE2ETest } from './components'
 import { multipartParserWrapper } from './utils'
 

@@ -1,5 +1,5 @@
 import { AuthChain, EntityType } from '@dcl/schemas'
-import * as fetch from 'node-fetch'
+import { IFetchComponent } from '@well-known-components/interfaces'
 
 export type DeploymentPreparationData = {
   entityId: string
@@ -52,11 +52,6 @@ export type OwnedItemsWithDefinition = OwnedItemsWithoutDefinition & { definitio
 export type OwnedItemsWithoutDefinition = {
   urn: string
   amount: number
-}
-
-export type IFetchComponent = {
-  fetch(url: fetch.Request): Promise<fetch.Response>
-  fetch(url: fetch.RequestInfo, init?: fetch.RequestInit): Promise<fetch.Response>
 }
 
 export type ClientOptions = {
