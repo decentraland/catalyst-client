@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "baseUrl": "/dist/src/",
+    "baseUrl": "src",
     "outDir": "dist",
     "module": "commonjs",
     "target": "es2018",
@@ -8,7 +8,9 @@
       "es2018",
       "DOM"
     ],
-    "types": [],
+    "types": [
+      "node"
+    ],
     "sourceMap": true,
     "moduleResolution": "node16",
     "forceConsistentCasingInFileNames": true,
@@ -17,18 +19,18 @@
     "noImplicitThis": true,
     "noImplicitAny": false,
     "strictNullChecks": true,
-    "suppressImplicitAnyIndexErrors": true,
     "noUnusedParameters": true,
     "noUnusedLocals": true,
-    "plugins": [
-      {
-        "name": "tslint-language-service"
-      }
-    ],
     "declaration": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "declarationMap": true
   },
   "include": [
     "src"
+  ],
+  "plugins": [
+    {
+      "name": "tslint-language-service"
+    }
   ]
 }
