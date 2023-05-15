@@ -75,6 +75,7 @@
     "ethers": "6.2.3"
   },
   "files": [
-    "package.json"
+    "package.json",
+    "dist"
   ]
 }
