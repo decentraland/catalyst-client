@@ -345,11 +345,11 @@
     multiformats "^9.6.3"
 
 "@dcl/protocol@^1.0.0-4747376947.commit-d770e0d":
-  version "1.0.0-4896874496.commit-2ebeae0"
-  resolved "https://registry.yarnpkg.com/@dcl/protocol/-/protocol-1.0.0-4896874496.commit-2ebeae0.tgz#ec5bf0e9afe19866435f811a81b59e21cd3f3aa0"
-  integrity sha512-fiAcVqlXRX58hEO6uXbx6VX/nUAd7YjeWqcvOy0caZ7HKJPmsWl495XEoN7DxqyQuAGDYA2xQuopZVDpU6+swg==
+  version "1.0.0-4959770633.commit-e249449"
+  resolved "https://registry.yarnpkg.com/@dcl/protocol/-/protocol-1.0.0-4959770633.commit-e249449.tgz#295292387f7d8d19bc00bf403401f5296c328a1c"
+  integrity sha512-hyzsg0ZHga6UoyfHE+oncroxXk+TmTD0XyceMuH86mqy3J+mf1g06kZ+7jbSM6eyTA1id0v68LoQ3IilWe9mqQ==
   dependencies:
-    ts-proto "^1.146.0"
+    "@dcl/ts-proto" "^1.146.2"
 
 "@dcl/schemas@^6.4.2":
   version "6.18.1"
@@ -359,6 +359,19 @@
     ajv "^8.11.0"
     ajv-errors "^3.0.0"
     ajv-keywords "^5.1.0"
+
+"@dcl/ts-proto@^1.146.2":
+  version "1.146.2"
+  resolved "https://registry.yarnpkg.com/@dcl/ts-proto/-/ts-proto-1.146.2.tgz#1607fc378e3f76e8f88e974a6c031508de7e8811"
+  integrity sha512-r6iUFT+eO4/Kaafvg+vyLtq2dHkSpfehdhWd3J2mO16tcqclLjJ61CwRBXWBm31nk1L8HQFZc7iYgboMxT9g6g==
+  dependencies:
+    "@types/object-hash" "^1.3.0"
+    case-anything "^2.1.10"
+    dataloader "^1.4.0"
+    object-hash "^1.3.1"
+    protobufjs "^6.11.3"
+    ts-poet "^6.4.1"
+    ts-proto-descriptors "1.9.0"
 
 "@eslint-community/eslint-utils@^4.2.0":
   version "4.4.0"
@@ -4873,26 +4886,13 @@ ts-poet@^6.4.1:
   dependencies:
     dprint-node "^1.0.7"
 
-ts-proto-descriptors@1.8.0:
-  version "1.8.0"
-  resolved "https://registry.npmjs.org/ts-proto-descriptors/-/ts-proto-descriptors-1.8.0.tgz"
-  integrity sha512-iV20plcI8+GRkeZIAygxOOH0p2xpOsKfw9kI1W20NCwawi1/4bG/YRd9rQY9XSJP+lD9j7XbSy3tFFuikfsljw==
+ts-proto-descriptors@1.9.0:
+  version "1.9.0"
+  resolved "https://registry.yarnpkg.com/ts-proto-descriptors/-/ts-proto-descriptors-1.9.0.tgz#0ed5631f11851846c8de21be2bff346719edce71"
+  integrity sha512-Ui8zA5Q4Jnq6JIGRraUWvECrqixxtwwin8GkhIkvwCpR+JcSPsxWe8HfTj5eHfyruGYI6Zjf96XlC87hTakHfQ==
   dependencies:
     long "^4.0.0"
     protobufjs "^6.8.8"
-
-ts-proto@^1.146.0:
-  version "1.146.0"
-  resolved "https://registry.npmjs.org/ts-proto/-/ts-proto-1.146.0.tgz"
-  integrity sha512-OyBZRjmqqw+aatLEUbRooWO6VKTtOLJQyaQFMciigEZPNgTsWtApqHpQDtqDMQFWEXhIARqEV+B7ZJx8cljhZA==
-  dependencies:
-    "@types/object-hash" "^1.3.0"
-    case-anything "^2.1.10"
-    dataloader "^1.4.0"
-    object-hash "^1.3.1"
-    protobufjs "^6.11.3"
-    ts-poet "^6.4.1"
-    ts-proto-descriptors "1.8.0"
 
 tsconfig-paths@^3.14.1:
   version "3.14.1"
