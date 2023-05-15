@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "baseUrl": "src",
+    "baseUrl": "/dist/src/",
     "outDir": "dist",
     "module": "commonjs",
     "target": "es2018",

@@ -3,7 +3,7 @@
   "version": "0.0.0-development",
   "commit": "Unknown",
   "description": "A client to query and perform changes on Decentraland's catalyst servers",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "typings": "./dist/index.d.ts",
   "scripts": {
     "prebuild": "rm -rf dist",
