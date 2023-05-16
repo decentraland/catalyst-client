@@ -352,9 +352,9 @@
     ts-proto "^1.146.0"
 
 "@dcl/schemas@^6.4.2":
-  version "6.18.1"
-  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-6.18.1.tgz#c912223d529d6327463fe069ff5c4211dd404c9c"
-  integrity sha512-Us8E1FoJhG7jRRLjixkt6U79zD7oROdsjydo4t0t381xiNFZNUdclJQY6PGwEKCvPvO30cSR4OZCbqUT4DaFHg==
+  version "6.19.0"
+  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-6.19.0.tgz#42cfe23226782a736e3956ebcbd39ef21e63aeb1"
+  integrity sha512-S8lrq8L1vriVXkBzeycxppjbfgJ5XofA9pbCKdteJR+79r6Dn5oLo3t5g7RcMQDihdjWdDLbbwxlEAkPgmvc8w==
   dependencies:
     ajv "^8.11.0"
     ajv-errors "^3.0.0"
