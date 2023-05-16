@@ -104,3 +104,7 @@ dist
 .tern-port
 
 *.DS_Store
+
+.vscode
+
+src/package.json

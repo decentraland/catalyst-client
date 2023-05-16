@@ -4,11 +4,11 @@
   "commit": "Unknown",
   "description": "A client to query and perform changes on Decentraland's catalyst servers",
   "main": "dist/index.js",
-  "typings": "./dist/index.d.ts",
+  "typings": "dist/index.d.ts",
   "scripts": {
     "prebuild": "rm -rf dist",
     "generate:snapshots": "ts-node -T scripts/generate-snapshots.ts",
-    "build": "tsc --project tsconfig-build.json && yarn generate:snapshots",
+    "build": "cp package.json ./src/package.json && tsc --project tsconfig.json && yarn generate:snapshots",
     "prewatch": "rm -rf dist",
     "watch": "tsc --watch --project tsconfig-build.json",
     "test": "jest --forceExit --detectOpenHandles --coverage --verbose",
@@ -73,5 +73,9 @@
   },
   "optionalDependencies": {
     "ethers": "6.2.3"
-  }
+  },
+  "files": [
+    "package.json",
+    "dist"
+  ]
 }

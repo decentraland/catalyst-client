@@ -1,7 +1,7 @@
 import { createFetchComponent } from '@well-known-components/fetch-component'
 import { IFetchComponent, RequestOptions } from '@well-known-components/interfaces'
 import type FormData from 'form-data'
-import { commit, version } from './../../../package.json'
+import { commit, version } from './../../package.json'
 
 export function getCurrentVersion(): string {
   return version || commit || 'Unknown'
