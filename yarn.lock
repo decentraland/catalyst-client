@@ -1179,9 +1179,9 @@
     dotenv "^16.0.1"
 
 "@well-known-components/fetch-component@^1.0.0":
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/@well-known-components/fetch-component/-/fetch-component-1.0.0.tgz#c8d384f2a4348a022c7571b99870c960d8ba048a"
-  integrity sha512-idOCs/S5qLwUpSivNnozX+PLVnVtAxEdO7FybyZIsM1cR1NxDYNgMFixBl8cO+FVS3wQ2/cQbv7lUNF7yWXykg==
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@well-known-components/fetch-component/-/fetch-component-1.1.0.tgz#bc1546e802e5de7db54037ca28b5a325e840abf6"
+  integrity sha512-vH+5rBMQOc7OrtfJ/Tkm5TJNXH/LNs0rz5vLHcRhGt6RYv/zYOz38azwHGzjTZv4l4jO4ymstvbYhEz209t9mQ==
   dependencies:
     "@types/node-fetch" "^2.5.12"
     "@well-known-components/interfaces" "^1.4.0"
