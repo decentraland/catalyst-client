@@ -8,7 +8,7 @@
   "scripts": {
     "prebuild": "rm -rf dist",
     "generate:snapshots": "ts-node -T scripts/generate-snapshots.ts",
-    "build": "cp package.json ./src/package.json && tsc --project tsconfig.json && yarn generate:snapshots",
+    "build": "cp package.json ./src/package.json && orval && tsc --project tsconfig.json && yarn generate:snapshots",
     "prewatch": "rm -rf dist",
     "watch": "tsc --watch --project tsconfig-build.json",
     "test": "jest --forceExit --detectOpenHandles --coverage --verbose",
@@ -45,7 +45,6 @@
   "dependencies": {
     "@dcl/crypto": "^3.4.0",
     "@dcl/hashing": "^1.1.0",
-    "@dcl/protocol": "^1.0.0-4747376947.commit-d770e0d",
     "@dcl/schemas": "^7.1.0",
     "@well-known-components/fetch-component": "^1.0.0",
     "cookie": "^0.5.0",
@@ -53,6 +52,7 @@
     "form-data": "^4.0.0"
   },
   "devDependencies": {
+    "@dcl/catalyst-api-specs": "^3.1.10",
     "@dcl/eslint-config": "^1.0.6",
     "@types/form-data": "^2.5.0",
     "@well-known-components/env-config-provider": "^1.1.1",
@@ -61,6 +61,7 @@
     "@well-known-components/logger": "^3.0.0",
     "@well-known-components/test-helpers": "^1.2.1",
     "busboy": "^1.6.0",
+    "orval": "^6.16.0",
     "ts-node": "^10.4.0",
     "typescript": "^4.4.4"
   },

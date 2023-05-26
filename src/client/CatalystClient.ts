@@ -1,9 +1,9 @@
 import { ClientOptions } from './types'
-import { AboutResponse } from '@dcl/protocol/out-js/decentraland/realm/about.gen'
 import { sanitizeUrl } from './utils/Helper'
 import { createContentClient, ContentClient } from './ContentClient'
 import { createLambdasClient, LambdasClient } from './LambdasClient'
 import { CatalystServerInfo } from '../types'
+import { About } from '@dcl/catalyst-api-specs/lib/client/client.schemas'
 
 function shuffleArray<T>(arr: T[]): T[] {
   for (let i = arr.length - 1; i > 0; i--) {
@@ -14,7 +14,7 @@ function shuffleArray<T>(arr: T[]): T[] {
 }
 
 export type CatalystClient = {
-  fetchAbout(): Promise<AboutResponse>
+  fetchAbout(): Promise<About>
   getContentClient(): Promise<ContentClient>
   getLambdasClient(): Promise<LambdasClient>
 }
@@ -25,9 +25,9 @@ export async function createCatalystClient(options: ClientOptions): Promise<Cata
 
   let contentClient: undefined | ContentClient = undefined
   let lambdasClient: undefined | LambdasClient = undefined
-  let about: AboutResponse | undefined = undefined
+  let about: About | undefined = undefined
 
-  async function fetchAbout(): Promise<AboutResponse> {
+  async function fetchAbout(): Promise<About> {
     const result = await fetcher.fetch(catalystUrl + '/about')
     const response = await result.json()
 
