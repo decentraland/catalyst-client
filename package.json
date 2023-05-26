@@ -8,7 +8,8 @@
   "scripts": {
     "prebuild": "rm -rf dist",
     "generate:snapshots": "ts-node -T scripts/generate-snapshots.ts",
-    "build": "cp package.json ./src/package.json && orval && rm src/client/specs/client.ts && tsc --project tsconfig.json && yarn generate:snapshots",
+    "build": "cp package.json ./src/package.json && orval && rm src/client/specs/catalyst.ts && tsc --project tsconfig.json",
+    "postbuild": "yarn generate:snapshots",
     "prewatch": "rm -rf dist",
     "watch": "tsc --watch --project tsconfig-build.json",
     "test": "jest --forceExit --detectOpenHandles --coverage --verbose",

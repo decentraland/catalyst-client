@@ -1,190 +1,34 @@
-import {
-  convertFiltersToQueryParams,
-  mergeRequestOptions,
-  sanitizeUrl,
-  splitAndFetch,
-  splitAndFetchPaginated
-} from './utils/Helper'
+import { sanitizeUrl } from './utils/Helper'
+import { ClientOptions } from './types'
+import { withDefaultHeadersInjection, CustomClient } from './utils/fetcher'
+import * as client from './specs/lambdas-client'
 
-import { RequestOptions } from '@well-known-components/interfaces'
-import {
-  ClientOptions,
-  EmotesFilters,
-  OwnedItems,
-  OwnedItemsWithDefinition,
-  OwnedItemsWithoutDefinition,
-  ServerMetadata,
-  WearablesFilters
-} from './types'
-import { withDefaultHeadersInjection } from './utils/fetcher'
-
-export type LambdasClient = {
-  fetchProfiles(ethAddresses: string[], options?: RequestOptions): Promise<any[]>
-  fetchWearables(filters: WearablesFilters, options?: RequestOptions): Promise<any[]>
-  fetchOwnedWearables<B extends boolean>(
-    ethAddress: string,
-    includeDefinitions: B,
-    options?: RequestOptions
-  ): Promise<OwnedItems<B>>
-  fetchOwnedThirdPartyWearables<B extends boolean>(
-    ethAddress: string,
-    thirdPartyId: string,
-    includeDefinitions: B,
-    options?: RequestOptions
-  ): Promise<OwnedItems<B>>
-  fetchEmotes(filters: EmotesFilters, options?: RequestOptions): Promise<any[]>
-  fetchOwnedEmotes<B extends boolean>(
-    ethAddress: string,
-    includeDefinitions: B,
-    options?: RequestOptions
-  ): Promise<OwnedItems<B>>
-  fetchOwnedThirdPartyEmotes<B extends boolean>(
-    ethAddress: string,
-    thirdPartyId: string,
-    includeDefinitions: B,
-    options?: RequestOptions
-  ): Promise<OwnedItems<B>>
-  fetchCatalystsApprovedByDAO(options?: RequestOptions): Promise<ServerMetadata[]>
-  fetchLambdasStatus(options?: RequestOptions): Promise<{ contentServerUrl: string }>
-}
-
-export function createLambdasClient(options: ClientOptions): LambdasClient {
+export function createLambdasClient(options: ClientOptions) {
   const lambdasUrl = sanitizeUrl(options.url)
   const fetcher = withDefaultHeadersInjection(options.fetcher)
 
-  async function fetchProfiles(ethAddresses: string[], options?: RequestOptions): Promise<any[]> {
-    if (ethAddresses.length === 0) {
-      return Promise.resolve([])
+  function wrap<T extends (...args: any) => CustomClient<any>>(f: T) {
+    return (args: Parameters<T>): ReturnType<ReturnType<T>> => {
+      return f.call(args).call(lambdasUrl, fetcher)
     }
-
-    const requestOptions = mergeRequestOptions(options ? options : {}, {
-      body: JSON.stringify({ ids: ethAddresses }),
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
-    })
-
-    return (await fetcher.fetch(`${lambdasUrl}/profiles`, requestOptions)).json()
-  }
-
-  function fetchWearables(filters: WearablesFilters, options?: RequestOptions): Promise<any[]> {
-    const queryParams = convertFiltersToQueryParams(filters)
-    if (queryParams.size === 0) {
-      throw new Error('You must set at least one filter')
-    }
-
-    return splitAndFetchPaginated({
-      fetcher: fetcher,
-      options,
-      baseUrl: lambdasUrl,
-      path: '/collections/wearables',
-      queryParams,
-      uniqueBy: 'id',
-      elementsProperty: 'wearables'
-    })
-  }
-
-  function fetchOwnedWearables<B extends boolean>(
-    ethAddress: string,
-    includeDefinitions: B,
-    options?: RequestOptions
-  ): Promise<OwnedItems<B>> {
-    return splitAndFetch<B extends false ? OwnedItemsWithoutDefinition : OwnedItemsWithDefinition>({
-      baseUrl: lambdasUrl,
-      path: `/collections/wearables-by-owner/${ethAddress}`,
-      queryParams: { name: 'includeDefinitions', values: [`${includeDefinitions}`] },
-      fetcher,
-      options
-    })
-  }
-
-  function fetchOwnedThirdPartyWearables<B extends boolean>(
-    ethAddress: string,
-    thirdPartyId: string,
-    includeDefinitions: B,
-    options?: RequestOptions
-  ): Promise<OwnedItems<B>> {
-    const queryParams = new Map([
-      ['collectionId', [thirdPartyId]],
-      ['includeDefinitions', [`${includeDefinitions}`]]
-    ])
-    return splitAndFetch<B extends false ? OwnedItemsWithoutDefinition : OwnedItemsWithDefinition>({
-      fetcher,
-      options,
-      baseUrl: lambdasUrl,
-      path: `/collections/wearables-by-owner/${ethAddress}`,
-      queryParams
-    })
-  }
-
-  function fetchEmotes(filters: EmotesFilters, options?: RequestOptions): Promise<any[]> {
-    const queryParams = convertFiltersToQueryParams(filters)
-    if (queryParams.size === 0) {
-      throw new Error('You must set at least one filter')
-    }
-
-    return splitAndFetchPaginated({
-      fetcher: fetcher,
-      options,
-      baseUrl: lambdasUrl,
-      path: '/collections/emotes',
-      queryParams,
-      uniqueBy: 'id',
-      elementsProperty: 'emotes'
-    })
-  }
-
-  function fetchOwnedEmotes<B extends boolean>(
-    ethAddress: string,
-    includeDefinitions: B,
-    options?: RequestOptions
-  ): Promise<OwnedItems<B>> {
-    return splitAndFetch<B extends false ? OwnedItemsWithoutDefinition : OwnedItemsWithDefinition>({
-      fetcher: fetcher,
-      options,
-      baseUrl: lambdasUrl,
-      path: `/collections/emotes-by-owner/${ethAddress}`,
-      queryParams: { name: 'includeDefinitions', values: [`${includeDefinitions}`] }
-    })
-  }
-
-  function fetchOwnedThirdPartyEmotes<B extends boolean>(
-    ethAddress: string,
-    thirdPartyId: string,
-    includeDefinitions: B,
-    options?: RequestOptions
-  ): Promise<OwnedItems<B>> {
-    const queryParams = new Map([
-      ['collectionId', [thirdPartyId]],
-      ['includeDefinitions', [`${includeDefinitions}`]]
-    ])
-    return splitAndFetch<B extends false ? OwnedItemsWithoutDefinition : OwnedItemsWithDefinition>({
-      fetcher: fetcher,
-      options,
-      baseUrl: lambdasUrl,
-      path: `/collections/emotes-by-owner/${ethAddress}`,
-      queryParams
-    })
-  }
-
-  async function fetchCatalystsApprovedByDAO(options?: RequestOptions): Promise<ServerMetadata[]> {
-    const result = await fetcher.fetch(`${lambdasUrl}/contracts/servers`, options)
-    return result.json()
-  }
-
-  async function fetchLambdasStatus(options?: RequestOptions): Promise<{ contentServerUrl: string }> {
-    const result = await fetcher.fetch(`${lambdasUrl}/status`, options)
-    return result.json()
   }
 
   return {
-    fetchProfiles,
-    fetchWearables,
-    fetchOwnedWearables,
-    fetchOwnedThirdPartyWearables,
-    fetchEmotes,
-    fetchOwnedEmotes,
-    fetchOwnedThirdPartyEmotes,
-    fetchCatalystsApprovedByDAO,
-    fetchLambdasStatus
+    getLambdaStatus: wrap(client.getLambdaStatus),
+    getCollections: wrap(client.getCollections),
+    getThumbnail: wrap(client.getThumbnail),
+    getImage: wrap(client.getImage),
+    getStandardErc721: wrap(client.getStandardErc721),
+    getWearables: wrap(client.getWearables),
+    getEmotes: wrap(client.getEmotes),
+    getNames: wrap(client.getNames),
+    getLands: wrap(client.getLands),
+    getThirdPartyWearables: wrap(client.getThirdPartyWearables),
+    getThirdPartyCollection: wrap(client.getThirdPartyCollection),
+    getHotScenes: wrap(client.getHotScenes),
+    getRealms: wrap(client.getRealms),
+    getAvatarsDetailsByPost: wrap(client.getAvatarsDetailsByPost),
+    getAvatarDetails: wrap(client.getAvatarDetails),
+    getThirdPartyIntegrations: wrap(client.getThirdPartyIntegrations)
   }
 }

@@ -3,7 +3,7 @@ import { sanitizeUrl } from './utils/Helper'
 import { createContentClient, ContentClient } from './ContentClient'
 import { createLambdasClient, LambdasClient } from './LambdasClient'
 import { CatalystServerInfo } from '../types'
-import { About } from './specs/client.schemas'
+import { About } from './specs/catalyst.schemas'
 
 function shuffleArray<T>(arr: T[]): T[] {
   for (let i = arr.length - 1; i > 0; i--) {
