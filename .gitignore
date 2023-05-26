@@ -108,3 +108,4 @@ dist
 .vscode
 
 src/package.json
+src/client/specs
