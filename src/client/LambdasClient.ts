@@ -3,6 +3,8 @@ import { ClientOptions } from './types'
 import { withDefaultHeadersInjection, CustomClient } from './utils/fetcher'
 import * as client from './specs/lambdas-client'
 
+export type LambdasClient = ReturnType<typeof createLambdasClient>
+
 export function createLambdasClient(options: ClientOptions) {
   const lambdasUrl = sanitizeUrl(options.url)
   const fetcher = withDefaultHeadersInjection(options.fetcher)
