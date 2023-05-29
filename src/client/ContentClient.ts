@@ -2,14 +2,7 @@ import { hashV0, hashV1 } from '@dcl/hashing'
 import { Entity } from '@dcl/schemas'
 import { IFetchComponent, RequestOptions } from '@well-known-components/interfaces'
 import FormData from 'form-data'
-import {
-  BuildEntityOptions,
-  BuildEntityWithoutFilesOptions,
-  ClientOptions,
-  DeploymentData,
-  DeploymentPreparationData
-} from './types'
-import * as builder from './utils/DeploymentBuilder'
+import { ClientOptions, DeploymentData } from './types'
 import { addModelToFormData, isNode, mergeRequestOptions, sanitizeUrl, splitAndFetch } from './utils/Helper'
 import { withDefaultHeadersInjection } from './utils/fetcher'
 import { retry } from './utils/retry'
@@ -27,15 +20,7 @@ export type AvailableContentResult = {
 }[]
 
 export type ContentClient = {
-  /** Build entities */
-  buildEntity({ type, pointers, files, metadata }: BuildEntityOptions): Promise<DeploymentPreparationData>
   buildEntityFormDataForDeployment(deployData: DeploymentData, options?: RequestOptions): Promise<FormData>
-  buildEntityWithoutNewFiles({
-    type,
-    pointers,
-    hashesByKey,
-    metadata
-  }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData>
 
   /** Retrieve / Download */
   fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]>
@@ -81,41 +66,6 @@ export async function downloadContent(
 export function createContentClient(options: ClientOptions): ContentClient {
   const contentUrl = sanitizeUrl(options.url)
   const fetcher = withDefaultHeadersInjection(options.fetcher)
-
-  async function buildEntityWithoutNewFiles({
-    type,
-    pointers,
-    hashesByKey,
-    metadata,
-    timestamp
-  }: BuildEntityWithoutFilesOptions): Promise<DeploymentPreparationData> {
-    const result = timestamp ? timestamp : Date.now()
-    return builder.buildEntityWithoutNewFiles(fetcher, {
-      type,
-      pointers,
-      hashesByKey,
-      metadata,
-      timestamp: result,
-      contentUrl: contentUrl
-    })
-  }
-
-  async function buildEntity({
-    type,
-    pointers,
-    files,
-    metadata,
-    timestamp
-  }: BuildEntityOptions): Promise<DeploymentPreparationData> {
-    const result = timestamp ? timestamp : Date.now()
-    return builder.buildEntity({
-      type,
-      pointers,
-      files,
-      metadata,
-      timestamp: result
-    })
-  }
 
   async function buildEntityFormDataForDeployment(
     deployData: DeploymentData,
@@ -216,9 +166,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
   }
 
   return {
-    buildEntity,
     buildEntityFormDataForDeployment,
-    buildEntityWithoutNewFiles,
     fetchEntitiesByPointers,
     fetchEntitiesByIds,
     fetchEntityById,

@@ -4,3 +4,4 @@ scripts
 coverage
 src/contracts-snapshots/data.ts
 docs
+orval.config.ts

@@ -32,28 +32,6 @@ export type ServerMetadata = {
   id: string
 }
 
-export type ItemFilters = {
-  collectionIds?: string[]
-  textSearch?: string
-}
-
-export type WearablesFilters = ItemFilters & {
-  wearableIds?: string[]
-}
-
-export type EmotesFilters = ItemFilters & {
-  emoteIds?: string[]
-}
-
-export type OwnedItems<B extends boolean> = (B extends false ? OwnedItemsWithoutDefinition : OwnedItemsWithDefinition)[]
-
-export type OwnedItemsWithDefinition = OwnedItemsWithoutDefinition & { definition: any }
-
-export type OwnedItemsWithoutDefinition = {
-  urn: string
-  amount: number
-}
-
 export type ClientOptions = {
   url: string
   fetcher: IFetchComponent
