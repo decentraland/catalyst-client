@@ -11,7 +11,7 @@ export function createLambdasClient(options: ClientOptions) {
 
   function wrap<T extends (...args: any) => CustomClient<any>>(f: T) {
     return (...args: Parameters<T>): ReturnType<ReturnType<T>> => {
-      return f.call(args).call(lambdasUrl, fetcher)
+      return f(args)(lambdasUrl, fetcher) as any
     }
   }
 
