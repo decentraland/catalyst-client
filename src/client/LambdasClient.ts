@@ -10,7 +10,7 @@ export function createLambdasClient(options: ClientOptions) {
   const fetcher = withDefaultHeadersInjection(options.fetcher)
 
   function wrap<T extends (...args: any) => CustomClient<any>>(f: T) {
-    return (args: Parameters<T>): ReturnType<ReturnType<T>> => {
+    return (...args: Parameters<T>): ReturnType<ReturnType<T>> => {
       return f.call(args).call(lambdasUrl, fetcher)
     }
   }
