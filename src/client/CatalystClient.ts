@@ -3,15 +3,6 @@ import { sanitizeUrl } from './utils/Helper'
 import { createContentClient, ContentClient } from './ContentClient'
 import { createLambdasClient, LambdasClient } from './LambdasClient'
 import { About } from './specs/catalyst.schemas'
-import { CatalystServerInfo } from '@dcl/catalyst-contracts'
-
-function shuffleArray<T>(arr: T[]): T[] {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[arr[i], arr[j]] = [arr[j], arr[i]]
-  }
-  return arr
-}
 
 export type CatalystClient = {
   fetchAbout(): Promise<About>
@@ -79,22 +70,4 @@ export async function createCatalystClient(options: ClientOptions): Promise<Cata
     getContentClient,
     getLambdasClient
   }
-}
-
-export async function connectedToRandomCatalyst(
-  servers: CatalystServerInfo[],
-  options: Pick<ClientOptions, 'fetcher'>
-): Promise<CatalystClient | undefined> {
-  const shuffled = shuffleArray(servers)
-
-  for (const server of shuffled) {
-    const client = await createCatalystClient({ ...options, url: server.address })
-    const about = await client.fetchAbout()
-
-    if (about.healthy) {
-      return client
-    }
-  }
-
-  return undefined
 }
