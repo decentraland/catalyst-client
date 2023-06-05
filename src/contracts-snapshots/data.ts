@@ -87,7 +87,8 @@ export const cache = {
             "nigga",
             "childmolest",
             "childfucker"
-        ]
+        ],
+        "goerli": []
     },
     "pois": {
         "polygon": [
