@@ -353,9 +353,9 @@
   integrity sha512-9yHFLUg3PcwwTcZupeelpruFFNg+lD1/+YQ3dwfz0l3gWtjPXGSmAAYaggtyqiukbObjs7cbxagx4RjsBmMkpw==
 
 "@dcl/catalyst-contracts@^4.0.0":
-  version "4.0.0"
-  resolved "https://registry.yarnpkg.com/@dcl/catalyst-contracts/-/catalyst-contracts-4.0.0.tgz#5291944cedfe29f9cb04fef9c63950b3dc6c2f3e"
-  integrity sha512-4CwT1fOMlKCaFiUhZoQq64NR+B72Tx5Fdf6/tSLaO0gLe7Vyuuo3EcuHQ4c+fEfJvPk2tQatIKvstUiLhlvWQw==
+  version "4.0.2"
+  resolved "https://registry.yarnpkg.com/@dcl/catalyst-contracts/-/catalyst-contracts-4.0.2.tgz#9f77e1b4c857eff2ac6c550b8681ff6744680709"
+  integrity sha512-lfLtj4e646xCl/09seLq8zVnbuQ2w1O0c678TRB+1dttGYPpD13osX3J1P7ikC2SoR4NEBgDlFYXGbppmf0NKQ==
 
 "@dcl/crypto@^3.4.0":
   version "3.4.1"
