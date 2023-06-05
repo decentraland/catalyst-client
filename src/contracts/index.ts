@@ -1,32 +1,14 @@
-import * as ethers from 'ethers'
-import { Provider } from 'ethers'
+import { CatalystContract, PoiContract, NameDenylistContract } from '@dcl/catalyst-contracts'
 import * as contracts from '@dcl/catalyst-contracts'
 
-export async function getCatalystServersFromDAO(
-  network: contracts.L1Network,
-  provider: Provider
-): Promise<contracts.CatalystServerInfo[]> {
-  const contract = new ethers.Contract(contracts.l1Contracts[network].catalyst, contracts.catalystAbi, provider)
-  return contracts.getCatalystServersFromDAO({
-    async catalystCount(): Promise<number> {
-      return contract.catalystCount()
-    },
-    async catalystIds(i: number): Promise<string> {
-      return contract.catalystIds(i)
-    },
-    async catalystById(catalystId: string): Promise<contracts.CatalystByIdResult> {
-      const [id, owner, domain] = await contract.catalystById(catalystId)
-      return { id, owner, domain }
-    }
-  })
+export async function getCatalystServersFromDAO(contract: CatalystContract): Promise<contracts.CatalystServerInfo[]> {
+  return contracts.getCatalystServersFromDAO(contract)
 }
 
-export async function getPoiFromContract(network: contracts.L2Network, provider: Provider): Promise<string[]> {
-  const contract = new ethers.Contract(contracts.l2Contracts[network].poi, contracts.listAbi, provider)
-  return contracts.getPoisFromContract(contract as any as contracts.PoiContract)
+export async function getPoiFromContract(contract: PoiContract): Promise<string[]> {
+  return contracts.getPoisFromContract(contract)
 }
 
-export async function getNameDenylistFromContract(network: 'mainnet', provider: Provider): Promise<string[]> {
-  const contract = new ethers.Contract(contracts.l1Contracts[network].nameDenylist, contracts.listAbi, provider)
-  return contracts.getNameDenylistFromContract(contract as any as contracts.NameDenylistContract)
+export async function getNameDenylistFromContract(contract: NameDenylistContract): Promise<string[]> {
+  return contracts.getNameDenylistFromContract(contract)
 }
