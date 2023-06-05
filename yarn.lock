@@ -348,11 +348,9 @@
     "@jridgewell/trace-mapping" "0.3.9"
 
 "@dcl/catalyst-api-specs@^3.2.0":
-  version "3.2.0"
-  resolved "https://registry.yarnpkg.com/@dcl/catalyst-api-specs/-/catalyst-api-specs-3.2.0.tgz#fa1f82e68d9317868c9ad1b8d20cd175f0f17093"
-  integrity sha512-ggiMGS5Um74IRdvvD5UiiWDfdX4b9g1/VVFz32SDpXkSs4nDnKxQiSHSyrhcJFxIO0SQNA6YwfVZL33b7gORng==
-  dependencies:
-    yaml "2.2.2"
+  version "3.2.1"
+  resolved "https://registry.yarnpkg.com/@dcl/catalyst-api-specs/-/catalyst-api-specs-3.2.1.tgz#6d15382326bf9fbe86bc9325f1388896d3e81e16"
+  integrity sha512-9yHFLUg3PcwwTcZupeelpruFFNg+lD1/+YQ3dwfz0l3gWtjPXGSmAAYaggtyqiukbObjs7cbxagx4RjsBmMkpw==
 
 "@dcl/catalyst-contracts@^4.0.0":
   version "4.0.0"
@@ -6868,11 +6866,6 @@ yaml-js@^0.2.3:
   version "0.2.3"
   resolved "https://registry.yarnpkg.com/yaml-js/-/yaml-js-0.2.3.tgz#f4cf6c1b3c784f59f55547d7dfcdd06418303291"
   integrity sha512-6xUQtVKl1qcd0EXtTEzUDVJy9Ji1fYa47LtkDtYKlIjhibPE9knNPmoRyf6SGREFHlOAUyDe9OdYqRP4DuSi5Q==
-
-yaml@2.2.2:
-  version "2.2.2"
-  resolved "https://registry.yarnpkg.com/yaml/-/yaml-2.2.2.tgz#ec551ef37326e6d42872dad1970300f8eb83a073"
-  integrity sha512-CBKFWExMn46Foo4cldiChEzn7S7SRV+wqiluAb6xmueD/fGyRHIhX8m14vVGgeFWjN540nKCNVj6P21eQjgTuA==
 
 yaml@^1.10.0:
   version "1.10.2"
