@@ -1,7 +1,7 @@
 import RequestManager, { ContractFactory, HTTPProvider, bytesToHex } from 'eth-connect'
 import fs from 'fs'
 import { createFetchComponent } from '@well-known-components/fetch-component'
-import { getCatalystServersFromDAO, getNameDenylistFromContract, getPoiFromContract } from '../src/contracts'
+import { getCatalystServersFromDAO, getNameDenylistFromContract, getPoisFromContract } from '@dcl/catalyst-contracts'
 import {
   catalystAbi,
   CatalystByIdResult,
@@ -73,8 +73,8 @@ async function main(): Promise<void> {
       return (await factory.at(address)) as any
     }
     const [polygon, mumbai] = await Promise.all([
-      getPoiFromContract(await createContract(l2Contracts.polygon.poi, providers.polygon)),
-      getPoiFromContract(await createContract(l2Contracts.mumbai.poi, providers.mumbai))
+      getPoisFromContract(await createContract(l2Contracts.polygon.poi, providers.polygon)),
+      getPoisFromContract(await createContract(l2Contracts.mumbai.poi, providers.mumbai))
     ])
     return { polygon, mumbai }
   }
