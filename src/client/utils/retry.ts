@@ -1,5 +1,3 @@
-import { setTimeout } from 'timers/promises'
-
 export async function retry<T>(
   description: string,
   execution: () => Promise<T>,
@@ -17,7 +15,7 @@ export async function retry<T>(
         console.info(
           `Failed to ${description}. Still have ${attempts} attempt/s left. Will try again in ${waitTimeInMs}`
         )
-        await setTimeout(waitTimeInMs, null)
+        await new Promise((resolve) => setTimeout(resolve, waitTimeInMs))
       } else {
         throw error
       }
