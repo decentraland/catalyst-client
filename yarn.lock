@@ -391,7 +391,16 @@
     ipfs-unixfs-importer "^7.0.3"
     multiformats "^9.6.3"
 
-"@dcl/schemas@^7.1.0", "@dcl/schemas@^7.3.4":
+"@dcl/schemas@7.5.0":
+  version "7.5.0"
+  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-7.5.0.tgz#7d8dba43ff3148f305f31f0b919b0ab195966522"
+  integrity sha512-C2ptSYHRW55l4qQ45YgbBN9d9yDsqpjLfHKWQXFWcknchskxqryB5bd7JLMfPk081QJafDXh/BReTNhMvi/vKw==
+  dependencies:
+    ajv "^8.11.0"
+    ajv-errors "^3.0.0"
+    ajv-keywords "^5.1.0"
+
+"@dcl/schemas@^7.3.4":
   version "7.4.1"
   resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-7.4.1.tgz#f2209e7be165ec445bc428bfe35f7a236f5429ae"
   integrity sha512-gYqhzU1q7+XpME+oF1HrzuVxM6fw+EvAN8M5HVwppyHOthy6ortNMOmMhspIQ8eXNAwGmwxKlBjUM2jh0qNy5Q==
