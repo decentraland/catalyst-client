@@ -1,8 +1,8 @@
+import { ContentClient, createContentClient } from './ContentClient'
+import { LambdasClient, createLambdasClient } from './LambdasClient'
+import { About } from './specs/catalyst.schemas'
 import { ClientOptions } from './types'
 import { sanitizeUrl } from './utils/Helper'
-import { createContentClient, ContentClient } from './ContentClient'
-import { createLambdasClient, LambdasClient } from './LambdasClient'
-import { About } from './specs/catalyst.schemas'
 
 export type CatalystClient = {
   fetchAbout(): Promise<About>
@@ -10,7 +10,7 @@ export type CatalystClient = {
   getLambdasClient(): Promise<LambdasClient>
 }
 
-export async function createCatalystClient(options: ClientOptions): Promise<CatalystClient> {
+export function createCatalystClient(options: ClientOptions): CatalystClient {
   const catalystUrl = sanitizeUrl(options.url)
   const { fetcher } = options
 
