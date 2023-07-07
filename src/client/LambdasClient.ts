@@ -1,17 +1,16 @@
 import { sanitizeUrl } from './utils/Helper'
 import { ClientOptions } from './types'
-import { withDefaultHeadersInjection, CustomClient } from './utils/fetcher'
+import { CustomClient } from './utils/fetcher'
 import * as client from './specs/lambdas-client'
 
 export type LambdasClient = ReturnType<typeof createLambdasClient>
 
 export function createLambdasClient(options: ClientOptions) {
   const lambdasUrl = sanitizeUrl(options.url)
-  const fetcher = withDefaultHeadersInjection(options.fetcher)
 
   function wrap<T extends (...args: any) => CustomClient<any>>(f: T) {
     return (...args: Parameters<T>): ReturnType<ReturnType<T>> => {
-      return f(...(args as any))(lambdasUrl, fetcher) as any
+      return f(...(args as any))(lambdasUrl, options.fetcher) as any
     }
   }
 

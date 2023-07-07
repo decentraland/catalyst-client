@@ -4,7 +4,6 @@ import { IFetchComponent, RequestOptions } from '@well-known-components/interfac
 import FormData from 'form-data'
 import { ClientOptions, DeploymentData } from './types'
 import { addModelToFormData, isNode, mergeRequestOptions, sanitizeUrl, splitAndFetch } from './utils/Helper'
-import { withDefaultHeadersInjection } from './utils/fetcher'
 import { retry } from './utils/retry'
 
 function arrayBufferFrom(value: Buffer | Uint8Array) {
@@ -64,8 +63,8 @@ export async function downloadContent(
 }
 
 export function createContentClient(options: ClientOptions): ContentClient {
+  const { fetcher } = options
   const contentUrl = sanitizeUrl(options.url)
-  const fetcher = withDefaultHeadersInjection(options.fetcher)
 
   async function buildEntityFormDataForDeployment(
     deployData: DeploymentData,
