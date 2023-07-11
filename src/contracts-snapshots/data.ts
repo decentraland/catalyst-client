@@ -67,13 +67,9 @@ export const cache = {
                 "address": "https://peer.decentraland.zone",
                 "owner": "0x079BED9C31CB772c4C156F86E1CFf15bf751ADd0",
                 "id": "0x3ab65b7710c476a899412fc8bfcd6f4d55fa68f5a58bb548bb8dbff9f3ae76be"
-            },
-            {
-                "address": "https://peer-ue-2.decentraland.zone",
-                "owner": "0xe355ec3f4ac741fCEf88719001c825fe5138f0E1",
-                "id": "0x420dee17fad0e311afa59ffb8dc2dd724700e508fc9ccf47806ce1763b152394"
             }
-        ]
+        ],
+        "sepolia": []
     },
     "nameDenylist": {
         "mainnet": [
@@ -88,7 +84,8 @@ export const cache = {
             "childmolest",
             "childfucker"
         ],
-        "goerli": []
+        "goerli": [],
+        "sepolia": []
     },
     "pois": {
         "polygon": [

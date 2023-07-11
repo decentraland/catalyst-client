@@ -22,6 +22,7 @@ async function main(): Promise<void> {
   const providers = {
     mainnet: new HTTPProvider('https://rpc.decentraland.org/mainnet?project:catalyst-client-build', opts),
     goerli: new HTTPProvider('https://rpc.decentraland.org/goerli?project:catalyst-client-build', opts),
+    sepolia: new HTTPProvider('https://rpc.decentraland.org/sepolia?project:catalyst-client-build', opts),
     polygon: new HTTPProvider('https://rpc.decentraland.org/polygon?project:catalyst-client-build', opts),
     mumbai: new HTTPProvider('https://rpc.decentraland.org/mumbai?project:catalyst-client-build', opts)
   }
@@ -33,11 +34,12 @@ async function main(): Promise<void> {
       return (await factory.at(address)) as any
     }
 
-    const [mainnet, goerli] = await Promise.all([
+    const [mainnet, goerli, sepolia] = await Promise.all([
       getNameDenylistFromContract(await createContract(l1Contracts.mainnet.nameDenylist, providers.mainnet)),
-      getNameDenylistFromContract(await createContract(l1Contracts.goerli.nameDenylist, providers.goerli))
+      getNameDenylistFromContract(await createContract(l1Contracts.goerli.nameDenylist, providers.goerli)),
+      getNameDenylistFromContract(await createContract(l1Contracts.sepolia.nameDenylist, providers.sepolia))
     ])
-    return { mainnet, goerli }
+    return { mainnet, goerli, sepolia }
   }
 
   async function getCatalysts() {
@@ -59,11 +61,12 @@ async function main(): Promise<void> {
       }
     }
 
-    const [mainnet, goerli] = await Promise.all([
+    const [mainnet, goerli, sepolia] = await Promise.all([
       getCatalystServersFromDAO(await createContract(l1Contracts.mainnet.catalyst, providers.mainnet)),
-      getCatalystServersFromDAO(await createContract(l1Contracts.goerli.catalyst, providers.goerli))
+      getCatalystServersFromDAO(await createContract(l1Contracts.goerli.catalyst, providers.goerli)),
+      getCatalystServersFromDAO(await createContract(l1Contracts.sepolia.catalyst, providers.sepolia))
     ])
-    return { mainnet, goerli }
+    return { mainnet, goerli, sepolia }
   }
 
   async function getPois() {
