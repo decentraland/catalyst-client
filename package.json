@@ -16,20 +16,6 @@
     "lint:fix": "eslint '**/*.{js,ts,tsx}' --quiet --fix",
     "lint:check": "eslint '**/*.{js,ts,tsx}' --quiet"
   },
-  "nyc": {
-    "all": true,
-    "include": [
-      "src"
-    ],
-    "extension": [
-      ".ts"
-    ],
-    "reporter": [
-      "text-summary"
-    ],
-    "sourceMap": true,
-    "instrument": true
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/decentraland/catalyst-client.git"
