@@ -549,9 +549,9 @@
     yaml "^2.3.1"
 
 "@dcl/catalyst-contracts@^4.0.2":
-  version "4.0.5"
-  resolved "https://registry.yarnpkg.com/@dcl/catalyst-contracts/-/catalyst-contracts-4.0.5.tgz#4062174cd5de41cbf8a152cac12233adca1b67c5"
-  integrity sha512-6GqfQ8cYGT+W0ZVcAX6GKRxklCm0tgYPKYV4QtkuuFybmCRZmmmsZ6ACTH22ic3TL+l4Aph0KjVmhnAY7RyC7w==
+  version "4.0.6"
+  resolved "https://registry.yarnpkg.com/@dcl/catalyst-contracts/-/catalyst-contracts-4.0.6.tgz#bb6cbcd6f51fc16ee9723f8d91d1416b19dcd9dd"
+  integrity sha512-Ti3YWU+cla43ai24cYgDYO4BvKamYKOBgFdasaRHm+zl3xuObSBRrDxJlOzDFmgIIZVjhutaICFyMUPyWWgcrw==
 
 "@dcl/crypto@^3.4.0":
   version "3.4.2"
