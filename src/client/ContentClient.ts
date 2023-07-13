@@ -47,7 +47,7 @@ export async function downloadContent(
   return retry(
     `fetch file with hash ${contentHash} from ${baseUrl}`,
     async () => {
-      const content = await (await fetcher.fetch(`${baseUrl}/${contentHash}`, timeout)).buffer()
+      const content = await (await fetcher.fetch(`${baseUrl}/contents/${contentHash}`, timeout)).buffer()
       const downloadedHash = contentHash.startsWith('Qm') ? await hashV0(content) : await hashV1(content)
 
       // Sometimes, the downloaded file is not complete, so the hash turns out to be different.
