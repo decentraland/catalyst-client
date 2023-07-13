@@ -69,7 +69,13 @@ export const cache = {
                 "id": "0x3ab65b7710c476a899412fc8bfcd6f4d55fa68f5a58bb548bb8dbff9f3ae76be"
             }
         ],
-        "sepolia": []
+        "sepolia": [
+            {
+                "address": "https://peer-ue-2.decentraland.zone",
+                "owner": "0xb919da06d5f81777B13Fc5CBd48635E19500Fbf5",
+                "id": "0x8db5ae1fc6fa0aedaf63172a787a35867041686dc9aaa3e874544c6f42a82537"
+            }
+        ]
     },
     "nameDenylist": {
         "mainnet": [
