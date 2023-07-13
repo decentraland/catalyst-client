@@ -5,6 +5,7 @@ import { ClientOptions } from './types'
 import { sanitizeUrl } from './utils/Helper'
 
 export type CatalystClient = {
+  isCatalystUp(): Promise<boolean>
   fetchAbout(): Promise<About>
   getContentClient(): Promise<ContentClient>
   getLambdasClient(): Promise<LambdasClient>
@@ -17,6 +18,21 @@ export function createCatalystClient(options: ClientOptions): CatalystClient {
   let contentClient: undefined | ContentClient = undefined
   let lambdasClient: undefined | LambdasClient = undefined
   let about: About | undefined = undefined
+
+  async function isCatalystUp(): Promise<boolean> {
+    try {
+      if (!about) {
+        about = await fetchAbout()
+      }
+
+      const result = await fetcher.fetch(`${about.lambdas.publicUrl}/health`)
+      const isSomeServiceDown = Object.keys(result).some((service) => result[service] !== 'Healthy')
+
+      return !isSomeServiceDown
+    } catch {
+      return false
+    }
+  }
 
   async function fetchAbout(): Promise<About> {
     const result = await fetcher.fetch(catalystUrl + '/about')
@@ -66,6 +82,7 @@ export function createCatalystClient(options: ClientOptions): CatalystClient {
   }
 
   return {
+    isCatalystUp,
     fetchAbout,
     getContentClient,
     getLambdasClient
