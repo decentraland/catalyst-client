@@ -554,11 +554,11 @@
   integrity sha512-Ti3YWU+cla43ai24cYgDYO4BvKamYKOBgFdasaRHm+zl3xuObSBRrDxJlOzDFmgIIZVjhutaICFyMUPyWWgcrw==
 
 "@dcl/crypto@^3.4.0":
-  version "3.4.2"
-  resolved "https://registry.yarnpkg.com/@dcl/crypto/-/crypto-3.4.2.tgz#025d0bd2a996fba6cbae80025544a8d04c50efc4"
-  integrity sha512-yUZeWrOVZNnPBiYhDd3M6z/QJWKEHvAFPaFhGmq2vtzJ3myIzH3dpGdJ4YKpkyhBddOaHhwfa9MUIv+30ve+Ew==
+  version "3.4.3"
+  resolved "https://registry.yarnpkg.com/@dcl/crypto/-/crypto-3.4.3.tgz#74f55aed699949bc2566a7b0d6a23de499019afe"
+  integrity sha512-biG8PqImY3jtVM5bPizgAD0P6X9/7VMxKuD2hxiEEeZClfB1Zi76Qk8pHaLpJ5pU3B+NogwZ8xoREhq0Po+gXQ==
   dependencies:
-    "@dcl/schemas" "^7.3.4"
+    "@dcl/schemas" "^8.2.0"
     eth-connect "^6.0.3"
     ethereum-cryptography "^1.0.3"
 
@@ -588,16 +588,7 @@
     ipfs-unixfs-importer "^7.0.3"
     multiformats "^9.6.3"
 
-"@dcl/schemas@^7.3.4":
-  version "7.4.1"
-  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-7.4.1.tgz#f2209e7be165ec445bc428bfe35f7a236f5429ae"
-  integrity sha512-gYqhzU1q7+XpME+oF1HrzuVxM6fw+EvAN8M5HVwppyHOthy6ortNMOmMhspIQ8eXNAwGmwxKlBjUM2jh0qNy5Q==
-  dependencies:
-    ajv "^8.11.0"
-    ajv-errors "^3.0.0"
-    ajv-keywords "^5.1.0"
-
-"@dcl/schemas@^8.1.0":
+"@dcl/schemas@^8.1.0", "@dcl/schemas@^8.2.0":
   version "8.2.1"
   resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-8.2.1.tgz#b43e6d2745fffaafb2ae317e1a7c32afdcafb6da"
   integrity sha512-hJl+qq7WtCydl7VECvYGk6NcWK/eCBgUI88ngnOUSsFWe2QvnHPgS/PM69Kv0wd7KmO4394HhHPhMcDimMJ9UQ==
