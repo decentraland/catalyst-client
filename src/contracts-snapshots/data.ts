@@ -57,19 +57,24 @@ export const cache = {
                 "id": "0xfb2e343efdf90aa09f8f02849e453fac3c0b21edbc1de23ac6e6fb1981f5d009"
             }
         ],
-        "goerli": [
+        "goerli": [],
+        "sepolia": [
             {
-                "address": "https://peer-ap1.decentraland.zone",
-                "owner": "0xE4747cc0606a622E9388BecbDf528ABE94E68F1c",
-                "id": "0xdac0e1d5e7bf7311873e0d2f05eaade8b96a162f80fb9ff631984f397904fc2c"
+                "address": "https://peer-ue-2.decentraland.zone",
+                "owner": "0xb919da06d5f81777B13Fc5CBd48635E19500Fbf5",
+                "id": "0x8db5ae1fc6fa0aedaf63172a787a35867041686dc9aaa3e874544c6f42a82537"
             },
             {
                 "address": "https://peer.decentraland.zone",
-                "owner": "0x079BED9C31CB772c4C156F86E1CFf15bf751ADd0",
-                "id": "0x3ab65b7710c476a899412fc8bfcd6f4d55fa68f5a58bb548bb8dbff9f3ae76be"
+                "owner": "0x24e5F44999c151f08609F8e27b2238c773C4D020",
+                "id": "0xd4e9072592eabb244deac4e5c000881c72d0d5ee7c8b43e64feff71a924bd373"
+            },
+            {
+                "address": "https://peer-ap1.decentraland.zone",
+                "owner": "0xE3336140Edfe740a26F9f1912fD52891e6Dd8A35",
+                "id": "0x52da2b0d78e331cd261e130b21deaa679ae9da03566bc5cf4493b6c6f79128a6"
             }
-        ],
-        "sepolia": []
+        ]
     },
     "nameDenylist": {
         "mainnet": [
@@ -218,7 +223,8 @@ export const cache = {
             "-106,-94",
             "124,-15",
             "117,-27",
-            "-109,-93"
+            "-109,-93",
+            "-145,113"
         ],
         "mumbai": [
             "-29,55",
