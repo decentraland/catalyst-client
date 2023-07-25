@@ -109,3 +109,4 @@ dist
 
 src/package.json
 src/client/specs
+src/contracts-snapshots/data.ts
