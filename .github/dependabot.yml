@@ -12,6 +12,8 @@ updates:
     - dependency-name: "@catalyst/*"
     - dependency-name: "@well-known-components/*"
     - dependency-name: "dcl-*"
+    - dependency-name: "orval"
+    - dependency-name: "eth-connect"
   versioning-strategy: auto
   commit-message:
     prefix: "chore: "
