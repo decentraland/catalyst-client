@@ -589,9 +589,9 @@
     ajv-keywords "^5.1.0"
 
 "@dcl/schemas@^9.0.0":
-  version "9.0.0"
-  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-9.0.0.tgz#557ba43b537ea1f15051ec400a536ef2761e460f"
-  integrity sha512-4/DEMiVLy3GiMEEg8EbPE1vUXIGa4jVYAznYNd9RjF7+cDxMkiG3cxvMLOwQu9BwJUJhPVsJ5iT+yRAs//Gymg==
+  version "9.2.0"
+  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-9.2.0.tgz#ee77e6194d485ae897a2d9c36180935c381182d3"
+  integrity sha512-OGjjfbL+JsTqphvc6Msl4a5kYCGJlq2LmAMBY9WDlYRE+9DZBE2Sin+ebekYWBmSUA75mJHO+qUpg0/FC8z+oQ==
   dependencies:
     ajv "^8.11.0"
     ajv-errors "^3.0.0"
