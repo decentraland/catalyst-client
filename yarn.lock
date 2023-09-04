@@ -370,9 +370,9 @@
     ethereum-cryptography "^1.0.3"
 
 "@dcl/eslint-config@^1.1.9":
-  version "1.1.9"
-  resolved "https://registry.yarnpkg.com/@dcl/eslint-config/-/eslint-config-1.1.9.tgz#d193b6977984f221cab488a1254c47cd7227dd13"
-  integrity sha512-S5uIFjsu3YDLgsRdNzF6eKzweqwLC1UWpu0EuWuKHy8gtnkXbx97ysKky4P7nHx7KvUFK3cwOy5YxzNzhwnfUQ==
+  version "1.1.11"
+  resolved "https://registry.yarnpkg.com/@dcl/eslint-config/-/eslint-config-1.1.11.tgz#f97a54bc9df7d04f3c2c6012e2ad3d8413039170"
+  integrity sha512-pwR2QKrTXz5TlfxDfhJRSWOmBJlJAcCFVNrt8G7qc7BPhvvE7luFbHvaecJ6dYsG4o6d+IGbxugYjGjfens1aQ==
   dependencies:
     "@typescript-eslint/eslint-plugin" "^5.62.0"
     "@typescript-eslint/parser" "^5.62.0"
