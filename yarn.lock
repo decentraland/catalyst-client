@@ -2476,9 +2476,9 @@ esutils@2.0.3, esutils@^2.0.2:
   integrity sha512-kVscqXk4OCp68SZ0dkgEKVi6/8ij300KBWTJq32P/dYeWTSwK41WyTxalN1eRmA5Z9UU/LX9D7FWSmV9SAYx6g==
 
 eth-connect@^6.0.3, eth-connect@^6.1.0:
-  version "6.2.1"
-  resolved "https://registry.yarnpkg.com/eth-connect/-/eth-connect-6.2.1.tgz#7aa818cd352f2977a8dfa63d3973100d0f986c4a"
-  integrity sha512-RRSOdcfOHHHTAhBVcLiLHiH945/yuwPkmlj59AfLm/ofCmVPRLEqqAONS0xcrLE70OnTHStl7GzHC7Vi3zzfQA==
+  version "6.2.2"
+  resolved "https://registry.yarnpkg.com/eth-connect/-/eth-connect-6.2.2.tgz#e13a2207d2a2c47358207397b98908ab0810f067"
+  integrity sha512-OQcImRiHUKCyMtI7GtGD+nfcGToPvkuYp+REnYOcaWwCXghv6RNESowX0t7OVnHcln3qyAJiH/mCaoq1S6KD5w==
 
 ethereum-cryptography@^1.0.3:
   version "1.2.0"
