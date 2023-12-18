@@ -1529,9 +1529,9 @@
   integrity sha512-tTjD27CdfU4SVe+kPfjRbPSqdrw0Crg+M31RNejinCuMEBtEGbhYLtB1M4gn+PSTy2Oi3cI3iOdeQ1xVhMSerQ==
 
 "@well-known-components/test-helpers@^1.5.3":
-  version "1.5.4"
-  resolved "https://registry.yarnpkg.com/@well-known-components/test-helpers/-/test-helpers-1.5.4.tgz#a589c1603ddf8ac5e137c1a1c8a51b1eb49066af"
-  integrity sha512-sqkqm2479p0SQIt0QPRg6DuDe5McP67W6HuB3TbAJN76W7PcZGTxrcRWyw1mgNzR72p9jZ97kG3IojbDRFzH6g==
+  version "1.5.5"
+  resolved "https://registry.yarnpkg.com/@well-known-components/test-helpers/-/test-helpers-1.5.5.tgz#73472e599a3e867889b03b226ea86c7aba1f4b6c"
+  integrity sha512-TDUlPFh9Sog7vCXL+f30dhuBmoGH8ImGGP8mTB/pv25Qf9mF307uPhCklpDUWOB9HqUx/JkUp+0EAXmIDjNvcQ==
   dependencies:
     "@types/jest" "^29.5.2"
     "@types/sinon" "^17.0.1"
