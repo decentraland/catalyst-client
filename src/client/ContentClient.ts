@@ -25,7 +25,7 @@ export type ContentClient = {
   fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]>
   fetchEntitiesByIds(ids: string[], options?: RequestOptions): Promise<Entity[]>
   fetchEntityById(id: string, options?: RequestOptions): Promise<Entity>
-  downloadContent(contentHash: string, options?: RequestOptions): Promise<Buffer>
+  downloadContent(contentHash: string, options?: RequestOptions & { avoidChecks?: boolean }): Promise<Buffer>
 
   isContentAvailable(cids: string[], options?: RequestOptions): Promise<AvailableContentResult>
 
@@ -39,7 +39,7 @@ export async function downloadContent(
   fetcher: IFetchComponent,
   baseUrl: string,
   contentHash: string,
-  options?: Partial<RequestOptions>
+  options?: Partial<RequestOptions> & { avoidChecks?: boolean }
 ): Promise<Buffer> {
   const { attempts = 3, retryDelay = 500 } = options ? options : {}
   const timeout = options?.timeout ? { timeout: options.timeout } : {}
@@ -48,14 +48,16 @@ export async function downloadContent(
     `fetch file with hash ${contentHash} from ${baseUrl}`,
     async () => {
       const content = await (await fetcher.fetch(`${baseUrl}/${contentHash}`, timeout)).buffer()
-      const downloadedHash = contentHash.startsWith('Qm') ? await hashV0(content) : await hashV1(content)
+      if (!options?.avoidChecks) {
+        const downloadedHash = contentHash.startsWith('Qm') ? await hashV0(content) : await hashV1(content)
 
-      // Sometimes, the downloaded file is not complete, so the hash turns out to be different.
-      // So we will check the hash before considering the download successful.
-      if (downloadedHash === contentHash) {
-        return content
+        // Sometimes, the downloaded file is not complete, so the hash turns out to be different.
+        // So we will check the hash before considering the download successful.
+        if (downloadedHash !== contentHash) {
+          throw new Error(`Failed to fetch file with hash ${contentHash} from ${baseUrl}`)
+        }
       }
-      throw new Error(`Failed to fetch file with hash ${contentHash} from ${baseUrl}`)
+      return content
     },
     attempts,
     retryDelay
