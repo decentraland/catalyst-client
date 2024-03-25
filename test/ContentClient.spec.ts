@@ -3,7 +3,6 @@ import { Entity, EntityType } from '@dcl/schemas'
 import { createFetchComponent } from '@well-known-components/fetch-component'
 import { IFetchComponent } from '@well-known-components/http-server'
 import { AvailableContentResult, ContentClient, createContentClient } from '../src'
-import { getCurrentVersion } from '../src/client/utils/Helper'
 
 describe('ContentClient', () => {
   const URL = 'https://url.com'
@@ -159,6 +158,23 @@ describe('ContentClient', () => {
     // Assert that the correct buffer is returned, and that there was a retry attempt
     expect(result).toEqual(realBuffer)
     expect(fetcher.fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it("when a file is download, then the client doesn't check if the file is correct if the avoid checks flags is set", async () => {
+    const failBuffer = Buffer.from('Fail')
+    const realBuffer = Buffer.from('Real')
+
+    const fileHash = await hashV0(realBuffer)
+
+    const fetcher = createFetchComponent()
+    fetcher.fetch = jest.fn().mockResolvedValue({
+      buffer: jest.fn().mockResolvedValueOnce(failBuffer).mockResolvedValueOnce(realBuffer)
+    })
+
+    const client = buildClient(URL, fetcher)
+    const result = await client.downloadContent(fileHash, { retryDelay: 20, avoidChecks: true })
+    expect(result).toEqual(failBuffer)
+    expect(fetcher.fetch).toHaveBeenCalledTimes(1)
   })
 
   it('When a file is downloaded and all attempts failed, then an exception is thrown', async () => {
