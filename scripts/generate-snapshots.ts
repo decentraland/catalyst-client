@@ -1,17 +1,32 @@
-import RequestManager, { ContractFactory, HTTPProvider, bytesToHex } from 'eth-connect'
-import fs from 'fs'
-import { createFetchComponent } from '@well-known-components/fetch-component'
-import { getCatalystServersFromDAO, getNameDenylistFromContract, getPoisFromContract } from '@dcl/catalyst-contracts'
 import {
   catalystAbi,
   CatalystByIdResult,
   CatalystContract,
+  CatalystServerInfo,
+  getCatalystServersFromDAO,
+  getNameDenylistFromContract,
+  getPoisFromContract,
   l1Contracts,
   l2Contracts,
   listAbi,
   NameDenylistContract,
   PoiContract
 } from '@dcl/catalyst-contracts'
+import { createFetchComponent } from '@well-known-components/fetch-component'
+import RequestManager, { bytesToHex, ContractFactory, HTTPProvider } from 'eth-connect'
+import fs from 'fs'
+
+function moveInterconnectedCatalystToEnd(catalysts: CatalystServerInfo[]): CatalystServerInfo[] {
+  const interconnected = catalysts.find((server) =>
+    server.address.toLocaleLowerCase().includes('interconnected.online')
+  )
+  if (interconnected) {
+    const index = catalysts.indexOf(interconnected)
+    catalysts.splice(index, 1)
+    catalysts.push(interconnected)
+  }
+  return catalysts
+}
 
 async function main(): Promise<void> {
   console.log('Updating cache')
@@ -63,7 +78,8 @@ async function main(): Promise<void> {
       getCatalystServersFromDAO(await createContract(l1Contracts.mainnet.catalyst, providers.mainnet)),
       getCatalystServersFromDAO(await createContract(l1Contracts.sepolia.catalyst, providers.sepolia))
     ])
-    return { mainnet, sepolia }
+
+    return { mainnet: moveInterconnectedCatalystToEnd(mainnet), sepolia }
   }
 
   async function getPois() {
