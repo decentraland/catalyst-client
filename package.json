@@ -29,7 +29,7 @@
   },
   "homepage": "https://github.com/decentraland/catalyst-client#readme",
   "dependencies": {
-    "@dcl/catalyst-contracts": "^4.0.2",
+    "@dcl/catalyst-contracts": "https://sdk-team-cdn.decentraland.org/@dcl/catalyst-contracts/branch/feat/add-polygon-amoy-support/dcl-catalyst-contracts-4.3.2-8681670053.commit-fcfeb80.tgz",
     "@dcl/crypto": "^3.4.0",
     "@dcl/hashing": "^3.0.0",
     "@dcl/schemas": "^10.3.0",
