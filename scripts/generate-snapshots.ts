@@ -38,7 +38,7 @@ async function main(): Promise<void> {
     mainnet: new HTTPProvider('https://rpc.decentraland.org/mainnet?project:catalyst-client-build', opts),
     sepolia: new HTTPProvider('https://rpc.decentraland.org/sepolia?project:catalyst-client-build', opts),
     polygon: new HTTPProvider('https://rpc.decentraland.org/polygon?project:catalyst-client-build', opts),
-    mumbai: new HTTPProvider('https://rpc.decentraland.org/mumbai?project:catalyst-client-build', opts)
+    amoy: new HTTPProvider('https://rpc.decentraland.org/amoy?project:catalyst-client-build', opts)
   }
 
   async function getDenylists() {
@@ -88,11 +88,11 @@ async function main(): Promise<void> {
       const factory = new ContractFactory(requestManager, listAbi)
       return (await factory.at(address)) as any
     }
-    const [polygon, mumbai] = await Promise.all([
+    const [polygon, amoy] = await Promise.all([
       getPoisFromContract(await createContract(l2Contracts.polygon.poi, providers.polygon)),
-      getPoisFromContract(await createContract(l2Contracts.mumbai.poi, providers.mumbai))
+      getPoisFromContract(await createContract(l2Contracts.amoy.poi, providers.amoy))
     ])
-    return { polygon, mumbai }
+    return { polygon, amoy }
   }
 
   const content = {
