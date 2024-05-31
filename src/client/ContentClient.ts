@@ -64,6 +64,16 @@ export async function downloadContent(
   )
 }
 
+async function supportsDeploymentsV2(serverBaseUrl: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${serverBaseUrl}/entities/:hash`, { method: 'OPTIONS' })
+    return response.ok // returns true if response status is 200-299
+  } catch (error) {
+    console.error(`Error: ${error}`)
+    return false
+  }
+}
+
 export function createContentClient(options: ClientOptions): ContentClient {
   const { fetcher } = options
   const contentUrl = sanitizeUrl(options.url)
@@ -96,6 +106,28 @@ export function createContentClient(options: ClientOptions): ContentClient {
   }
 
   async function deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
+    // TODO We could also check the deployment size (if too small, may not be worth to use V2)
+    if (deployData.files.size > 0) {
+      const supportsV2 = await supportsDeploymentsV2(contentUrl)
+      if (supportsV2) {
+        return deployV2(deployData, options)
+      }
+    }
+    return deployTraditional(deployData, options)
+  }
+
+  async function deployTraditional(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
+    const form = await buildEntityFormDataForDeployment(deployData, options)
+
+    const requestOptions = mergeRequestOptions(options ? options : {}, {
+      body: form as any,
+      method: 'POST'
+    })
+
+    return await fetcher.fetch(`${contentUrl}/entities`, requestOptions)
+  }
+
+  async function deployV2(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
     const form = await buildEntityFormDataForDeployment(deployData, options)
 
     const requestOptions = mergeRequestOptions(options ? options : {}, {
