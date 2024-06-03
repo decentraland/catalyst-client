@@ -63,5 +63,5 @@ sequenceDiagram
     Cloudflare -->>- Client: ok (201)
     
     Content Server ->>+ Storage Server: Move files from temp folder to storage
-    Storage Server ->>+ Content Server: ok
+    Storage Server ->>- Content Server: ok
 ```
