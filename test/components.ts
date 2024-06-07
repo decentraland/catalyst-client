@@ -4,6 +4,23 @@ import { IConfigComponent, IHttpServerComponent, ILoggerComponent, Lifecycle } f
 import { createLogComponent } from '@well-known-components/logger'
 import { createRunner, defaultServerConfig } from '@well-known-components/test-helpers'
 import * as util from 'util'
+import DefaultContext = IHttpServerComponent.DefaultContext
+
+const logRequestMiddleware = async function logger(
+  ctx: DefaultContext<AppContext>,
+  next: () => Promise<IHttpServerComponent.IResponse>
+) {
+  const headers: Record<string, string> = {}
+
+  for (const [header, value] of ctx.request.headers) {
+    headers[header] = value
+  }
+
+  console.log('Test server got request:\n', ctx.request.method, ctx.url.toString(), JSON.stringify(headers, null, 2))
+  const response = await next()
+  console.log('Test server will send response:\n' + util.inspect(response, false, 30))
+  return response
+}
 
 // Record of components
 export type TestComponents = {
@@ -27,19 +44,7 @@ async function main({ components, startComponents }: Lifecycle.EntryPointParamet
 
   components.server.setContext(globalContext)
 
-  components.server.use(async function logger(ctx, next) {
-    const headers: Record<string, string> = {}
-
-    for (const [header, value] of ctx.request.headers) {
-      headers[header] = value
-    }
-
-    console.log('Test server got request:\n', ctx.request.method, ctx.url.toString(), JSON.stringify(headers, null, 2))
-    const response = await next()
-    console.log('Test server will send response:\n' + util.inspect(response, false, 30))
-    return response
-  })
-
+  components.server.use(logRequestMiddleware)
   components.server.use(components.router.middleware())
 
   // start server and other components

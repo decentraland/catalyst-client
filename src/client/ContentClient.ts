@@ -5,6 +5,7 @@ import FormData from 'form-data'
 import { ClientOptions, DeploymentData } from './types'
 import { addModelToFormData, isNode, mergeRequestOptions, sanitizeUrl, splitAndFetch } from './utils/Helper'
 import { retry } from './utils/retry'
+import { Response } from '@well-known-components/interfaces/dist/components/fetcher'
 
 function arrayBufferFrom(value: Buffer | Uint8Array) {
   if (value.buffer) {
@@ -66,9 +67,10 @@ export async function downloadContent(
 
 async function supportsDeploymentsV2(serverBaseUrl: string): Promise<boolean> {
   try {
-    const response = await fetch(`${serverBaseUrl}/entities/:hash`, { method: 'OPTIONS' })
+    const response = await fetch(`${serverBaseUrl}/v2/entities/:entityId/files/:fileHash`, { method: 'OPTIONS' })
     return response.ok // returns true if response status is 200-299
   } catch (error) {
+    console.log(error)
     console.error(`Error: ${error}`)
     return false
   }
@@ -105,7 +107,42 @@ export function createContentClient(options: ClientOptions): ContentClient {
     return form
   }
 
+  async function buildEntityFormDataForDeploymentV2(
+    deployData: DeploymentData,
+    options?: RequestOptions
+  ): Promise<Promise<Response>[]> {
+    // Check if we are running in node or browser
+    const areWeRunningInNode = isNode()
+
+    const requests: Promise<Response>[] = []
+    const alreadyUploadedHashes = await hashesAlreadyOnServer(Array.from(deployData.files.keys()), options)
+    for (const [fileHash, file] of deployData.files) {
+      if (!alreadyUploadedHashes.has(fileHash) || fileHash === deployData.entityId) {
+        const content = areWeRunningInNode
+          ? Buffer.isBuffer(file) // Node.js
+            ? file
+            : Buffer.from(arrayBufferFrom(file))
+          : arrayBufferFrom(file) // Browser
+
+        requests.push(
+          fetcher.fetch(`${contentUrl}/v2/entities/${deployData.entityId}/files/${fileHash}`, {
+            headers: {
+              'Content-Type': 'application/octet-stream'
+            },
+            method: 'POST',
+            body: content
+          })
+        )
+      }
+    }
+
+    return requests
+  }
+
   async function deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
+    // // TODO Undo this and leave the logic below
+    // return deployV2(deployData, options)
+
     // TODO We could also check the deployment size (if too small, may not be worth to use V2)
     if (deployData.files.size > 0) {
       const supportsV2 = await supportsDeploymentsV2(contentUrl)
@@ -127,15 +164,41 @@ export function createContentClient(options: ClientOptions): ContentClient {
     return await fetcher.fetch(`${contentUrl}/entities`, requestOptions)
   }
 
-  async function deployV2(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
-    const form = await buildEntityFormDataForDeployment(deployData, options)
+  async function deployV2(deployData: DeploymentData, options: RequestOptions = {}): Promise<unknown> {
+    const fileUploadRequests = await buildEntityFormDataForDeploymentV2(deployData, options)
 
-    const requestOptions = mergeRequestOptions(options ? options : {}, {
-      body: form as any,
-      method: 'POST'
+    const response = await fetcher.fetch(`${contentUrl}/v2/entities/${deployData.entityId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        authChain: deployData.authChain,
+        files: Object.fromEntries(Array.from(deployData.files, ([key, value]) => [key, value.byteLength]))
+      })
     })
 
-    return await fetcher.fetch(`${contentUrl}/entities`, requestOptions)
+    if (!response.ok) {
+      throw new Error(`Failed to deploy entity with id '${deployData.entityId}'.`)
+    }
+    console.log('Deployment started successfully! Uploading files...')
+
+    await Promise.all(fileUploadRequests)
+    console.log('Files uploaded successfully! Finishing deployment...')
+
+    const response2 = await fetcher.fetch(`${contentUrl}/v2/entities/${deployData.entityId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: ''
+    })
+
+    if (!response2.ok) {
+      throw new Error(`Failed to deploy entity with id '${deployData.entityId}'.`)
+    }
+
+    return !!response2
   }
 
   async function fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]> {

@@ -1,12 +1,12 @@
 import { createFetchComponent } from '@well-known-components/fetch-component'
-import { ContentClient, createContentClient } from '../src'
-import { runServerBasedE2ETest } from './components'
-import { multipartParserWrapper } from './utils'
+import { ContentClient, createContentClient } from '../../src'
+import { runServerBasedE2ETest } from '../components'
+import { multipartParserWrapper } from '../utils'
 
 runServerBasedE2ETest('test client post', ({ components }) => {
   let client: ContentClient
 
-  it('configures some endpoints', () => {
+  beforeAll(() => {
     components.router.get('/available-content', async (ctx) => {
       const params = new URLSearchParams(ctx.url.search)
       const cids = params.getAll('cid')
@@ -40,8 +40,8 @@ runServerBasedE2ETest('test client post', ({ components }) => {
     )
   })
 
-  it('creates the client', async () => {
-    client = await createContentClient({
+  beforeEach(async () => {
+    client = createContentClient({
       url: await components.getBaseUrl(),
       fetcher: createFetchComponent()
     })
