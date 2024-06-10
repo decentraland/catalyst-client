@@ -140,16 +140,15 @@ export function createContentClient(options: ClientOptions): ContentClient {
   }
 
   async function deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
-    // // TODO Undo this and leave the logic below
-    // return deployV2(deployData, options)
-
     // TODO We could also check the deployment size (if too small, may not be worth to use V2)
-    if (deployData.files.size > 0) {
+    // One file is always the entity itself, so we check more than one for using v2
+    if (deployData.files.size > 1) {
       const supportsV2 = await supportsDeploymentsV2(contentUrl)
       if (supportsV2) {
         return deployV2(deployData, options)
       }
     }
+
     return deployTraditional(deployData, options)
   }
 
