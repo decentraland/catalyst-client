@@ -107,14 +107,14 @@ export function createContentClient(options: ClientOptions): ContentClient {
     return form
   }
 
-  async function buildEntityFormDataForDeploymentV2(
+  async function buildFileUploadRequestsForDeploymentV2(
     deployData: DeploymentData,
     options?: RequestOptions
-  ): Promise<Promise<Response>[]> {
+  ): Promise<(() => Promise<Response>)[]> {
     // Check if we are running in node or browser
     const areWeRunningInNode = isNode()
 
-    const requests: Promise<Response>[] = []
+    const requests: (() => Promise<Response>)[] = []
     const alreadyUploadedHashes = await hashesAlreadyOnServer(Array.from(deployData.files.keys()), options)
     for (const [fileHash, file] of deployData.files) {
       if (!alreadyUploadedHashes.has(fileHash) || fileHash === deployData.entityId) {
@@ -125,13 +125,14 @@ export function createContentClient(options: ClientOptions): ContentClient {
           : arrayBufferFrom(file) // Browser
 
         requests.push(
-          fetcher.fetch(`${contentUrl}/v2/entities/${deployData.entityId}/files/${fileHash}`, {
-            headers: {
-              'Content-Type': 'application/octet-stream'
-            },
-            method: 'POST',
-            body: content
-          })
+          (): Promise<Response> =>
+            fetcher.fetch(`${contentUrl}/v2/entities/${deployData.entityId}/files/${fileHash}`, {
+              headers: {
+                'Content-Type': 'application/octet-stream'
+              },
+              method: 'POST',
+              body: content
+            })
         )
       }
     }
@@ -165,7 +166,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
   }
 
   async function deployV2(deployData: DeploymentData, options: RequestOptions = {}): Promise<unknown> {
-    const fileUploadRequests = await buildEntityFormDataForDeploymentV2(deployData, options)
+    const fileUploadRequests = await buildFileUploadRequestsForDeploymentV2(deployData, options)
 
     const response = await fetcher.fetch(`${contentUrl}/v2/entities/${deployData.entityId}`, {
       method: 'POST',
@@ -177,13 +178,12 @@ export function createContentClient(options: ClientOptions): ContentClient {
         files: Object.fromEntries(Array.from(deployData.files, ([key, value]) => [key, value.byteLength]))
       })
     })
-
     if (!response.ok) {
       throw new Error(`Failed to deploy entity with id '${deployData.entityId}'.`)
     }
     console.log('Deployment started successfully! Uploading files...')
 
-    await Promise.all(fileUploadRequests)
+    await Promise.all(fileUploadRequests.map((request) => request()))
     console.log('Files uploaded successfully! Finishing deployment...')
 
     const response2 = await fetcher.fetch(`${contentUrl}/v2/entities/${deployData.entityId}`, {

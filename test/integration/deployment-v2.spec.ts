@@ -5,14 +5,18 @@ import { runServerBasedE2ETest } from '../components'
 runServerBasedE2ETest('test deployment v2 protocol', ({ components }) => {
   let client: ContentClient
   let expectedFiles: Record<string, Uint8Array>
+  let stage = 1
+  let filesPendingUpload: Record<string, Uint8Array>
 
   beforeEach(async () => {
     expectedFiles = {
       bafkreiecsxue6isqiozm7kgrxd35qcmb5teulk6rwo6ux3b4mhvhyyoe6y: new Uint8Array([111, 112, 113]),
       bafkreidiq6d5r7yujricy72476vp4lgfrdmga6pz32edatbgwdfztturyy: Buffer.from('asd', 'utf-8')
     }
+    filesPendingUpload = { ...expectedFiles }
 
     components.router.get('/available-content', async (ctx) => {
+      expect(stage++).toBe(2)
       const params = new URLSearchParams(ctx.url.search)
       const cids = params.getAll('cid')
 
@@ -26,6 +30,8 @@ runServerBasedE2ETest('test deployment v2 protocol', ({ components }) => {
     })
 
     components.router.post('/v2/entities/:entityId', async (ctx) => {
+      expect(stage++).toBe(3)
+      console.log(`Estamos acá: /v2/entities/${ctx.params.entityId}`)
       expect(ctx.params.entityId).toBe('QmENTITY')
 
       const body = await ctx.request.json()
@@ -43,15 +49,23 @@ runServerBasedE2ETest('test deployment v2 protocol', ({ components }) => {
     })
 
     components.router.options('/v2/entities/:entityId/files/:fileHash', async (ctx) => {
+      expect(stage++).toBe(1)
+
       return {
         status: 200
       }
     })
 
     components.router.post('/v2/entities/:entityId/files/:fileHash', async (ctx) => {
+      expect(stage).toBe(4)
       expect(ctx.params.entityId).toBe('QmENTITY')
       expect(expectedFiles).toHaveProperty(ctx.params.fileHash)
       expect(Buffer.from(await ctx.request.arrayBuffer())).toEqual(Buffer.from(expectedFiles[ctx.params.fileHash]))
+
+      delete filesPendingUpload[ctx.params.fileHash]
+      if (Object.keys(filesPendingUpload).length === 0) {
+        stage++
+      }
 
       return {
         status: 204
@@ -59,6 +73,7 @@ runServerBasedE2ETest('test deployment v2 protocol', ({ components }) => {
     })
 
     components.router.put('/v2/entities/:entityId', async (ctx) => {
+      expect(stage++).toBe(5)
       expect(ctx.params.entityId).toBe('QmENTITY')
 
       return {
@@ -83,5 +98,6 @@ runServerBasedE2ETest('test deployment v2 protocol', ({ components }) => {
     const res = await client.deploy({ authChain: [], entityId: 'QmENTITY', files })
 
     expect(res).toBe(true)
+    expect(stage).toBe(6)
   })
 })
