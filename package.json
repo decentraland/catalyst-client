@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "@dcl/catalyst-api-specs": "^3.2.0",
-    "@dcl/eslint-config": "^1.1.9",
+    "@dcl/eslint-config": "^2.1.0",
     "@types/form-data": "^2.5.0",
     "@well-known-components/env-config-provider": "^1.1.1",
     "@well-known-components/http-server": "^2.0.0",
