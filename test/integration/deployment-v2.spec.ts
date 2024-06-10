@@ -16,7 +16,7 @@ runServerBasedE2ETest('test deployment v2 protocol', ({ components }) => {
     filesPendingUpload = { ...expectedFiles }
 
     components.router.get('/available-content', async (ctx) => {
-      expect(stage++).toBe(2)
+      expect(stage++).toBe(3)
       const params = new URLSearchParams(ctx.url.search)
       const cids = params.getAll('cid')
 
@@ -30,7 +30,7 @@ runServerBasedE2ETest('test deployment v2 protocol', ({ components }) => {
     })
 
     components.router.post('/v2/entities/:entityId', async (ctx) => {
-      expect(stage++).toBe(3)
+      expect(stage++).toBe(2)
       console.log(`Estamos acá: /v2/entities/${ctx.params.entityId}`)
       expect(ctx.params.entityId).toBe('QmENTITY')
 

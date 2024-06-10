@@ -124,15 +124,14 @@ export function createContentClient(options: ClientOptions): ContentClient {
             : Buffer.from(arrayBufferFrom(file))
           : arrayBufferFrom(file) // Browser
 
-        requests.push(
-          (): Promise<Response> =>
-            fetcher.fetch(`${contentUrl}/v2/entities/${deployData.entityId}/files/${fileHash}`, {
-              headers: {
-                'Content-Type': 'application/octet-stream'
-              },
-              method: 'POST',
-              body: content
-            })
+        requests.push(() =>
+          fetcher.fetch(`${contentUrl}/v2/entities/${deployData.entityId}/files/${fileHash}`, {
+            headers: {
+              'Content-Type': 'application/octet-stream'
+            },
+            method: 'POST',
+            body: content
+          })
         )
       }
     }
@@ -166,8 +165,6 @@ export function createContentClient(options: ClientOptions): ContentClient {
   }
 
   async function deployV2(deployData: DeploymentData, options: RequestOptions = {}): Promise<unknown> {
-    const fileUploadRequests = await buildFileUploadRequestsForDeploymentV2(deployData, options)
-
     const response = await fetcher.fetch(`${contentUrl}/v2/entities/${deployData.entityId}`, {
       method: 'POST',
       headers: {
@@ -183,6 +180,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
     }
     console.log('Deployment started successfully! Uploading files...')
 
+    const fileUploadRequests = await buildFileUploadRequestsForDeploymentV2(deployData, options)
     await Promise.all(fileUploadRequests.map((request) => request()))
     console.log('Files uploaded successfully! Finishing deployment...')
 
