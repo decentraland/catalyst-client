@@ -109,15 +109,15 @@ export function createContentClient(options: ClientOptions): ContentClient {
 
   async function buildFileUploadRequestsForDeploymentV2(
     deployData: DeploymentData,
-    options?: RequestOptions
+    missingFiles: string[]
   ): Promise<(() => Promise<Response>)[]> {
     // Check if we are running in node or browser
     const areWeRunningInNode = isNode()
 
     const requests: (() => Promise<Response>)[] = []
-    const alreadyUploadedHashes = await hashesAlreadyOnServer(Array.from(deployData.files.keys()), options)
-    for (const [fileHash, file] of deployData.files) {
-      if (!alreadyUploadedHashes.has(fileHash) || fileHash === deployData.entityId) {
+    for (const fileHash of missingFiles) {
+      if (deployData.files.has(fileHash)) {
+        const file = deployData.files.get(fileHash)!
         const content = areWeRunningInNode
           ? Buffer.isBuffer(file) // Node.js
             ? file
@@ -163,23 +163,45 @@ export function createContentClient(options: ClientOptions): ContentClient {
     return await fetcher.fetch(`${contentUrl}/entities`, requestOptions)
   }
 
-  async function deployV2(deployData: DeploymentData, options: RequestOptions = {}): Promise<unknown> {
-    const response = await fetcher.fetch(`${contentUrl}/v2/entities/${deployData.entityId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        authChain: deployData.authChain,
-        files: Object.fromEntries(Array.from(deployData.files, ([key, value]) => [key, value.byteLength]))
-      })
+  async function deployV2(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
+    console.log('deployData', deployData)
+    const areWeRunningInNode = isNode()
+
+    const fileSizesManifest: Record<string, number> = Object.fromEntries(
+      Array.from(deployData.files, ([key, value]) => [key, value.byteLength]).filter(
+        ([key]) => key !== deployData.entityId
+      )
+    )
+    const formData = new FormData()
+    formData.append('entityId', deployData.entityId)
+    addModelToFormData(deployData.authChain, formData, 'authChain')
+    const entityFile = deployData.files.get(deployData.entityId)!
+    const entityBuffer = arrayBufferFrom(entityFile)
+    formData.append(
+      deployData.entityId,
+      areWeRunningInNode ? Buffer.from(entityBuffer) : new Blob([entityBuffer]),
+      deployData.entityId
+    )
+    formData.append('fileSizesManifest', JSON.stringify(fileSizesManifest), {
+      contentType: 'application/json'
     })
+    console.log('form', formData)
+
+    const requestOptions = mergeRequestOptions(options ? options : {}, {
+      body: formData as any,
+      method: 'POST'
+    })
+
+    const response = await fetcher.fetch(`${contentUrl}/v2/entities`, requestOptions)
     if (!response.ok) {
       throw new Error(`Failed to deploy entity with id '${deployData.entityId}'.`)
     }
     console.log('Deployment started successfully! Uploading files...')
 
-    const fileUploadRequests = await buildFileUploadRequestsForDeploymentV2(deployData, options)
+    const res = await response.json()
+    console.log('res', res)
+
+    const fileUploadRequests = await buildFileUploadRequestsForDeploymentV2(deployData, res.missingFiles)
     await Promise.all(fileUploadRequests.map((request) => request()))
     console.log('Files uploaded successfully! Finishing deployment...')
 

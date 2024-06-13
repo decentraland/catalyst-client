@@ -1,54 +1,47 @@
 import { createFetchComponent } from '@well-known-components/fetch-component'
-import { ContentClient, createContentClient } from '../../src'
+import { ContentClient, createContentClient, DeploymentBuilder } from '../../src'
 import { runServerBasedE2ETest } from '../components'
+import { AuthLinkType, EntityType } from '@dcl/schemas'
+import { DeploymentPreparationData } from '../../src/client'
+import { hashV1 } from '@dcl/hashing'
+import { multipartParserWrapper } from '../utils'
 
 runServerBasedE2ETest('test deployment v2 protocol', ({ components }) => {
   let client: ContentClient
   let expectedFiles: Record<string, Uint8Array>
   let stage = 1
   let filesPendingUpload: Record<string, Uint8Array>
+  let file1: Uint8Array
+  let file1Hash: string
+  let file2: Uint8Array
+  let file2Hash: string
+  let files: Map<string, Uint8Array>
+  let preparationData: DeploymentPreparationData
 
   beforeEach(async () => {
+    file1 = new Uint8Array([111, 112, 113])
+    file2 = Buffer.from('asd', 'utf-8')
+    file1Hash = await hashV1(file1)
+    file2Hash = await hashV1(file2)
+    files = new Map<string, Uint8Array>()
+    files.set('file.bin', file1)
+    files.set('file.txt', file2)
+
+    preparationData = await DeploymentBuilder.buildEntity({
+      type: EntityType.SCENE,
+      pointers: ['1,3'],
+      timestamp: Date.now(),
+      files,
+      metadata: { name: 'My Scene' }
+    })
+
     expectedFiles = {
-      bafkreiecsxue6isqiozm7kgrxd35qcmb5teulk6rwo6ux3b4mhvhyyoe6y: new Uint8Array([111, 112, 113]),
-      bafkreidiq6d5r7yujricy72476vp4lgfrdmga6pz32edatbgwdfztturyy: Buffer.from('asd', 'utf-8')
+      [file1Hash]: file1,
+      [file2Hash]: file2
     }
     filesPendingUpload = { ...expectedFiles }
 
-    components.router.get('/available-content', async (ctx) => {
-      expect(stage++).toBe(3)
-      const params = new URLSearchParams(ctx.url.search)
-      const cids = params.getAll('cid')
-
-      return {
-        status: 200,
-        body: cids.map(($) => ({
-          cid: $,
-          available: false
-        }))
-      }
-    })
-
-    components.router.post('/v2/entities/:entityId', async (ctx) => {
-      expect(stage++).toBe(2)
-      console.log(`Estamos acá: /v2/entities/${ctx.params.entityId}`)
-      expect(ctx.params.entityId).toBe('QmENTITY')
-
-      const body = await ctx.request.json()
-
-      expect(body).toMatchObject({ authChain: [] })
-      for (const [hash, file] of Object.entries(expectedFiles)) {
-        expect(body.files).toHaveProperty(hash)
-        expect(body.files[hash]).toBe(file.length)
-      }
-
-      return {
-        status: 202, // Accepted
-        body: {}
-      }
-    })
-
-    components.router.options('/v2/entities/:entityId/files/:fileHash', async (ctx) => {
+    components.router.options('/v2/entities/:entityId/files/:fileHash', async (_ctx) => {
       expect(stage++).toBe(1)
 
       return {
@@ -56,9 +49,43 @@ runServerBasedE2ETest('test deployment v2 protocol', ({ components }) => {
       }
     })
 
+    components.router.post(
+      '/v2/entities',
+      multipartParserWrapper(async (ctx) => {
+        expect(stage++).toBe(2)
+
+        expect(ctx.formData.fields).toHaveProperty('entityId')
+        expect(ctx.formData.fields.entityId.value).toEqual(preparationData.entityId)
+        expect(ctx.formData.fields['authChain[0][type]'].value).toEqual('SIGNER')
+        expect(ctx.formData.fields['authChain[0][payload]'].value).toEqual('0x1')
+        expect(ctx.formData.fields['authChain[0][signature]'].value).toEqual('')
+
+        expect(ctx.formData.files).toHaveProperty(preparationData.entityId)
+        const entityMetadata = JSON.parse(ctx.formData.files[preparationData.entityId].value.toString())
+        expect(entityMetadata).toMatchObject({
+          version: 'v3',
+          type: EntityType.SCENE,
+          pointers: ['1,3'],
+          metadata: { name: 'My Scene' },
+          content: [
+            { file: 'file.bin', hash: file1Hash },
+            { file: 'file.txt', hash: file2Hash }
+          ]
+        })
+
+        return {
+          status: 202, // Accepted
+          body: {
+            availableFiles: [],
+            missingFiles: entityMetadata.content.map(($) => $.hash)
+          }
+        }
+      })
+    )
+
     components.router.post('/v2/entities/:entityId/files/:fileHash', async (ctx) => {
-      expect(stage).toBe(4)
-      expect(ctx.params.entityId).toBe('QmENTITY')
+      expect(stage).toBe(3)
+      expect(ctx.params.entityId).toBe(preparationData.entityId)
       expect(expectedFiles).toHaveProperty(ctx.params.fileHash)
       expect(Buffer.from(await ctx.request.arrayBuffer())).toEqual(Buffer.from(expectedFiles[ctx.params.fileHash]))
 
@@ -73,8 +100,8 @@ runServerBasedE2ETest('test deployment v2 protocol', ({ components }) => {
     })
 
     components.router.put('/v2/entities/:entityId', async (ctx) => {
-      expect(stage++).toBe(5)
-      expect(ctx.params.entityId).toBe('QmENTITY')
+      expect(stage++).toBe(4)
+      expect(ctx.params.entityId).toBe(preparationData.entityId)
 
       return {
         status: 200,
@@ -91,13 +118,12 @@ runServerBasedE2ETest('test deployment v2 protocol', ({ components }) => {
   })
 
   test('publishes an entity', async () => {
-    const files = new Map<string, Uint8Array>()
-    files.set('bafkreiecsxue6isqiozm7kgrxd35qcmb5teulk6rwo6ux3b4mhvhyyoe6y', new Uint8Array([111, 112, 113]))
-    files.set('bafkreidiq6d5r7yujricy72476vp4lgfrdmga6pz32edatbgwdfztturyy', Buffer.from('asd', 'utf-8'))
-
-    const res = await client.deploy({ authChain: [], entityId: 'QmENTITY', files })
+    const res = await client.deploy({
+      ...preparationData,
+      authChain: [{ type: AuthLinkType.SIGNER, payload: '0x1', signature: '' }]
+    })
 
     expect(res).toBe(true)
-    expect(stage).toBe(6)
+    expect(stage).toBe(5)
   })
 })
