@@ -1,11 +1,15 @@
 import { hashV0, hashV1 } from '@dcl/hashing'
 import { Entity } from '@dcl/schemas'
-import { IFetchComponent, RequestOptions } from '@well-known-components/interfaces'
+import { IFetchComponent, RequestOptions as OriginalRequestOptions } from '@well-known-components/interfaces'
 import FormData from 'form-data'
 import { ClientOptions, DeploymentData } from './types'
 import { addModelToFormData, isNode, mergeRequestOptions, sanitizeUrl, splitAndFetch } from './utils/Helper'
 import { retry } from './utils/retry'
 import { Response } from '@well-known-components/interfaces/dist/components/fetcher'
+
+export type RequestOptions = OriginalRequestOptions & {
+  deploymentProtocolVersion?: 'v1' | 'v2'
+}
 
 function arrayBufferFrom(value: Buffer | Uint8Array) {
   if (value.buffer) {
@@ -70,7 +74,6 @@ async function supportsDeploymentsV2(serverBaseUrl: string): Promise<boolean> {
     const response = await fetch(`${serverBaseUrl}/v2/entities/:entityId/files/:fileHash`, { method: 'OPTIONS' })
     return response.ok // returns true if response status is 200-299
   } catch (error) {
-    console.log(error)
     console.error(`Error: ${error}`)
     return false
   }
@@ -140,19 +143,19 @@ export function createContentClient(options: ClientOptions): ContentClient {
   }
 
   async function deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
-    // TODO We could also check the deployment size (if too small, may not be worth to use V2)
-    // One file is always the entity itself, so we check more than one for using v2
-    if (deployData.files.size > 1) {
+    if (options?.deploymentProtocolVersion === 'v2') {
       const supportsV2 = await supportsDeploymentsV2(contentUrl)
       if (supportsV2) {
         return deployV2(deployData, options)
+      } else {
+        throw new Error('The server does not support deployments v2.')
       }
     }
 
-    return deployTraditional(deployData, options)
+    return deployV1(deployData, options)
   }
 
-  async function deployTraditional(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
+  async function deployV1(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
     const form = await buildEntityFormDataForDeployment(deployData, options)
 
     const requestOptions = mergeRequestOptions(options ? options : {}, {
@@ -164,7 +167,6 @@ export function createContentClient(options: ClientOptions): ContentClient {
   }
 
   async function deployV2(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
-    console.log('deployData', deployData)
     const areWeRunningInNode = isNode()
 
     const fileSizesManifest: Record<string, number> = Object.fromEntries(
@@ -183,7 +185,6 @@ export function createContentClient(options: ClientOptions): ContentClient {
     formData.append('fileSizesManifest', JSON.stringify(fileSizesManifest), {
       contentType: 'application/json'
     })
-    console.log('form', formData)
 
     const requestOptions = mergeRequestOptions(options ? options : {}, {
       body: formData as any,
@@ -194,14 +195,11 @@ export function createContentClient(options: ClientOptions): ContentClient {
     if (!response.ok) {
       throw new Error(`Failed to deploy entity with id '${deployData.entityId}'.`)
     }
-    console.log('Deployment started successfully! Uploading files...')
 
     const res = await response.json()
-    console.log('res', res)
 
     const fileUploadRequests = await buildFileUploadRequestsForDeploymentV2(deployData, res.missingFiles)
     await Promise.all(fileUploadRequests.map((request) => request()))
-    console.log('Files uploaded successfully! Finishing deployment...')
 
     const response2 = await fetcher.fetch(`${contentUrl}/v2/entities/${deployData.entityId}`, {
       method: 'PUT',

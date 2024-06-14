@@ -118,10 +118,15 @@ runServerBasedE2ETest('test deployment v2 protocol', ({ components }) => {
   })
 
   test('publishes an entity', async () => {
-    const res = await client.deploy({
-      ...preparationData,
-      authChain: [{ type: AuthLinkType.SIGNER, payload: '0x1', signature: '' }]
-    })
+    const res = await client.deploy(
+      {
+        ...preparationData,
+        authChain: [{ type: AuthLinkType.SIGNER, payload: '0x1', signature: '' }]
+      },
+      {
+        deploymentProtocolVersion: 'v2'
+      }
+    )
 
     expect(res).toBe(true)
     expect(stage).toBe(5)

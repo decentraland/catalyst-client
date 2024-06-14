@@ -52,6 +52,26 @@ runServerBasedE2ETest('test client post', ({ components }) => {
     files.set('QmA', new Uint8Array([111, 112, 113]))
     files.set('QmB', Buffer.from('asd', 'utf-8'))
 
-    await client.deploy({ authChain: [], entityId: 'QmENTITY', files })
+    await client.deploy(
+      { authChain: [], entityId: 'QmENTITY', files },
+      {
+        deploymentProtocolVersion: 'v1'
+      }
+    )
+  })
+
+  it('fails to publish an entity using v2 if the server does not support v2', async () => {
+    const files = new Map<string, Uint8Array>()
+    files.set('QmA', new Uint8Array([111, 112, 113]))
+    files.set('QmB', Buffer.from('asd', 'utf-8'))
+
+    await expect(() =>
+      client.deploy(
+        { authChain: [], entityId: 'QmENTITY', files },
+        {
+          deploymentProtocolVersion: 'v2'
+        }
+      )
+    ).rejects.toThrowError('The server does not support deployments v2.')
   })
 })

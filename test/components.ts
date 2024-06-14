@@ -1,15 +1,21 @@
 import { createConfigComponent } from '@well-known-components/env-config-provider'
 import { createServerComponent, Router } from '@well-known-components/http-server'
-import { IConfigComponent, IHttpServerComponent, ILoggerComponent, Lifecycle } from '@well-known-components/interfaces'
+import {
+  IConfigComponent,
+  IHttpServerComponent,
+  ILoggerComponent,
+  IMiddlewareAdapterHandler,
+  Lifecycle
+} from '@well-known-components/interfaces'
 import { createLogComponent } from '@well-known-components/logger'
 import { createRunner, defaultServerConfig } from '@well-known-components/test-helpers'
 import * as util from 'util'
 import DefaultContext = IHttpServerComponent.DefaultContext
 
-const logRequestMiddleware = async function logger(
-  ctx: DefaultContext<AppContext>,
-  next: () => Promise<IHttpServerComponent.IResponse>
-) {
+const logRequestMiddleware: IMiddlewareAdapterHandler<
+  DefaultContext<AppContext>,
+  IHttpServerComponent.IResponse
+> = async function logger(ctx: DefaultContext<AppContext>, next: () => Promise<IHttpServerComponent.IResponse>) {
   const headers: Record<string, string> = {}
 
   for (const [header, value] of ctx.request.headers) {
