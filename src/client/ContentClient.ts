@@ -1,13 +1,13 @@
 import { hashV0, hashV1 } from '@dcl/hashing'
 import { Entity } from '@dcl/schemas'
-import { IFetchComponent, RequestOptions as OriginalRequestOptions } from '@well-known-components/interfaces'
+import { IFetchComponent, RequestOptions } from '@well-known-components/interfaces'
 import FormData from 'form-data'
 import { ClientOptions, DeploymentData } from './types'
 import { addModelToFormData, isNode, mergeRequestOptions, sanitizeUrl, splitAndFetch } from './utils/Helper'
 import { retry } from './utils/retry'
 import { Response } from '@well-known-components/interfaces/dist/components/fetcher'
 
-export type RequestOptions = OriginalRequestOptions & {
+export type DeploymentRequestOptions = RequestOptions & {
   deploymentProtocolVersion?: 'v1' | 'v2'
 }
 
@@ -37,7 +37,7 @@ export type ContentClient = {
   /**
    * Deploys an entity to the content server.
    */
-  deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown>
+  deploy(deployData: DeploymentData, options?: DeploymentRequestOptions): Promise<unknown>
 }
 
 export async function downloadContent(
@@ -142,7 +142,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
     return requests
   }
 
-  async function deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
+  async function deploy(deployData: DeploymentData, options?: DeploymentRequestOptions): Promise<unknown> {
     if (options?.deploymentProtocolVersion === 'v2') {
       const supportsV2 = await supportsDeploymentsV2(contentUrl)
       if (supportsV2) {
