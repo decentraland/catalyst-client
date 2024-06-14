@@ -168,9 +168,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
     const areWeRunningInNode = isNode()
 
     const fileSizesManifest: Record<string, number> = Object.fromEntries(
-      Array.from(deployData.files, ([key, value]) => [key, value.byteLength]).filter(
-        ([key]) => key !== deployData.entityId
-      )
+      Array.from(deployData.files, ([key, value]) => [key, value.byteLength])
     )
     const formData = new FormData()
     formData.append('entityId', deployData.entityId)
