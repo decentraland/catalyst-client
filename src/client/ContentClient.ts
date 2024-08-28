@@ -199,6 +199,8 @@ export function createContentClient(options: ClientOptions): ContentClient {
     const res = await response.json()
 
     const fileUploadRequests = await buildFileUploadRequestsForDeploymentV2(deployData, res.missingFiles)
+
+    // TODO We should use a p-queue here and limit the number of concurrent requests
     await Promise.all(fileUploadRequests.map((request) => request()))
 
     const response2 = await fetcher.fetch(`${contentUrl}/v2/entities/${deployData.entityId}`, {
