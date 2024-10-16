@@ -49,7 +49,7 @@
     "@well-known-components/test-helpers": "^1.5.3",
     "busboy": "^1.6.0",
     "eth-connect": "^6.1.0",
-    "orval": "^6.17.0",
+    "orval": "^7.1.1",
     "ts-node": "^10.4.0",
     "typescript": "^4.4.4"
   },
