@@ -33,6 +33,8 @@ export type ContentClient = {
    * Deploys an entity to the content server.
    */
   deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown>
+
+  setContentUrl(url: string): void
 }
 
 export async function downloadContent(
@@ -66,7 +68,7 @@ export async function downloadContent(
 
 export function createContentClient(options: ClientOptions): ContentClient {
   const { fetcher } = options
-  const contentUrl = sanitizeUrl(options.url)
+  let contentUrl = sanitizeUrl(options.url)
 
   async function buildEntityFormDataForDeployment(
     deployData: DeploymentData,
@@ -166,6 +168,10 @@ export function createContentClient(options: ClientOptions): ContentClient {
     return new Set(alreadyUploaded)
   }
 
+  function setContentUrl(url: string) {
+    contentUrl = sanitizeUrl(url)
+  }
+
   return {
     buildEntityFormDataForDeployment,
     fetchEntitiesByPointers,
@@ -175,6 +181,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
       return downloadContent(fetcher, contentUrl + '/contents', contentHash, options)
     },
     deploy,
+    setContentUrl,
     isContentAvailable
   }
 }

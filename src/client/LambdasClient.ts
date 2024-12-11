@@ -1,7 +1,7 @@
-import { sanitizeUrl } from './utils/Helper'
+import * as client from './specs/lambdas-client'
 import { ClientOptions } from './types'
 import { CustomClient } from './utils/fetcher'
-import * as client from './specs/lambdas-client'
+import { sanitizeUrl } from './utils/Helper'
 
 export type LambdasClient = ReturnType<typeof createLambdasClient>
 
@@ -12,6 +12,10 @@ export function createLambdasClient(options: ClientOptions) {
     return (...args: Parameters<T>): ReturnType<ReturnType<T>> => {
       return f(...(args as any))(lambdasUrl, options.fetcher) as any
     }
+  }
+
+  function setLambdasUrl(url: string) {
+    options.url = sanitizeUrl(url)
   }
 
   return {
@@ -30,6 +34,7 @@ export function createLambdasClient(options: ClientOptions) {
     getRealms: wrap(client.getRealms),
     getAvatarsDetailsByPost: wrap(client.getAvatarsDetailsByPost),
     getAvatarDetails: wrap(client.getAvatarDetails),
-    getThirdPartyIntegrations: wrap(client.getThirdPartyIntegrations)
+    getThirdPartyIntegrations: wrap(client.getThirdPartyIntegrations),
+    setLambdasUrl
   }
 }
