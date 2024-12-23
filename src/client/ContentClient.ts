@@ -5,6 +5,11 @@ import FormData from 'form-data'
 import { ClientOptions, DeploymentData } from './types'
 import { addModelToFormData, isNode, mergeRequestOptions, sanitizeUrl, splitAndFetch } from './utils/Helper'
 import { retry } from './utils/retry'
+import { Response } from '@well-known-components/interfaces/dist/components/fetcher'
+
+export type DeploymentRequestOptions = RequestOptions & {
+  deploymentProtocolVersion?: 'v1' | 'v2'
+}
 
 function arrayBufferFrom(value: Buffer | Uint8Array) {
   if (value.buffer) {
@@ -32,7 +37,7 @@ export type ContentClient = {
   /**
    * Deploys an entity to the content server.
    */
-  deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown>
+  deploy(deployData: DeploymentData, options?: DeploymentRequestOptions): Promise<unknown>
 }
 
 export async function downloadContent(
@@ -62,6 +67,16 @@ export async function downloadContent(
     attempts,
     retryDelay
   )
+}
+
+async function supportsDeploymentsV2(serverBaseUrl: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${serverBaseUrl}/v2/entities/:entityId/files/:fileHash`, { method: 'OPTIONS' })
+    return response.ok // returns true if response status is 200-299
+  } catch (error) {
+    console.error(`Error: ${error}`)
+    return false
+  }
 }
 
 export function createContentClient(options: ClientOptions): ContentClient {
@@ -95,7 +110,52 @@ export function createContentClient(options: ClientOptions): ContentClient {
     return form
   }
 
-  async function deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
+  async function buildFileUploadRequestsForDeploymentV2(
+    deployData: DeploymentData,
+    missingFiles: string[]
+  ): Promise<(() => Promise<Response>)[]> {
+    // Check if we are running in node or browser
+    const areWeRunningInNode = isNode()
+
+    const requests: (() => Promise<Response>)[] = []
+    for (const fileHash of missingFiles) {
+      if (deployData.files.has(fileHash)) {
+        const file = deployData.files.get(fileHash)!
+        const content = areWeRunningInNode
+          ? Buffer.isBuffer(file) // Node.js
+            ? file
+            : Buffer.from(arrayBufferFrom(file))
+          : arrayBufferFrom(file) // Browser
+
+        requests.push(() =>
+          fetcher.fetch(`${contentUrl}/v2/entities/${deployData.entityId}/files/${fileHash}`, {
+            headers: {
+              'Content-Type': 'application/octet-stream'
+            },
+            method: 'POST',
+            body: content
+          })
+        )
+      }
+    }
+
+    return requests
+  }
+
+  async function deploy(deployData: DeploymentData, options?: DeploymentRequestOptions): Promise<unknown> {
+    if (options?.deploymentProtocolVersion === 'v2') {
+      const supportsV2 = await supportsDeploymentsV2(contentUrl)
+      if (supportsV2) {
+        return deployV2(deployData, options)
+      } else {
+        throw new Error('The server does not support deployments v2.')
+      }
+    }
+
+    return deployV1(deployData, options)
+  }
+
+  async function deployV1(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
     const form = await buildEntityFormDataForDeployment(deployData, options)
 
     const requestOptions = mergeRequestOptions(options ? options : {}, {
@@ -104,6 +164,58 @@ export function createContentClient(options: ClientOptions): ContentClient {
     })
 
     return await fetcher.fetch(`${contentUrl}/entities`, requestOptions)
+  }
+
+  async function deployV2(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
+    const areWeRunningInNode = isNode()
+
+    const fileSizesManifest: Record<string, number> = Object.fromEntries(
+      Array.from(deployData.files, ([key, value]) => [key, value.byteLength])
+    )
+    const formData = new FormData()
+    formData.append('entityId', deployData.entityId)
+    addModelToFormData(deployData.authChain, formData, 'authChain')
+    const entityFile = deployData.files.get(deployData.entityId)!
+    const entityBuffer = arrayBufferFrom(entityFile)
+    formData.append(
+      deployData.entityId,
+      areWeRunningInNode ? Buffer.from(entityBuffer) : new Blob([entityBuffer]),
+      deployData.entityId
+    )
+    formData.append('fileSizesManifest', JSON.stringify(fileSizesManifest), {
+      contentType: 'application/json'
+    })
+
+    const requestOptions = mergeRequestOptions(options ? options : {}, {
+      body: formData as any,
+      method: 'POST'
+    })
+
+    const response = await fetcher.fetch(`${contentUrl}/v2/entities`, requestOptions)
+    if (!response.ok) {
+      throw new Error(`Failed to deploy entity with id '${deployData.entityId}'.`)
+    }
+
+    const res = await response.json()
+
+    const fileUploadRequests = await buildFileUploadRequestsForDeploymentV2(deployData, res.missingFiles)
+
+    // TODO We should use a p-queue here and limit the number of concurrent requests
+    await Promise.all(fileUploadRequests.map((request) => request()))
+
+    const response2 = await fetcher.fetch(`${contentUrl}/v2/entities/${deployData.entityId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: ''
+    })
+
+    if (!response2.ok) {
+      throw new Error(`Failed to deploy entity with id '${deployData.entityId}'.`)
+    }
+
+    return !!response2
   }
 
   async function fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]> {

@@ -10,7 +10,7 @@
     "generate:snapshots": "ts-node -T scripts/generate-snapshots.ts",
     "build": "cp package.json ./src/package.json && orval && rm src/client/specs/catalyst.ts && tsc --project tsconfig.json",
     "prewatch": "rm -rf dist",
-    "watch": "tsc --watch --project tsconfig-build.json",
+    "watch": "tsc --watch --project tsconfig.json",
     "test": "jest --forceExit --detectOpenHandles --coverage --verbose",
     "lint:fix": "eslint '**/*.{js,ts,tsx}' --quiet --fix",
     "lint:check": "eslint '**/*.{js,ts,tsx}' --quiet"

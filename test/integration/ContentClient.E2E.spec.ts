@@ -1,12 +1,12 @@
 import { createFetchComponent } from '@well-known-components/fetch-component'
-import { ContentClient, createContentClient } from '../src'
-import { runServerBasedE2ETest } from './components'
-import { multipartParserWrapper } from './utils'
+import { ContentClient, createContentClient } from '../../src'
+import { runServerBasedE2ETest } from '../components'
+import { multipartParserWrapper } from '../utils'
 
 runServerBasedE2ETest('test client post', ({ components }) => {
   let client: ContentClient
 
-  it('configures some endpoints', () => {
+  beforeAll(() => {
     components.router.get('/available-content', async (ctx) => {
       const params = new URLSearchParams(ctx.url.search)
       const cids = params.getAll('cid')
@@ -40,8 +40,8 @@ runServerBasedE2ETest('test client post', ({ components }) => {
     )
   })
 
-  it('creates the client', async () => {
-    client = await createContentClient({
+  beforeEach(async () => {
+    client = createContentClient({
       url: await components.getBaseUrl(),
       fetcher: createFetchComponent()
     })
@@ -52,6 +52,26 @@ runServerBasedE2ETest('test client post', ({ components }) => {
     files.set('QmA', new Uint8Array([111, 112, 113]))
     files.set('QmB', Buffer.from('asd', 'utf-8'))
 
-    await client.deploy({ authChain: [], entityId: 'QmENTITY', files })
+    await client.deploy(
+      { authChain: [], entityId: 'QmENTITY', files },
+      {
+        deploymentProtocolVersion: 'v1'
+      }
+    )
+  })
+
+  it('fails to publish an entity using v2 if the server does not support v2', async () => {
+    const files = new Map<string, Uint8Array>()
+    files.set('QmA', new Uint8Array([111, 112, 113]))
+    files.set('QmB', Buffer.from('asd', 'utf-8'))
+
+    await expect(() =>
+      client.deploy(
+        { authChain: [], entityId: 'QmENTITY', files },
+        {
+          deploymentProtocolVersion: 'v2'
+        }
+      )
+    ).rejects.toThrowError('The server does not support deployments v2.')
   })
 })
