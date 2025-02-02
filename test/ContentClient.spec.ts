@@ -1,7 +1,7 @@
 import { hashV0 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
 import { createFetchComponent } from '@well-known-components/fetch-component'
-import { IFetchComponent } from '@well-known-components/http-server'
+import { IFetchComponent } from '@well-known-components/interfaces'
 import { AvailableContentResult, ContentClient, createContentClient } from '../src'
 
 describe('ContentClient', () => {
@@ -241,4 +241,391 @@ describe('ContentClient', () => {
   function buildClient(url: string, fetcher: IFetchComponent): ContentClient {
     return createContentClient({ url, fetcher })
   }
+
+  let mockFetch: IFetchComponent
+  const baseUrl = 'https://peer-test.decentraland.org/content'
+  const secondaryUrl = 'https://peer-test-2.decentraland.org/content'
+  const tertiaryUrl = 'https://peer-test-3.decentraland.org/content'
+
+  const mockEntity1: Entity = {
+    version: 'v3',
+    id: 'entity1',
+    type: EntityType.SCENE,
+    pointers: ['pointer1'],
+    timestamp: 1000,
+    content: [],
+    metadata: {}
+  }
+
+  const mockEntity2: Entity = {
+    version: 'v3',
+    id: 'entity2',
+    type: EntityType.SCENE,
+    pointers: ['pointer1'],
+    timestamp: 2000,
+    content: [],
+    metadata: {}
+  }
+
+  const mockEntity3: Entity = {
+    version: 'v3',
+    id: 'entity3',
+    type: EntityType.SCENE,
+    pointers: ['pointer1'],
+    timestamp: 3000,
+    content: [],
+    metadata: {}
+  }
+
+  const createMockJsonResponse = (data: any): any => ({
+    json: async () => data
+  })
+
+  beforeEach(() => {
+    mockFetch = createFetchComponent()
+  })
+
+  const urlMatches = (urlStr: string, pattern: string) => urlStr.includes(pattern)
+
+  describe('Parallel fetch functionality', () => {
+    describe('fetchEntitiesByIds', () => {
+      it('should use parallel fetch when configured globally', async () => {
+        const client = createContentClient({
+          url: baseUrl,
+          fetcher: mockFetch,
+          parallelConfig: {
+            urls: [secondaryUrl, tertiaryUrl]
+          }
+        })
+
+        jest.spyOn(mockFetch, 'fetch').mockImplementation(async (url) => {
+          const urlString = url.toString()
+          if (urlMatches(urlString, baseUrl)) {
+            await new Promise((resolve) => setTimeout(resolve, 100))
+            return createMockJsonResponse([mockEntity1])
+          } else if (urlMatches(urlString, secondaryUrl)) {
+            await new Promise((resolve) => setTimeout(resolve, 50))
+            return createMockJsonResponse([mockEntity2])
+          } else {
+            await new Promise((resolve) => setTimeout(resolve, 150))
+            return createMockJsonResponse([mockEntity3])
+          }
+        })
+
+        const result = await client.fetchEntitiesByIds(['entity1'])
+        expect(result).toEqual([mockEntity2])
+        expect(mockFetch.fetch).toHaveBeenCalledTimes(3)
+      })
+
+      it('should use parallel fetch when configured per request', async () => {
+        const client = createContentClient({
+          url: baseUrl,
+          fetcher: mockFetch
+        })
+
+        const fetchSpy = jest.spyOn(mockFetch, 'fetch').mockImplementation(async (url) => {
+          const urlString = url.toString()
+          if (urlMatches(urlString, secondaryUrl)) {
+            return createMockJsonResponse([mockEntity2])
+          }
+          await new Promise((resolve) => setTimeout(resolve, 100))
+          return createMockJsonResponse([mockEntity1])
+        })
+
+        const result = await client.fetchEntitiesByIds(['entity1'], {
+          parallel: {
+            urls: [secondaryUrl]
+          }
+        })
+
+        expect(result).toEqual([mockEntity2])
+        expect(fetchSpy).toHaveBeenCalledTimes(2)
+      })
+
+      it('should handle errors and continue with successful responses', async () => {
+        const client = createContentClient({
+          url: baseUrl,
+          fetcher: mockFetch,
+          parallelConfig: {
+            urls: [secondaryUrl, tertiaryUrl]
+          }
+        })
+
+        jest.spyOn(mockFetch, 'fetch').mockImplementation(async (url) => {
+          const urlString = url.toString()
+          if (urlMatches(urlString, baseUrl)) {
+            throw new Error('Network error')
+          } else if (urlMatches(urlString, secondaryUrl)) {
+            await new Promise((resolve) => setTimeout(resolve, 100))
+            return createMockJsonResponse([mockEntity2])
+          } else {
+            await new Promise((resolve) => setTimeout(resolve, 500))
+            return createMockJsonResponse([mockEntity3])
+          }
+        })
+
+        const result = await client.fetchEntitiesByIds(['entity1'])
+        expect(result).toEqual([mockEntity2])
+      })
+
+      it('should fall back to single server when parallel fetch is disabled', async () => {
+        const client = createContentClient({
+          url: baseUrl,
+          fetcher: mockFetch,
+          parallelConfig: {
+            urls: []
+          }
+        })
+
+        const fetchSpy = jest.spyOn(mockFetch, 'fetch').mockImplementation(async () => {
+          return createMockJsonResponse([mockEntity1])
+        })
+
+        const result = await client.fetchEntitiesByIds(['entity1'])
+        expect(result).toEqual([mockEntity1])
+        expect(fetchSpy).toHaveBeenCalledTimes(1)
+        expect(fetchSpy).toHaveBeenCalledWith(expect.stringContaining(baseUrl), expect.any(Object))
+      })
+
+      it('should handle empty responses', async () => {
+        const client = createContentClient({
+          url: baseUrl,
+          fetcher: mockFetch,
+          parallelConfig: {
+            urls: [secondaryUrl]
+          }
+        })
+
+        jest.spyOn(mockFetch, 'fetch').mockImplementation(async () => {
+          return createMockJsonResponse([])
+        })
+
+        const result = await client.fetchEntitiesByIds(['entity1'])
+        expect(result).toEqual([])
+      })
+
+      it('should abort pending requests when one succeeds', async () => {
+        const client = createContentClient({
+          url: baseUrl,
+          fetcher: mockFetch,
+          parallelConfig: {
+            urls: [secondaryUrl, tertiaryUrl]
+          }
+        })
+
+        let wasAbortCalled = false
+        let timeoutId: NodeJS.Timeout
+
+        jest.spyOn(mockFetch, 'fetch').mockImplementation(async (url: string, requestOptions?: any) => {
+          const urlString = url.toString()
+
+          if (urlMatches(urlString, secondaryUrl)) {
+            // This request will take 100ms to succeed
+            await new Promise((resolve) => setTimeout(resolve, 100))
+            return createMockJsonResponse([mockEntity2])
+          } else {
+            // These requests will take 200ms unless aborted
+            return new Promise((resolve) => {
+              const signal = requestOptions?.signal as AbortSignal
+              if (signal) {
+                signal.addEventListener('abort', () => {
+                  wasAbortCalled = true
+                  if (timeoutId) clearTimeout(timeoutId)
+                })
+              }
+              timeoutId = setTimeout(() => resolve(createMockJsonResponse([])), 200)
+            })
+          }
+        })
+
+        const resultPromise = client.fetchEntitiesByIds(['entity1'])
+
+        // Make jest wait a bit before doing the assertions
+        await new Promise((resolve) => setTimeout(resolve, 150))
+
+        // By this point:
+        // 1. At 100ms the first request should have succeeded
+        // 2. At 100ms the abort should have been triggered
+        // 3. At 200ms the second request should have been cancelled
+        expect(wasAbortCalled).toBe(true)
+
+        const result = await resultPromise
+        expect(result).toEqual([mockEntity2])
+
+        if (timeoutId) clearTimeout(timeoutId)
+      })
+    })
+
+    describe('fetchEntityById', () => {
+      it('should throw error when no entity is found', async () => {
+        const client = createContentClient({
+          url: baseUrl,
+          fetcher: mockFetch,
+          parallelConfig: {
+            urls: [secondaryUrl]
+          }
+        })
+
+        jest.spyOn(mockFetch, 'fetch').mockImplementation(async () => {
+          return createMockJsonResponse([])
+        })
+
+        await expect(client.fetchEntityById('entity1')).rejects.toEqual(`Failed to find an entity with id 'entity1'.`)
+      })
+    })
+
+    it('should abort pending requests when one succeeds immediately', async () => {
+      const client = createContentClient({
+        url: baseUrl,
+        fetcher: mockFetch,
+        parallelConfig: {
+          urls: [secondaryUrl, tertiaryUrl]
+        }
+      })
+
+      let resolveSlowRequest: (value: unknown) => void = () => {}
+      const slowRequestPromise = new Promise((resolve) => {
+        resolveSlowRequest = resolve
+      })
+
+      let timeoutId: NodeJS.Timeout
+      let wasAbortCalled = false
+      const abortListener = () => {
+        wasAbortCalled = true
+        if (timeoutId) clearTimeout(timeoutId)
+      }
+
+      jest.spyOn(mockFetch, 'fetch').mockImplementation(async (url, requestOptions) => {
+        const urlString = url.toString()
+
+        if (urlMatches(urlString, secondaryUrl)) {
+          return createMockJsonResponse([mockEntity2])
+        } else if (urlMatches(urlString, baseUrl)) {
+          const response = await slowRequestPromise
+          return createMockJsonResponse(response)
+        } else {
+          return new Promise((resolve) => {
+            const signal = requestOptions?.signal as AbortSignal
+            signal?.addEventListener('abort', abortListener)
+            timeoutId = setTimeout(() => resolve(createMockJsonResponse([])), 1000)
+          })
+        }
+      })
+
+      const resultPromise = client.fetchEntitiesByIds(['entity1'])
+
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      expect(wasAbortCalled).toBe(true)
+
+      resolveSlowRequest([mockEntity1])
+
+      const result = await resultPromise
+      expect(result).toEqual([mockEntity2])
+    })
+  })
+
+  describe('checkPointerConsistency', () => {
+    it('should detect consistent pointers', async () => {
+      const client = createContentClient({
+        url: baseUrl,
+        fetcher: mockFetch
+      })
+
+      jest.spyOn(mockFetch, 'fetch').mockImplementation(async () => {
+        return createMockJsonResponse([mockEntity3])
+      })
+
+      const result = await client.checkPointerConsistency('pointer1', {
+        parallel: {
+          urls: [secondaryUrl]
+        }
+      })
+
+      expect(result.isConsistent).toBe(true)
+      expect(result.newerEntities).toEqual([mockEntity3])
+      expect(result.olderEntities).toBeUndefined()
+    })
+
+    it('should detect inconsistent pointers', async () => {
+      const client = createContentClient({
+        url: baseUrl,
+        fetcher: mockFetch
+      })
+
+      jest.spyOn(mockFetch, 'fetch').mockImplementation(async (url) => {
+        const urlString = url.toString()
+        if (urlMatches(urlString, baseUrl)) {
+          return createMockJsonResponse([mockEntity1])
+        } else if (urlMatches(urlString, secondaryUrl)) {
+          return createMockJsonResponse([mockEntity2])
+        }
+        return createMockJsonResponse([mockEntity3])
+      })
+
+      const result = await client.checkPointerConsistency('pointer1', {
+        parallel: {
+          urls: [secondaryUrl, tertiaryUrl]
+        }
+      })
+
+      expect(result.isConsistent).toBe(false)
+      expect(result.newerEntities).toEqual([mockEntity3])
+      expect(result.olderEntities).toEqual([mockEntity1, mockEntity2])
+    })
+
+    it('should throw error when parallel fetch is not configured', async () => {
+      const client = createContentClient({
+        url: baseUrl,
+        fetcher: mockFetch
+      })
+
+      await expect(client.checkPointerConsistency('pointer1')).rejects.toThrow('Parallel configuration is required')
+    })
+
+    it('should handle server errors gracefully', async () => {
+      const client = createContentClient({
+        url: baseUrl,
+        fetcher: mockFetch
+      })
+
+      jest.spyOn(mockFetch, 'fetch').mockImplementation(async (url) => {
+        const urlString = url.toString()
+        if (urlMatches(urlString, baseUrl)) {
+          throw new Error('Network error')
+        }
+        return createMockJsonResponse([mockEntity3])
+      })
+
+      const result = await client.checkPointerConsistency('pointer1', {
+        parallel: {
+          urls: [secondaryUrl]
+        }
+      })
+
+      expect(result.isConsistent).toBe(true)
+      expect(result.newerEntities).toEqual([mockEntity3])
+    })
+
+    it('should handle empty responses', async () => {
+      const client = createContentClient({
+        url: baseUrl,
+        fetcher: mockFetch
+      })
+
+      jest.spyOn(mockFetch, 'fetch').mockImplementation(async () => {
+        return createMockJsonResponse([])
+      })
+
+      const result = await client.checkPointerConsistency('pointer1', {
+        parallel: {
+          urls: [secondaryUrl]
+        }
+      })
+
+      expect(result.isConsistent).toBe(true)
+      expect(result.newerEntities).toBeUndefined()
+      expect(result.olderEntities).toBeUndefined()
+    })
+  })
 })

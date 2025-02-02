@@ -2,7 +2,7 @@ import { hashV0, hashV1 } from '@dcl/hashing'
 import { Entity } from '@dcl/schemas'
 import { IFetchComponent, RequestOptions } from '@well-known-components/interfaces'
 import FormData from 'form-data'
-import { ClientOptions, DeploymentData } from './types'
+import { ClientOptions, DeploymentData, ParallelConfig } from './types'
 import { addModelToFormData, isNode, mergeRequestOptions, sanitizeUrl, splitAndFetch } from './utils/Helper'
 import { retry } from './utils/retry'
 
@@ -23,8 +23,8 @@ export type ContentClient = {
 
   /** Retrieve / Download */
   fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]>
-  fetchEntitiesByIds(ids: string[], options?: RequestOptions): Promise<Entity[]>
-  fetchEntityById(id: string, options?: RequestOptions): Promise<Entity>
+  fetchEntitiesByIds(ids: string[], options?: RequestOptions & { parallel?: ParallelConfig }): Promise<Entity[]>
+  fetchEntityById(id: string, options?: RequestOptions & { parallel?: ParallelConfig }): Promise<Entity>
   downloadContent(contentHash: string, options?: RequestOptions & { avoidChecks?: boolean }): Promise<Buffer>
 
   isContentAvailable(cids: string[], options?: RequestOptions): Promise<AvailableContentResult>
@@ -33,6 +33,18 @@ export type ContentClient = {
    * Deploys an entity to the content server.
    */
   deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown>
+
+  /**
+   * Checks if a pointer is consistent across multiple content servers
+   */
+  checkPointerConsistency(
+    pointer: string,
+    options?: RequestOptions & { parallel?: ParallelConfig }
+  ): Promise<{
+    isConsistent: boolean
+    newerEntities?: Entity[]
+    olderEntities?: Entity[]
+  }>
 }
 
 export async function downloadContent(
@@ -65,8 +77,96 @@ export async function downloadContent(
 }
 
 export function createContentClient(options: ClientOptions): ContentClient {
-  const { fetcher } = options
+  const { fetcher, logger } = options
   const contentUrl = sanitizeUrl(options.url)
+  const defaultParallelConfig = options?.parallelConfig
+
+  async function fetchFromMultipleServersRace(
+    urls: string[],
+    path: string,
+    requestOptions: RequestOptions
+  ): Promise<Entity[]> {
+    const controller = new AbortController()
+    const signal = controller.signal
+
+    const requestOptionsWithSignal = mergeRequestOptions(requestOptions, {
+      signal
+    })
+
+    return new Promise<Entity[]>(async (resolve) => {
+      let completedCount = 0
+
+      urls.forEach(async (url) => {
+        try {
+          const serverUrl = sanitizeUrl(url)
+          const response = await fetcher.fetch(`${serverUrl}${path}`, requestOptionsWithSignal)
+
+          if (signal.aborted) {
+            completedCount++
+            if (completedCount === urls.length) {
+              resolve([])
+            }
+            return
+          }
+
+          const entities = await response.json()
+
+          completedCount++
+
+          if (entities && Array.isArray(entities) && entities.length > 0) {
+            controller.abort()
+            resolve(entities)
+            return
+          }
+
+          if (completedCount === urls.length) {
+            resolve([])
+          }
+        } catch (error) {
+          if (!signal.aborted) {
+            logger?.warn(`Failed to fetch from ${url}:`, error)
+          }
+
+          completedCount++
+          if (completedCount === urls.length) {
+            resolve([])
+          }
+        }
+      })
+    })
+  }
+
+  async function fetchFromMultipleServersAll(
+    urls: string[],
+    path: string,
+    requestOptions: RequestOptions
+  ): Promise<Entity[]> {
+    const results = await Promise.allSettled(
+      urls.map(async (url) => {
+        try {
+          const serverUrl = sanitizeUrl(url)
+          const response = await fetcher.fetch(`${serverUrl}${path}`, requestOptions)
+          return await response.json()
+        } catch (error) {
+          logger?.warn(`Failed to fetch from ${url}:`, error)
+          return []
+        }
+      })
+    )
+
+    const allEntities = results
+      .filter((result): result is PromiseFulfilledResult<Entity[]> => result.status === 'fulfilled')
+      .flatMap((result) => result.value)
+
+    const uniqueEntities = new Map<string, Entity>()
+    allEntities.forEach((entity) => {
+      if (!uniqueEntities.has(entity.id) || entity.timestamp > uniqueEntities.get(entity.id)!.timestamp) {
+        uniqueEntities.set(entity.id, entity)
+      }
+    })
+
+    return Array.from(uniqueEntities.values())
+  }
 
   async function buildEntityFormDataForDeployment(
     deployData: DeploymentData,
@@ -120,7 +220,10 @@ export function createContentClient(options: ClientOptions): ContentClient {
     return (await fetcher.fetch(`${contentUrl}/entities/active`, requestOptions)).json()
   }
 
-  async function fetchEntitiesByIds(ids: string[], options?: RequestOptions): Promise<Entity[]> {
+  async function fetchEntitiesByIds(
+    ids: string[],
+    options?: RequestOptions & { parallel?: ParallelConfig }
+  ): Promise<Entity[]> {
     if (ids.length === 0) {
       return Promise.reject(`You must set at least one id.`)
     }
@@ -131,10 +234,18 @@ export function createContentClient(options: ClientOptions): ContentClient {
       headers: { 'Content-Type': 'application/json' }
     })
 
+    const parallelConfig = options?.parallel || defaultParallelConfig
+    if (parallelConfig?.urls && parallelConfig?.urls.length > 0) {
+      return fetchFromMultipleServersRace([contentUrl, ...parallelConfig.urls], '/entities/active', requestOptions)
+    }
+
     return (await fetcher.fetch(`${contentUrl}/entities/active`, requestOptions)).json()
   }
 
-  async function fetchEntityById(id: string, options?: RequestOptions): Promise<Entity> {
+  async function fetchEntityById(
+    id: string,
+    options?: RequestOptions & { parallel?: ParallelConfig }
+  ): Promise<Entity> {
     const entities: Entity[] = await fetchEntitiesByIds([id], options)
     if (entities.length === 0) {
       return Promise.reject(`Failed to find an entity with id '${id}'.`)
@@ -166,6 +277,48 @@ export function createContentClient(options: ClientOptions): ContentClient {
     return new Set(alreadyUploaded)
   }
 
+  async function checkPointerConsistency(
+    pointer: string,
+    options?: RequestOptions & { parallel?: ParallelConfig }
+  ): Promise<{
+    isConsistent: boolean
+    newerEntities?: Entity[]
+    olderEntities?: Entity[]
+  }> {
+    const parallelConfig = options?.parallel || defaultParallelConfig
+    if (!parallelConfig?.urls || parallelConfig.urls.length === 0) {
+      throw new Error('Parallel configuration is required for checking pointer consistency')
+    }
+
+    const requestOptions = mergeRequestOptions(options ? options : {}, {
+      body: JSON.stringify({ pointers: [pointer] }),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+
+    const entities = await fetchFromMultipleServersAll(
+      [contentUrl, ...parallelConfig.urls],
+      '/entities/active',
+      requestOptions
+    )
+
+    if (entities.length === 0) {
+      return { isConsistent: true }
+    }
+
+    // Find the newest timestamp
+    const newestTimestamp = Math.max(...entities.map((e) => e.timestamp))
+
+    const newerEntities = entities.filter((e) => e.timestamp === newestTimestamp)
+    const olderEntities = entities.filter((e) => e.timestamp < newestTimestamp)
+
+    return {
+      isConsistent: olderEntities.length === 0,
+      newerEntities: newerEntities.length > 0 ? newerEntities : undefined,
+      olderEntities: olderEntities.length > 0 ? olderEntities : undefined
+    }
+  }
+
   return {
     buildEntityFormDataForDeployment,
     fetchEntitiesByPointers,
@@ -175,6 +328,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
       return downloadContent(fetcher, contentUrl + '/contents', contentHash, options)
     },
     deploy,
-    isContentAvailable
+    isContentAvailable,
+    checkPointerConsistency
   }
 }
