@@ -543,8 +543,8 @@ describe('ContentClient', () => {
       })
 
       expect(result.isConsistent).toBe(true)
-      expect(result.newerEntities).toEqual([mockEntity3])
-      expect(result.olderEntities).toBeUndefined()
+      expect(result.upToDateEntities).toEqual([mockEntity3])
+      expect(result.outdatedEntities).toBeUndefined()
     })
 
     it('should detect inconsistent pointers', async () => {
@@ -570,8 +570,8 @@ describe('ContentClient', () => {
       })
 
       expect(result.isConsistent).toBe(false)
-      expect(result.newerEntities).toEqual([mockEntity3])
-      expect(result.olderEntities).toEqual([mockEntity1, mockEntity2])
+      expect(result.upToDateEntities).toEqual([mockEntity3])
+      expect(result.outdatedEntities).toEqual([mockEntity1, mockEntity2])
     })
 
     it('should throw error when parallel fetch is not configured', async () => {
@@ -604,7 +604,7 @@ describe('ContentClient', () => {
       })
 
       expect(result.isConsistent).toBe(true)
-      expect(result.newerEntities).toEqual([mockEntity3])
+      expect(result.upToDateEntities).toEqual([mockEntity3])
     })
 
     it('should handle empty responses', async () => {
@@ -624,8 +624,8 @@ describe('ContentClient', () => {
       })
 
       expect(result.isConsistent).toBe(true)
-      expect(result.newerEntities).toBeUndefined()
-      expect(result.olderEntities).toBeUndefined()
+      expect(result.upToDateEntities).toBeUndefined()
+      expect(result.outdatedEntities).toBeUndefined()
     })
   })
 })

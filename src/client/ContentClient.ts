@@ -42,8 +42,8 @@ export type ContentClient = {
     options?: RequestOptions & { parallel?: ParallelConfig }
   ): Promise<{
     isConsistent: boolean
-    newerEntities?: Entity[]
-    olderEntities?: Entity[]
+    upToDateEntities?: Entity[]
+    outdatedEntities?: Entity[]
   }>
 }
 
@@ -282,8 +282,8 @@ export function createContentClient(options: ClientOptions): ContentClient {
     options?: RequestOptions & { parallel?: ParallelConfig }
   ): Promise<{
     isConsistent: boolean
-    newerEntities?: Entity[]
-    olderEntities?: Entity[]
+    upToDateEntities?: Entity[]
+    outdatedEntities?: Entity[]
   }> {
     const parallelConfig = options?.parallel || defaultParallelConfig
     if (!parallelConfig?.urls || parallelConfig.urls.length === 0) {
@@ -306,7 +306,6 @@ export function createContentClient(options: ClientOptions): ContentClient {
       return { isConsistent: true }
     }
 
-    // Find the newest timestamp
     const newestTimestamp = Math.max(...entities.map((e) => e.timestamp))
 
     const newerEntities = entities.filter((e) => e.timestamp === newestTimestamp)
@@ -314,8 +313,8 @@ export function createContentClient(options: ClientOptions): ContentClient {
 
     return {
       isConsistent: olderEntities.length === 0,
-      newerEntities: newerEntities.length > 0 ? newerEntities : undefined,
-      olderEntities: olderEntities.length > 0 ? olderEntities : undefined
+      upToDateEntities: newerEntities.length > 0 ? newerEntities : undefined,
+      outdatedEntities: olderEntities.length > 0 ? olderEntities : undefined
     }
   }
 
