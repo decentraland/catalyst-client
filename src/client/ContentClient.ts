@@ -76,9 +76,13 @@ export async function downloadContent(
   )
 }
 
+function sanitizeUrlWithContentPath(url: string): string {
+  return sanitizeUrl(url, '/content')
+}
+
 export function createContentClient(options: ClientOptions): ContentClient {
   const { fetcher, logger } = options
-  const contentUrl = sanitizeUrl(options.url)
+  const contentUrl = sanitizeUrlWithContentPath(options.url)
   const defaultParallelConfig = options?.parallelConfig
 
   async function fetchFromMultipleServersRace(
@@ -98,7 +102,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
 
       urls.forEach(async (url) => {
         try {
-          const serverUrl = sanitizeUrl(url)
+          const serverUrl = sanitizeUrlWithContentPath(url)
           const response = await fetcher.fetch(`${serverUrl}${path}`, requestOptionsWithSignal)
 
           if (signal.aborted) {
@@ -144,7 +148,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
     const results = await Promise.allSettled(
       urls.map(async (url) => {
         try {
-          const serverUrl = sanitizeUrl(url)
+          const serverUrl = sanitizeUrlWithContentPath(url)
           const response = await fetcher.fetch(`${serverUrl}${path}`, requestOptions)
           return await response.json()
         } catch (error) {

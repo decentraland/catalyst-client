@@ -221,7 +221,7 @@ function isValidQueryParamValue(value: any): boolean {
 }
 
 /** Remove white spaces and add https if no protocol is specified */
-export function sanitizeUrl(url: string): string {
+export function sanitizeUrl(url: string, ensurePathPrefix?: string): string {
   // Remove empty spaces
   url = url.trim()
 
@@ -233,6 +233,10 @@ export function sanitizeUrl(url: string): string {
   // Remove trailing slash if present
   if (url.endsWith('/')) {
     url = url.slice(0, -1)
+  }
+
+  if (ensurePathPrefix && !url.endsWith(ensurePathPrefix)) {
+    url += ensurePathPrefix
   }
 
   return url
