@@ -89,12 +89,26 @@ export function createContentClient(options: ClientOptions): ContentClient {
     const controller = new AbortController()
     const signal = controller.signal
 
-    const requestOptionsWithSignal = mergeRequestOptions(requestOptions, {
-      signal
-    })
+    const requestOptionsWithSignal = mergeRequestOptions(requestOptions, { signal })
 
     return new Promise<Entity[]>(async (resolve) => {
-      let completedCount = 0
+      let pendingRequests = urls.length
+
+      const markRequestAsComplete = () => {
+        pendingRequests--
+        if (pendingRequests === 0) {
+          resolve([])
+        }
+      }
+
+      const handleSuccess = (entities: Entity[]) => {
+        if (entities && Array.isArray(entities) && entities.length > 0) {
+          controller.abort()
+          resolve(entities)
+          return true
+        }
+        return false
+      }
 
       urls.forEach(async (url) => {
         try {
@@ -102,35 +116,20 @@ export function createContentClient(options: ClientOptions): ContentClient {
           const response = await fetcher.fetch(`${serverUrl}${path}`, requestOptionsWithSignal)
 
           if (signal.aborted) {
-            completedCount++
-            if (completedCount === urls.length) {
-              resolve([])
-            }
+            markRequestAsComplete()
             return
           }
 
           const entities = await response.json()
 
-          completedCount++
-
-          if (entities && Array.isArray(entities) && entities.length > 0) {
-            controller.abort()
-            resolve(entities)
-            return
-          }
-
-          if (completedCount === urls.length) {
-            resolve([])
+          if (!handleSuccess(entities)) {
+            markRequestAsComplete()
           }
         } catch (error) {
           if (!signal.aborted) {
             logger?.warn(`Failed to fetch from ${url}:`, error)
           }
-
-          completedCount++
-          if (completedCount === urls.length) {
-            resolve([])
-          }
+          markRequestAsComplete()
         }
       })
     })
