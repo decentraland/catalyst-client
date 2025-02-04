@@ -1,5 +1,5 @@
 import { AuthChain, EntityType } from '@dcl/schemas'
-import { IFetchComponent } from '@well-known-components/interfaces'
+import { IFetchComponent, ILoggerComponent } from '@well-known-components/interfaces'
 
 export type DeploymentPreparationData = {
   entityId: string
@@ -32,7 +32,18 @@ export type ServerMetadata = {
   id: string
 }
 
+export type ParallelConfig = {
+  urls: string[]
+}
+
 export type ClientOptions = {
   url: string
   fetcher: IFetchComponent
+  logger?: ILoggerComponent.ILogger
+  /**
+   * When set, the client will fetch entities from the given urls in parallel
+   * and return the first successful response.
+   * @type {ParallelConfig}
+   */
+  parallelConfig?: ParallelConfig
 }
