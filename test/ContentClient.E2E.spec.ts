@@ -1,57 +1,39 @@
-import { createFetchComponent } from '@well-known-components/fetch-component'
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { ContentClient, createContentClient } from '../src'
-import { runServerBasedE2ETest } from './components'
-import { multipartParserWrapper } from './utils'
 
-runServerBasedE2ETest('test client post', ({ components }) => {
+describe('test client post', () => {
   let client: ContentClient
+  let mockFetch: jest.Mock
 
-  it('configures some endpoints', () => {
-    components.router.get('/available-content', async (ctx) => {
-      const params = new URLSearchParams(ctx.url.search)
-      const cids = params.getAll('cid')
+  beforeEach(() => {
+    mockFetch = jest.fn()
+    const mockFetcher = { fetch: mockFetch }
 
-      return {
-        status: 200,
-        body: cids.map(($) => ({
-          cid: $,
-          available: false
-        }))
-      }
-    })
-
-    components.router.post(
-      '/entities',
-      multipartParserWrapper(async (ctx) => {
-        expect(ctx.formData.fields).toHaveProperty('entityId')
-        expect(ctx.formData.fields.entityId.value).toEqual('QmENTITY')
-        expect(ctx.formData.files).toHaveProperty('QmA')
-        expect(ctx.formData.files).toHaveProperty('QmB')
-        // TODO: FOR SOME REASON the `deployEntity` _does not_ send the entity itself by default
-        // TODO: FOR SOME REASON the `deployEntity` _does not_ send the entity itself by default
-
-        return {
-          status: 200,
-          body: {
-            creationTimestamp: Date.now()
-          }
-        }
-      })
-    )
-  })
-
-  it('creates the client', async () => {
-    client = await createContentClient({
-      url: await components.getBaseUrl(),
-      fetcher: createFetchComponent()
+    client = createContentClient({
+      url: 'http://fake-url.com',
+      fetcher: mockFetcher
     })
   })
 
   it('publishes an entity', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => [
+        { cid: 'QmA', available: true },
+        { cid: 'QmB', available: true }
+      ]
+    })
+
     const files = new Map<string, Uint8Array>()
     files.set('QmA', new Uint8Array([111, 112, 113]))
     files.set('QmB', Buffer.from('asd', 'utf-8'))
 
     await client.deploy({ authChain: [], entityId: 'QmENTITY', files })
+
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+    const [_checkAvailabilityCall, deployCall] = mockFetch.mock.calls
+    expect(deployCall[0]).toContain('/entities')
+    expect(deployCall[1].method).toBe('POST')
   })
 })
