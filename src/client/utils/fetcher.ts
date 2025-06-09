@@ -15,7 +15,7 @@ export type CustomClient<T> = (baseUrl: string, fetch: IFetchComponent) => Promi
 export const useCustomClient = <T>({ url, method, params, data, headers }: Context): CustomClient<T> => {
   const relPath = url.substring('/lambdas'.length + 1)
   return async function (baseUrl: string, fetch: IFetchComponent): Promise<T> {
-    const response = await fetch.fetch(`${baseUrl}/${relPath}` + new URLSearchParams(params), {
+    const response = await fetch.fetch(`${baseUrl}/${relPath}?` + new URLSearchParams(params), {
       method,
       headers,
       ...(data ? { body: JSON.stringify(data) } : {})
