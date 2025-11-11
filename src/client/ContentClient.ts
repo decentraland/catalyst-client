@@ -135,11 +135,11 @@ export function createContentClient(options: ClientOptions): ContentClient {
     })
   }
 
-  async function fetchFromMultipleServersAll(
+  async function fetchFromMultipleServersAllWithResults(
     urls: string[],
     path: string,
     requestOptions: RequestOptions
-  ): Promise<Entity[]> {
+  ): Promise<{ entities: Entity[]; serverResults: Entity[][] }> {
     const results = await Promise.allSettled(
       urls.map(async (url) => {
         try {
@@ -153,9 +153,11 @@ export function createContentClient(options: ClientOptions): ContentClient {
       })
     )
 
-    const allEntities = results
+    const serverResults = results
       .filter((result): result is PromiseFulfilledResult<Entity[]> => result.status === 'fulfilled')
-      .flatMap((result) => result.value)
+      .map((result) => result.value || [])
+
+    const allEntities = serverResults.flatMap((entities) => entities)
 
     const uniqueEntities = new Map<string, Entity>()
     allEntities.forEach((entity) => {
@@ -164,7 +166,10 @@ export function createContentClient(options: ClientOptions): ContentClient {
       }
     })
 
-    return Array.from(uniqueEntities.values())
+    return {
+      entities: Array.from(uniqueEntities.values()),
+      serverResults
+    }
   }
 
   async function buildEntityFormDataForDeployment(
@@ -183,10 +188,14 @@ export function createContentClient(options: ClientOptions): ContentClient {
       if (!alreadyUploadedHashes.has(fileHash) || fileHash === deployData.entityId) {
         if (areWeRunningInNode) {
           // Node
-          form.append(fileHash, Buffer.isBuffer(file) ? file : Buffer.from(arrayBufferFrom(file)), fileHash)
+          form.append(
+            fileHash,
+            Buffer.isBuffer(file) ? file : Buffer.from(arrayBufferFrom(file) as ArrayBuffer),
+            fileHash
+          )
         } else {
           // Browser
-          form.append(fileHash, new Blob([arrayBufferFrom(file)]), fileHash)
+          form.append(fileHash, new Blob([arrayBufferFrom(file) as ArrayBuffer]), fileHash)
         }
       }
     }
@@ -295,14 +304,21 @@ export function createContentClient(options: ClientOptions): ContentClient {
       headers: { 'Content-Type': 'application/json' }
     })
 
-    const entities = await fetchFromMultipleServersAll(
-      [contentUrl, ...parallelConfig.urls],
+    const allUrls = [contentUrl, ...parallelConfig.urls]
+    const { entities, serverResults } = await fetchFromMultipleServersAllWithResults(
+      allUrls,
       '/entities/active',
       requestOptions
     )
 
+    const serversWithoutEntities = serverResults.filter((entities) => entities.length === 0)
+
     if (entities.length === 0) {
-      return { isConsistent: true }
+      return {
+        isConsistent: true,
+        upToDateEntities: undefined,
+        outdatedEntities: undefined
+      }
     }
 
     const newestTimestamp = Math.max(...entities.map((e) => e.timestamp))
@@ -310,8 +326,10 @@ export function createContentClient(options: ClientOptions): ContentClient {
     const newerEntities = entities.filter((e) => e.timestamp === newestTimestamp)
     const olderEntities = entities.filter((e) => e.timestamp < newestTimestamp)
 
+    const isConsistent = olderEntities.length === 0 && serversWithoutEntities.length === 0
+
     return {
-      isConsistent: olderEntities.length === 0,
+      isConsistent,
       upToDateEntities: newerEntities.length > 0 ? newerEntities : undefined,
       outdatedEntities: olderEntities.length > 0 ? olderEntities : undefined
     }
