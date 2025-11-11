@@ -526,106 +526,286 @@ describe('ContentClient', () => {
   })
 
   describe('checkPointerConsistency', () => {
-    it('should detect consistent pointers', async () => {
-      const client = createContentClient({
-        url: baseUrl,
-        fetcher: mockFetch
+    describe('when parallel fetch is not configured', () => {
+      let client: ContentClient
+
+      beforeEach(() => {
+        client = createContentClient({
+          url: baseUrl,
+          fetcher: mockFetch
+        })
       })
 
-      jest.spyOn(mockFetch, 'fetch').mockImplementation(async () => {
-        return createMockJsonResponse([mockEntity3])
+      it('should throw error', async () => {
+        await expect(client.checkPointerConsistency('pointer1')).rejects.toThrow('Parallel configuration is required')
       })
-
-      const result = await client.checkPointerConsistency('pointer1', {
-        parallel: {
-          urls: [secondaryUrl]
-        }
-      })
-
-      expect(result.isConsistent).toBe(true)
-      expect(result.upToDateEntities).toEqual([mockEntity3])
-      expect(result.outdatedEntities).toBeUndefined()
     })
 
-    it('should detect inconsistent pointers', async () => {
-      const client = createContentClient({
-        url: baseUrl,
-        fetcher: mockFetch
+    describe('when all servers return the same entities', () => {
+      let client: ContentClient
+      let result: {
+        isConsistent: boolean
+        upToDateEntities?: Entity[]
+        outdatedEntities?: Entity[]
+      }
+
+      beforeEach(async () => {
+        client = createContentClient({
+          url: baseUrl,
+          fetcher: mockFetch
+        })
+
+        jest.spyOn(mockFetch, 'fetch').mockImplementation(async () => {
+          return createMockJsonResponse([mockEntity3])
+        })
+
+        result = await client.checkPointerConsistency('pointer1', {
+          parallel: {
+            urls: [secondaryUrl]
+          }
+        })
       })
 
-      jest.spyOn(mockFetch, 'fetch').mockImplementation(async (url) => {
-        const urlString = url.toString()
-        if (urlMatches(urlString, baseUrl)) {
-          return createMockJsonResponse([mockEntity1])
-        } else if (urlMatches(urlString, secondaryUrl)) {
-          return createMockJsonResponse([mockEntity2])
-        }
-        return createMockJsonResponse([mockEntity3])
+      afterEach(() => {
+        jest.restoreAllMocks()
       })
 
-      const result = await client.checkPointerConsistency('pointer1', {
-        parallel: {
-          urls: [secondaryUrl, tertiaryUrl]
-        }
+      it('should return isConsistent as true', () => {
+        expect(result.isConsistent).toBe(true)
       })
 
-      expect(result.isConsistent).toBe(false)
-      expect(result.upToDateEntities).toEqual([mockEntity3])
-      expect(result.outdatedEntities).toEqual([mockEntity1, mockEntity2])
+      it('should return upToDateEntities', () => {
+        expect(result.upToDateEntities).toEqual([mockEntity3])
+      })
+
+      it('should not return outdatedEntities', () => {
+        expect(result.outdatedEntities).toBeUndefined()
+      })
     })
 
-    it('should throw error when parallel fetch is not configured', async () => {
-      const client = createContentClient({
-        url: baseUrl,
-        fetcher: mockFetch
+    describe('when servers return entities with different timestamps', () => {
+      let client: ContentClient
+      let result: {
+        isConsistent: boolean
+        upToDateEntities?: Entity[]
+        outdatedEntities?: Entity[]
+      }
+
+      beforeEach(async () => {
+        client = createContentClient({
+          url: baseUrl,
+          fetcher: mockFetch
+        })
+
+        jest.spyOn(mockFetch, 'fetch').mockImplementation(async (url) => {
+          const urlString = url.toString()
+          if (urlMatches(urlString, baseUrl)) {
+            return createMockJsonResponse([mockEntity1])
+          } else if (urlMatches(urlString, secondaryUrl)) {
+            return createMockJsonResponse([mockEntity2])
+          }
+          return createMockJsonResponse([mockEntity3])
+        })
+
+        result = await client.checkPointerConsistency('pointer1', {
+          parallel: {
+            urls: [secondaryUrl, tertiaryUrl]
+          }
+        })
       })
 
-      await expect(client.checkPointerConsistency('pointer1')).rejects.toThrow('Parallel configuration is required')
+      afterEach(() => {
+        jest.restoreAllMocks()
+      })
+
+      it('should return isConsistent as false', () => {
+        expect(result.isConsistent).toBe(false)
+      })
+
+      it('should return upToDateEntities with newest timestamp', () => {
+        expect(result.upToDateEntities).toEqual([mockEntity3])
+      })
+
+      it('should return outdatedEntities with older timestamps', () => {
+        expect(result.outdatedEntities).toEqual([mockEntity1, mockEntity2])
+      })
     })
 
-    it('should handle server errors gracefully', async () => {
-      const client = createContentClient({
-        url: baseUrl,
-        fetcher: mockFetch
+    describe('when servers have errors', () => {
+      let client: ContentClient
+      let result: {
+        isConsistent: boolean
+        upToDateEntities?: Entity[]
+        outdatedEntities?: Entity[]
+      }
+
+      beforeEach(async () => {
+        client = createContentClient({
+          url: baseUrl,
+          fetcher: mockFetch
+        })
+
+        jest.spyOn(mockFetch, 'fetch').mockImplementation(async (url) => {
+          const urlString = url.toString()
+          if (urlMatches(urlString, baseUrl)) {
+            throw new Error('Network error')
+          }
+          return createMockJsonResponse([mockEntity3])
+        })
+
+        result = await client.checkPointerConsistency('pointer1', {
+          parallel: {
+            urls: [secondaryUrl]
+          }
+        })
       })
 
-      jest.spyOn(mockFetch, 'fetch').mockImplementation(async (url) => {
-        const urlString = url.toString()
-        if (urlMatches(urlString, baseUrl)) {
-          throw new Error('Network error')
-        }
-        return createMockJsonResponse([mockEntity3])
+      afterEach(() => {
+        jest.restoreAllMocks()
       })
 
-      const result = await client.checkPointerConsistency('pointer1', {
-        parallel: {
-          urls: [secondaryUrl]
-        }
+      it('should return isConsistent as false when errors result in empty arrays while other servers have entities', () => {
+        expect(result.isConsistent).toBe(false)
       })
 
-      expect(result.isConsistent).toBe(true)
-      expect(result.upToDateEntities).toEqual([mockEntity3])
+      it('should return upToDateEntities with entities from servers that succeeded', () => {
+        expect(result.upToDateEntities).toEqual([mockEntity3])
+      })
+
+      it('should not return outdatedEntities when all entities have the same timestamp', () => {
+        expect(result.outdatedEntities).toBeUndefined()
+      })
     })
 
-    it('should handle empty responses', async () => {
-      const client = createContentClient({
-        url: baseUrl,
-        fetcher: mockFetch
+    describe('when all servers return empty arrays', () => {
+      let client: ContentClient
+      let result: {
+        isConsistent: boolean
+        upToDateEntities?: Entity[]
+        outdatedEntities?: Entity[]
+      }
+
+      beforeEach(async () => {
+        client = createContentClient({
+          url: baseUrl,
+          fetcher: mockFetch
+        })
+
+        jest.spyOn(mockFetch, 'fetch').mockImplementation(async () => {
+          return createMockJsonResponse([])
+        })
+
+        result = await client.checkPointerConsistency('pointer1', {
+          parallel: {
+            urls: [secondaryUrl]
+          }
+        })
       })
 
-      jest.spyOn(mockFetch, 'fetch').mockImplementation(async () => {
-        return createMockJsonResponse([])
+      afterEach(() => {
+        jest.restoreAllMocks()
       })
 
-      const result = await client.checkPointerConsistency('pointer1', {
-        parallel: {
-          urls: [secondaryUrl]
+      it('should return isConsistent as true', () => {
+        expect(result.isConsistent).toBe(true)
+      })
+
+      it('should not return upToDateEntities', () => {
+        expect(result.upToDateEntities).toBeUndefined()
+      })
+
+      it('should not return outdatedEntities', () => {
+        expect(result.outdatedEntities).toBeUndefined()
+      })
+    })
+
+    describe('when servers have mixed responses', () => {
+      let client: ContentClient
+
+      beforeEach(() => {
+        client = createContentClient({
+          url: baseUrl,
+          fetcher: mockFetch
+        })
+      })
+
+      afterEach(() => {
+        jest.restoreAllMocks()
+      })
+
+      describe('and some servers return entities while others return empty arrays', () => {
+        let result: {
+          isConsistent: boolean
+          upToDateEntities?: Entity[]
+          outdatedEntities?: Entity[]
         }
+
+        beforeEach(async () => {
+          jest.spyOn(mockFetch, 'fetch').mockImplementation(async (url) => {
+            const urlString = url.toString()
+            if (urlMatches(urlString, baseUrl)) {
+              return createMockJsonResponse([mockEntity1])
+            } else if (urlMatches(urlString, secondaryUrl)) {
+              return createMockJsonResponse([])
+            }
+            return createMockJsonResponse([mockEntity2])
+          })
+
+          result = await client.checkPointerConsistency('pointer1', {
+            parallel: {
+              urls: [secondaryUrl, tertiaryUrl]
+            }
+          })
+        })
+
+        it('should return isConsistent as false', () => {
+          expect(result.isConsistent).toBe(false)
+        })
+
+        it('should return upToDateEntities with entities from servers that have them', () => {
+          expect(result.upToDateEntities).toEqual([mockEntity2])
+        })
+
+        it('should return outdatedEntities with older entities', () => {
+          expect(result.outdatedEntities).toEqual([mockEntity1])
+        })
       })
 
-      expect(result.isConsistent).toBe(true)
-      expect(result.upToDateEntities).toBeUndefined()
-      expect(result.outdatedEntities).toBeUndefined()
+      describe('and only one server returns entities while others return empty arrays', () => {
+        let result: {
+          isConsistent: boolean
+          upToDateEntities?: Entity[]
+          outdatedEntities?: Entity[]
+        }
+
+        beforeEach(async () => {
+          jest.spyOn(mockFetch, 'fetch').mockImplementation(async (url) => {
+            const urlString = url.toString()
+            if (urlMatches(urlString, baseUrl)) {
+              return createMockJsonResponse([mockEntity1])
+            }
+            return createMockJsonResponse([])
+          })
+
+          result = await client.checkPointerConsistency('pointer1', {
+            parallel: {
+              urls: [secondaryUrl, tertiaryUrl]
+            }
+          })
+        })
+
+        it('should return isConsistent as false', () => {
+          expect(result.isConsistent).toBe(false)
+        })
+
+        it('should return upToDateEntities with entities from the server that has them', () => {
+          expect(result.upToDateEntities).toEqual([mockEntity1])
+        })
+
+        it('should not return outdatedEntities when there is only one entity', () => {
+          expect(result.outdatedEntities).toBeUndefined()
+        })
+      })
     })
   })
 })
