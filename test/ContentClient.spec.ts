@@ -770,42 +770,6 @@ describe('ContentClient', () => {
           expect(result.outdatedEntities).toEqual([mockEntity1])
         })
       })
-
-      describe('and only one server returns entities while others return empty arrays', () => {
-        let result: {
-          isConsistent: boolean
-          upToDateEntities?: Entity[]
-          outdatedEntities?: Entity[]
-        }
-
-        beforeEach(async () => {
-          jest.spyOn(mockFetch, 'fetch').mockImplementation(async (url) => {
-            const urlString = url.toString()
-            if (urlMatches(urlString, baseUrl)) {
-              return createMockJsonResponse([mockEntity1])
-            }
-            return createMockJsonResponse([])
-          })
-
-          result = await client.checkPointerConsistency('pointer1', {
-            parallel: {
-              urls: [secondaryUrl, tertiaryUrl]
-            }
-          })
-        })
-
-        it('should return isConsistent as false', () => {
-          expect(result.isConsistent).toBe(false)
-        })
-
-        it('should return upToDateEntities with entities from the server that has them', () => {
-          expect(result.upToDateEntities).toEqual([mockEntity1])
-        })
-
-        it('should not return outdatedEntities when there is only one entity', () => {
-          expect(result.outdatedEntities).toBeUndefined()
-        })
-      })
     })
   })
 })

@@ -139,7 +139,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
     urls: string[],
     path: string,
     requestOptions: RequestOptions
-  ): Promise<{ entities: Entity[]; serverResults: Entity[][] }> {
+  ): Promise<{ entities: Entity[]; emptyResults: number }> {
     const results = await Promise.allSettled(
       urls.map(async (url) => {
         try {
@@ -158,6 +158,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
       .map((result) => result.value || [])
 
     const allEntities = serverResults.flatMap((entities) => entities)
+    const emptyResults = serverResults.filter((entities) => entities.length === 0).length
 
     const uniqueEntities = new Map<string, Entity>()
     allEntities.forEach((entity) => {
@@ -168,7 +169,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
 
     return {
       entities: Array.from(uniqueEntities.values()),
-      serverResults
+      emptyResults
     }
   }
 
@@ -305,13 +306,11 @@ export function createContentClient(options: ClientOptions): ContentClient {
     })
 
     const allUrls = [contentUrl, ...parallelConfig.urls]
-    const { entities, serverResults } = await fetchFromMultipleServersAllWithResults(
+    const { entities, emptyResults } = await fetchFromMultipleServersAllWithResults(
       allUrls,
       '/entities/active',
       requestOptions
     )
-
-    const serversWithoutEntities = serverResults.filter((entities) => entities.length === 0)
 
     if (entities.length === 0) {
       return {
@@ -326,7 +325,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
     const newerEntities = entities.filter((e) => e.timestamp === newestTimestamp)
     const olderEntities = entities.filter((e) => e.timestamp < newestTimestamp)
 
-    const isConsistent = olderEntities.length === 0 && serversWithoutEntities.length === 0
+    const isConsistent = olderEntities.length === 0 && emptyResults === 0
 
     return {
       isConsistent,
