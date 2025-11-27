@@ -1,7 +1,7 @@
-import { sanitizeUrl } from './utils/Helper'
+import * as client from './specs/lambdas-client'
 import { ClientOptions } from './types'
 import { CustomClient } from './utils/fetcher'
-import * as client from './specs/lambdas-client'
+import { sanitizeUrl } from './utils/Helper'
 
 export type LambdasClient = ReturnType<typeof createLambdasClient>
 
@@ -19,6 +19,7 @@ export function createLambdasClient(options: ClientOptions) {
     getCollections: wrap(client.getCollections),
     getThumbnail: wrap(client.getThumbnail),
     getImage: wrap(client.getImage),
+    getParcelPermissions: wrap(client.getParcelPermissions),
     getStandardErc721: wrap(client.getStandardErc721),
     getWearables: wrap(client.getWearables),
     getEmotes: wrap(client.getEmotes),
