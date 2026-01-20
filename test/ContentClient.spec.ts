@@ -278,6 +278,7 @@ describe('ContentClient', () => {
   }
 
   const createMockJsonResponse = (data: any): any => ({
+    ok: true,
     json: async () => data
   })
 

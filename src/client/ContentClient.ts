@@ -44,6 +44,7 @@ export type ContentClient = {
     isConsistent: boolean
     upToDateEntities?: Entity[]
     outdatedEntities?: Entity[]
+    failedServers?: number
   }>
 }
 
@@ -87,89 +88,98 @@ export function createContentClient(options: ClientOptions): ContentClient {
     requestOptions: RequestOptions
   ): Promise<Entity[]> {
     const controller = new AbortController()
-    const signal = controller.signal
+    const requestOptionsWithSignal = mergeRequestOptions(requestOptions, { signal: controller.signal })
 
-    const requestOptionsWithSignal = mergeRequestOptions(requestOptions, { signal })
+    let hasResolved = false
+    let resolveRace: (entities: Entity[]) => void
+    const racePromise = new Promise<Entity[]>((resolve) => {
+      resolveRace = resolve
+    })
 
-    return new Promise<Entity[]>(async (resolve) => {
-      let pendingRequests = urls.length
+    let pendingCount = urls.length
 
-      const markRequestAsComplete = () => {
-        pendingRequests--
-        if (pendingRequests === 0) {
-          resolve([])
-        }
-      }
+    const fetchOne = async (url: string): Promise<void> => {
+      try {
+        const serverUrl = sanitizeUrl(url)
+        const response = await fetcher.fetch(`${serverUrl}${path}`, requestOptionsWithSignal)
 
-      const handleSuccess = (entities: Entity[]) => {
-        if (entities && Array.isArray(entities) && entities.length > 0) {
-          controller.abort()
-          resolve(entities)
-          return true
-        }
-        return false
-      }
-
-      urls.forEach(async (url) => {
-        try {
-          const serverUrl = sanitizeUrl(url)
-          const response = await fetcher.fetch(`${serverUrl}${path}`, requestOptionsWithSignal)
-
-          if (signal.aborted) {
-            markRequestAsComplete()
+        if (!hasResolved && response.ok) {
+          const entities = await response.json()
+          if (Array.isArray(entities) && entities.length > 0) {
+            hasResolved = true
+            controller.abort()
+            resolveRace(entities)
             return
           }
-
-          const entities = await response.json()
-
-          if (!handleSuccess(entities)) {
-            markRequestAsComplete()
-          }
-        } catch (error) {
-          if (!signal.aborted) {
-            logger?.warn(`Failed to fetch from ${url}:`, error)
-          }
-          markRequestAsComplete()
         }
-      })
-    })
+
+        if (!response.ok && !controller.signal.aborted) {
+          logger?.warn(`Failed to fetch from ${url}: HTTP ${response.status}`)
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          logger?.warn(`Failed to fetch from ${url}:`, error)
+        }
+      } finally {
+        pendingCount--
+        if (pendingCount === 0 && !hasResolved) {
+          resolveRace([])
+        }
+      }
+    }
+
+    urls.forEach((url) => fetchOne(url))
+
+    return racePromise
   }
 
   async function fetchFromMultipleServersAllWithResults(
     urls: string[],
     path: string,
     requestOptions: RequestOptions
-  ): Promise<{ entities: Entity[]; emptyResults: number }> {
+  ): Promise<{ entities: Entity[]; emptyResults: number; failedServers: number }> {
     const results = await Promise.allSettled(
       urls.map(async (url) => {
-        try {
-          const serverUrl = sanitizeUrl(url)
-          const response = await fetcher.fetch(`${serverUrl}${path}`, requestOptions)
-          return await response.json()
-        } catch (error) {
-          logger?.warn(`Failed to fetch from ${url}:`, error)
-          return []
+        const serverUrl = sanitizeUrl(url)
+        const response = await fetcher.fetch(`${serverUrl}${path}`, requestOptions)
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
         }
+
+        return (await response.json()) as Entity[]
       })
     )
 
-    const serverResults = results
-      .filter((result): result is PromiseFulfilledResult<Entity[]> => result.status === 'fulfilled')
-      .map((result) => result.value || [])
+    let emptyResults = 0
+    let failedServers = 0
+    const allEntities: Entity[] = []
 
-    const allEntities = serverResults.flatMap((entities) => entities)
-    const emptyResults = serverResults.filter((entities) => entities.length === 0).length
+    for (const [index, result] of results.entries()) {
+      if (result.status === 'rejected') {
+        failedServers++
+        logger?.warn(`Failed to fetch from ${urls[index]}:`, result.reason)
+      } else {
+        const entities = result.value ?? []
+        if (entities.length === 0) {
+          emptyResults++
+        }
+        allEntities.push(...entities)
+      }
+    }
 
     const uniqueEntities = new Map<string, Entity>()
-    allEntities.forEach((entity) => {
-      if (!uniqueEntities.has(entity.id) || entity.timestamp > uniqueEntities.get(entity.id)!.timestamp) {
+    for (const entity of allEntities) {
+      const existing = uniqueEntities.get(entity.id)
+      if (!existing || entity.timestamp > existing.timestamp) {
         uniqueEntities.set(entity.id, entity)
       }
-    })
+    }
 
     return {
       entities: Array.from(uniqueEntities.values()),
-      emptyResults
+      emptyResults,
+      failedServers
     }
   }
 
@@ -293,6 +303,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
     isConsistent: boolean
     upToDateEntities?: Entity[]
     outdatedEntities?: Entity[]
+    failedServers?: number
   }> {
     const parallelConfig = options?.parallel || defaultParallelConfig
     if (!parallelConfig?.urls || parallelConfig.urls.length === 0) {
@@ -306,7 +317,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
     })
 
     const allUrls = [contentUrl, ...parallelConfig.urls]
-    const { entities, emptyResults } = await fetchFromMultipleServersAllWithResults(
+    const { entities, emptyResults, failedServers } = await fetchFromMultipleServersAllWithResults(
       allUrls,
       '/entities/active',
       requestOptions
@@ -314,9 +325,10 @@ export function createContentClient(options: ClientOptions): ContentClient {
 
     if (entities.length === 0) {
       return {
-        isConsistent: true,
+        isConsistent: failedServers === 0,
         upToDateEntities: undefined,
-        outdatedEntities: undefined
+        outdatedEntities: undefined,
+        failedServers: failedServers > 0 ? failedServers : undefined
       }
     }
 
@@ -325,12 +337,13 @@ export function createContentClient(options: ClientOptions): ContentClient {
     const newerEntities = entities.filter((e) => e.timestamp === newestTimestamp)
     const olderEntities = entities.filter((e) => e.timestamp < newestTimestamp)
 
-    const isConsistent = olderEntities.length === 0 && emptyResults === 0
+    const isConsistent = olderEntities.length === 0 && emptyResults === 0 && failedServers === 0
 
     return {
       isConsistent,
       upToDateEntities: newerEntities.length > 0 ? newerEntities : undefined,
-      outdatedEntities: olderEntities.length > 0 ? olderEntities : undefined
+      outdatedEntities: olderEntities.length > 0 ? olderEntities : undefined,
+      failedServers: failedServers > 0 ? failedServers : undefined
     }
   }
 
