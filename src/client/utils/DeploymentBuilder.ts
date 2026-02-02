@@ -246,7 +246,7 @@ async function updateMetadata(files: Map<string, Uint8Array>, metadata?: any) {
   return metadata
 }
 
-function getHashesByKey(metadata: any): Map<string, string> | undefined {
+export function getHashesByKey(metadata: any): Map<string, string> | undefined {
   const avatar = (metadata as Profile).avatars[0]
   if (!avatar.avatar.snapshots) {
     return undefined

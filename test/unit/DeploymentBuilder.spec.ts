@@ -161,3 +161,50 @@ describe('EntityFactory', () => {
     expect(entity.id).toEqual('bafkreiae665lm7vxqv2ytxrpqnvypbjqc24qqgvuy4yqs3767ps7riwxui')
   })
 })
+
+describe('When getting hashes by key', () => {
+  let metadata: { avatars: { avatar: { snapshots?: { body: string; face256: string } } }[] }
+
+  describe('and avatar has snapshots', () => {
+    beforeEach(() => {
+      metadata = {
+        avatars: [
+          {
+            avatar: {
+              snapshots: {
+                body: 'bafybeiasb5vpmaounyilfuxbd3lryvosl4yefqrfahsb2esg46q6tu6y5t',
+                face256: 'bafybeiasb5vpmaounyilfuxbd3lryvosl4yefqrfahsb2esg46q6tu6y5s'
+              }
+            }
+          }
+        ]
+      }
+    })
+
+    it('should return a Map with body.png and face256.png hashes', () => {
+      const result = builder.getHashesByKey(metadata)
+
+      expect(result).toBeDefined()
+      expect(result?.get('body.png')).toEqual('bafybeiasb5vpmaounyilfuxbd3lryvosl4yefqrfahsb2esg46q6tu6y5t')
+      expect(result?.get('face256.png')).toEqual('bafybeiasb5vpmaounyilfuxbd3lryvosl4yefqrfahsb2esg46q6tu6y5s')
+    })
+  })
+
+  describe('and avatar has no snapshots', () => {
+    beforeEach(() => {
+      metadata = {
+        avatars: [
+          {
+            avatar: {}
+          }
+        ]
+      }
+    })
+
+    it('should return undefined', () => {
+      const result = builder.getHashesByKey(metadata)
+
+      expect(result).toBeUndefined()
+    })
+  })
+})
