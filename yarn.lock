@@ -348,12 +348,6 @@
   dependencies:
     "@jridgewell/trace-mapping" "0.3.9"
 
-"@dcl/catalyst-api-specs@https://sdk-team-cdn.decentraland.org/@dcl/catalyst-api-specs/branch/feat/add-name-color/dcl-catalyst-api-specs-3.7.1-21489265047.commit-ca6f8ff.tgz":
-  version "3.7.1-21489265047.commit-ca6f8ff"
-  resolved "https://sdk-team-cdn.decentraland.org/@dcl/catalyst-api-specs/branch/feat/add-name-color/dcl-catalyst-api-specs-3.7.1-21489265047.commit-ca6f8ff.tgz#3352c3c139495500f2e40e36b940cf028eca60b1"
-  dependencies:
-    yaml "^2.3.4"
-
 "@dcl/catalyst-api-specs@https://sdk-team-cdn.decentraland.org/@dcl/catalyst-api-specs/branch/feat/add-name-color/dcl-catalyst-api-specs-3.7.1-21489944611.commit-677f8fd.tgz":
   version "3.7.1-21489944611.commit-677f8fd"
   resolved "https://sdk-team-cdn.decentraland.org/@dcl/catalyst-api-specs/branch/feat/add-name-color/dcl-catalyst-api-specs-3.7.1-21489944611.commit-677f8fd.tgz#a808a1a00856528926e5e94b86b23ec8c83d276e"
@@ -396,10 +390,10 @@
   resolved "https://registry.yarnpkg.com/@dcl/hashing/-/hashing-3.0.4.tgz#4df2a4cb3a8114765aed34cb57b91c93bf33bfb3"
   integrity sha512-Cg+MoIOn+BYmQV2q8zSFnNYY+GldlnUazwBnfgrq3i66ZxOaZ65h01btd8OUtSAlfWG4VTNIOHDjtKqmuwJNBg==
 
-"@dcl/schemas@^11.5.0":
-  version "11.12.0"
-  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-11.12.0.tgz#f52493b615ebdea8e02819bc2ed4a456239f3747"
-  integrity sha512-L04KTucvxSnrHDAl3/rnkzhjfZ785dSSPeKarBVfzyuw41uyQ0Mh4HVFWjX9hC+f/nMpM5Adg5udlT5efmepcA==
+"@dcl/schemas@^22.5.0":
+  version "22.5.0"
+  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-22.5.0.tgz#59b3e3c7b1e336df30429bd3fdd6897ecb44baf9"
+  integrity sha512-cl3mCoB/G5CmG6KVFyWVl+9y9bP6Jzm/YKzdiuR8ej3843OxTt91SQBrBbVtrGsBVJeebTEPhwSrB2CIiMzXjg==
   dependencies:
     ajv "^8.11.0"
     ajv-errors "^3.0.0"
