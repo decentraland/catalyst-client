@@ -32,14 +32,14 @@
     "@dcl/catalyst-contracts": "^4.4.0",
     "@dcl/crypto": "^3.4.0",
     "@dcl/hashing": "^3.0.0",
-    "@dcl/schemas": "https://sdk-team-cdn.decentraland.org/@dcl/schemas/branch/feat/make-content-mandatory-again/dcl-schemas-22.5.1-21637687696.commit-b54b12b.tgz",
+    "@dcl/schemas": "^23.0.0",
     "@well-known-components/fetch-component": "^2.0.0",
     "cookie": "^0.5.0",
     "cross-fetch": "^3.1.5",
     "form-data": "^4.0.0"
   },
   "devDependencies": {
-    "@dcl/catalyst-api-specs": "https://sdk-team-cdn.decentraland.org/@dcl/catalyst-api-specs/branch/feat/add-name-color/dcl-catalyst-api-specs-3.7.1-21641959751.commit-69bb270.tgz",
+    "@dcl/catalyst-api-specs": "^3.8.0",
     "@dcl/eslint-config": "^1.1.9",
     "@types/form-data": "^2.5.0",
     "@well-known-components/env-config-provider": "^1.1.1",
