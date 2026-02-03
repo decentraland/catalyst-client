@@ -246,8 +246,11 @@ async function updateMetadata(files: Map<string, Uint8Array>, metadata?: any) {
   return metadata
 }
 
-function getHashesByKey(metadata: any): Map<string, string> {
+export function getHashesByKey(metadata: any): Map<string, string> | undefined {
   const avatar = (metadata as Profile).avatars[0]
+  if (!avatar.avatar.snapshots) {
+    return undefined
+  }
   return new Map([
     ['body.png', avatar.avatar.snapshots.body],
     ['face256.png', avatar.avatar.snapshots.face256]

@@ -348,10 +348,10 @@
   dependencies:
     "@jridgewell/trace-mapping" "0.3.9"
 
-"@dcl/catalyst-api-specs@^3.7.0":
-  version "3.7.0"
-  resolved "https://registry.yarnpkg.com/@dcl/catalyst-api-specs/-/catalyst-api-specs-3.7.0.tgz#cfa0c1bc9cc5f11892a6e19bea2035ec33fe2164"
-  integrity sha512-iLD4eZhZt2hqKZDJ/HdwKdgDATgZvEjTgnBjRMmydo8wisJF7N3VfLL2aKSCgwXdHKd7zHXK5f8gHglCB+mQdQ==
+"@dcl/catalyst-api-specs@^3.8.0":
+  version "3.8.0"
+  resolved "https://registry.yarnpkg.com/@dcl/catalyst-api-specs/-/catalyst-api-specs-3.8.0.tgz#7adf22113bb6f8d00ca78a421cabbdd484bd70e1"
+  integrity sha512-l0h3Q6O76bMH679FKeeIN3UWix+2D1tC2zSJAx7ROPZ42nZY3m4EGJIr5OI9aJAiYq0T/vTFNp7ypOnUOeBXiA==
   dependencies:
     yaml "^2.3.4"
 
@@ -391,10 +391,10 @@
   resolved "https://registry.yarnpkg.com/@dcl/hashing/-/hashing-3.0.4.tgz#4df2a4cb3a8114765aed34cb57b91c93bf33bfb3"
   integrity sha512-Cg+MoIOn+BYmQV2q8zSFnNYY+GldlnUazwBnfgrq3i66ZxOaZ65h01btd8OUtSAlfWG4VTNIOHDjtKqmuwJNBg==
 
-"@dcl/schemas@^11.5.0":
-  version "11.5.0"
-  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-11.5.0.tgz#b07fe469523348eed4d4bfde1219123c38bdb3ee"
-  integrity sha512-FkDAsZm6Ydu5PEROup2dLjOcqNwOiUISGhVYQAg6bWIp3kDnAjxguutOXIfxuZrVZELEcIi6+ntbvvfR28FAwg==
+"@dcl/schemas@^23.0.0":
+  version "23.0.0"
+  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-23.0.0.tgz#e15486e64b2f19e30a1be7edb3f551ceaf0999b8"
+  integrity sha512-DChEhcQZA3Q5uKsa5Z+5aG+bpIiqTCf8dOdx6dta0XmtCrdqMJgGuzu2ZW//7EmzXH6zlgsI+pUv3JpTFlleOA==
   dependencies:
     ajv "^8.11.0"
     ajv-errors "^3.0.0"
