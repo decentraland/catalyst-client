@@ -354,6 +354,12 @@
   dependencies:
     yaml "^2.3.4"
 
+"@dcl/catalyst-api-specs@https://sdk-team-cdn.decentraland.org/@dcl/catalyst-api-specs/branch/feat/add-name-color/dcl-catalyst-api-specs-3.7.1-21641959751.commit-69bb270.tgz":
+  version "3.7.1-21641959751.commit-69bb270"
+  resolved "https://sdk-team-cdn.decentraland.org/@dcl/catalyst-api-specs/branch/feat/add-name-color/dcl-catalyst-api-specs-3.7.1-21641959751.commit-69bb270.tgz#7119c0aa7576465b855aac704dc12f22eec304c1"
+  dependencies:
+    yaml "^2.3.4"
+
 "@dcl/catalyst-contracts@^4.4.0":
   version "4.4.0"
   resolved "https://registry.yarnpkg.com/@dcl/catalyst-contracts/-/catalyst-contracts-4.4.0.tgz#a36a599f5e0c4b15e653650f74fcaa3da1f525ec"
@@ -390,16 +396,6 @@
   resolved "https://registry.yarnpkg.com/@dcl/hashing/-/hashing-3.0.4.tgz#4df2a4cb3a8114765aed34cb57b91c93bf33bfb3"
   integrity sha512-Cg+MoIOn+BYmQV2q8zSFnNYY+GldlnUazwBnfgrq3i66ZxOaZ65h01btd8OUtSAlfWG4VTNIOHDjtKqmuwJNBg==
 
-"@dcl/schemas@^22.5.0":
-  version "22.5.0"
-  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-22.5.0.tgz#59b3e3c7b1e336df30429bd3fdd6897ecb44baf9"
-  integrity sha512-cl3mCoB/G5CmG6KVFyWVl+9y9bP6Jzm/YKzdiuR8ej3843OxTt91SQBrBbVtrGsBVJeebTEPhwSrB2CIiMzXjg==
-  dependencies:
-    ajv "^8.11.0"
-    ajv-errors "^3.0.0"
-    ajv-keywords "^5.1.0"
-    mitt "^3.0.1"
-
 "@dcl/schemas@^9.2.0":
   version "9.9.0"
   resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-9.9.0.tgz#868693b46ef3d64b166d095bb0405d5119de461a"
@@ -408,6 +404,15 @@
     ajv "^8.11.0"
     ajv-errors "^3.0.0"
     ajv-keywords "^5.1.0"
+
+"@dcl/schemas@https://sdk-team-cdn.decentraland.org/@dcl/schemas/branch/feat/make-content-mandatory-again/dcl-schemas-22.5.1-21637687696.commit-b54b12b.tgz":
+  version "22.5.1-21637687696.commit-b54b12b"
+  resolved "https://sdk-team-cdn.decentraland.org/@dcl/schemas/branch/feat/make-content-mandatory-again/dcl-schemas-22.5.1-21637687696.commit-b54b12b.tgz#de45404f9fdc09e114a94648b6a01ac740e75700"
+  dependencies:
+    ajv "^8.11.0"
+    ajv-errors "^3.0.0"
+    ajv-keywords "^5.1.0"
+    mitt "^3.0.1"
 
 "@esbuild/android-arm64@0.19.5":
   version "0.19.5"
