@@ -47,3 +47,29 @@ export type ClientOptions = {
    */
   parallelConfig?: ParallelConfig
 }
+
+export type DeploymentProtocolVersion = 'v1' | 'v2' | 'auto'
+
+export type DeploymentProgress = {
+  uploaded: number       // file count uploaded
+  total: number          // total file count to upload
+  bytesUploaded: number
+  bytesTotal: number
+}
+
+export type DeploymentOptions = {
+  /** Forces a specific protocol; default 'auto' (probe via OPTIONS). */
+  deploymentProtocolVersion?: DeploymentProtocolVersion
+  /** Max parallel file uploads in v2. Default 4. */
+  parallelism?: number
+  /** Retries per file (v2). Default 3. */
+  retries?: number
+  /** Base delay for exponential backoff between retries (v2). Default 500ms. */
+  retryBaseDelayMs?: number
+  /** If true (default), v2 client re-initializes on a 404 mid-upload (deployment evicted). */
+  resumeOnEviction?: boolean
+  /** Optional progress callback (v2 only). */
+  onProgress?: (state: DeploymentProgress) => void
+  /** Forwarded to the underlying fetcher. */
+  timeout?: number
+}
