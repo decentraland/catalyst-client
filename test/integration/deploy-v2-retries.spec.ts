@@ -4,8 +4,12 @@ import fetch from 'cross-fetch'
 
 describe('deploy v2 — retries', () => {
   let server: MockServer
-  beforeEach(async () => { server = await startMockContentServer() })
-  afterEach(async () => { await server.close() })
+  beforeEach(async () => {
+    server = await startMockContentServer()
+  })
+  afterEach(async () => {
+    await server.close()
+  })
 
   it('succeeds after intermittent 503', async () => {
     server.setMissingFiles(['QmA'])
@@ -18,10 +22,11 @@ describe('deploy v2 — retries', () => {
       ['QmA', new Uint8Array([1])]
     ])
 
-    await client.deploy(
-      { entityId: 'QmEntity', authChain: [], files },
-      { deploymentProtocolVersion: 'v2' as const, retries: 3, retryBaseDelayMs: 10 } as any
-    )
+    await client.deploy({ entityId: 'QmEntity', authChain: [], files }, {
+      deploymentProtocolVersion: 'v2' as const,
+      retries: 3,
+      retryBaseDelayMs: 10
+    } as any)
 
     expect(server.receivedFiles().get('QmA')).toBeDefined()
     expect(server.receivedFinalize()).toBe(true)
@@ -39,10 +44,10 @@ describe('deploy v2 — retries', () => {
     ])
 
     await expect(
-      client.deploy(
-        { entityId: 'QmEntity', authChain: [], files },
-        { deploymentProtocolVersion: 'v2' as const, retries: 3 } as any
-      )
+      client.deploy({ entityId: 'QmEntity', authChain: [], files }, {
+        deploymentProtocolVersion: 'v2' as const,
+        retries: 3
+      } as any)
     ).rejects.toMatchObject({ name: 'FileUploadError', httpStatus: 422 })
 
     expect(server.receivedFinalize()).toBe(false)

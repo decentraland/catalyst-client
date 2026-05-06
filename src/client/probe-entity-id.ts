@@ -13,9 +13,6 @@ import { IFetchComponent } from '@well-known-components/interfaces'
  */
 const HARDCODED_PROBE_ENTITY_ID = 'bafkreig5oqsdgjbcl6avgegwacw5kywuhyqcnlc5e5pftn4hi5w7v6gyme'
 
-export async function resolveProbeEntityId(
-  _serverUrl: string,
-  _fetcher: IFetchComponent
-): Promise<string> {
+export async function resolveProbeEntityId(_serverUrl: string, _fetcher: IFetchComponent): Promise<string> {
   return HARDCODED_PROBE_ENTITY_ID
 }

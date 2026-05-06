@@ -44,10 +44,7 @@ describe('probeServerSupportsV2', () => {
   it('strips trailing slash from serverUrl', async () => {
     const fetch = jest.fn().mockResolvedValue({ ok: true, status: 200 })
     await probeServerSupportsV2('https://example.com/', 'QmX', fakeFetcher(fetch))
-    expect(fetch).toHaveBeenCalledWith(
-      'https://example.com/entities/QmX/status',
-      expect.anything()
-    )
+    expect(fetch).toHaveBeenCalledWith('https://example.com/entities/QmX/status', expect.anything())
   })
 })
 

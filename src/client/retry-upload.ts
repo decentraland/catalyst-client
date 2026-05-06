@@ -1,7 +1,7 @@
 import { FileUploadOutcome } from './deploy-v2'
 
 export type RetryConfig = {
-  retries: number       // additional attempts after the first
+  retries: number // additional attempts after the first
   baseDelayMs: number
 }
 

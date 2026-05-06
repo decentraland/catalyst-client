@@ -15,9 +15,14 @@ describe('deployV2 orchestrator', () => {
     const finalizeResponse = { ok: true, status: 200, json: async () => ({ creationTimestamp: 1 }) }
     const fetch = jest.fn().mockImplementation(async (url, opts) => {
       callCount++
-      if (url === 'https://example.com/entities' && opts?.method === 'POST' && opts.headers?.['Upload-Incomplete'] === '?1') {
+      if (
+        url === 'https://example.com/entities' &&
+        opts?.method === 'POST' &&
+        opts.headers?.['Upload-Incomplete'] === '?1'
+      ) {
         return {
-          ok: true, status: 202,
+          ok: true,
+          status: 202,
           json: async () => ({
             availableFiles: [],
             missingFiles: ['QmA', 'QmB', 'QmC'],
@@ -65,7 +70,8 @@ describe('deployV2 orchestrator', () => {
     const fetch = jest.fn().mockImplementation(async (url, opts) => {
       if (url === 'https://example.com/entities' && opts?.headers?.['Upload-Incomplete'] === '?1') {
         return {
-          ok: true, status: 202,
+          ok: true,
+          status: 202,
           json: async () => ({
             availableFiles: ['QmA'], // already there
             missingFiles: ['QmB'],
@@ -86,12 +92,7 @@ describe('deployV2 orchestrator', () => {
       ['QmB', new Uint8Array([2])]
     ])
 
-    await deployV2(
-      'https://example.com',
-      { entityId, files, authChain },
-      {},
-      makeFetcher(fetch)
-    )
+    await deployV2('https://example.com', { entityId, files, authChain }, {}, makeFetcher(fetch))
 
     const fileCalls = fetch.mock.calls.filter((c) => c[0].includes('/files/'))
     expect(fileCalls).toHaveLength(1)
@@ -102,7 +103,8 @@ describe('deployV2 orchestrator', () => {
     const fetch = jest.fn().mockImplementation(async (url, opts) => {
       if (opts?.headers?.['Upload-Incomplete'] === '?1') {
         return {
-          ok: true, status: 202,
+          ok: true,
+          status: 202,
           json: async () => ({
             availableFiles: [],
             missingFiles: ['QmA', 'QmB'],
@@ -149,7 +151,8 @@ describe('deployV2 — eviction recovery', () => {
       if (opts?.headers?.['Upload-Incomplete'] === '?1') {
         initCalls++
         return {
-          ok: true, status: 202,
+          ok: true,
+          status: 202,
           json: async () => ({
             availableFiles: [],
             missingFiles: ['QmA', 'QmB'],
@@ -174,12 +177,9 @@ describe('deployV2 — eviction recovery', () => {
       ['QmB', new Uint8Array([2])]
     ])
 
-    await deployV2(
-      'https://example.com',
-      { entityId, files, authChain },
-      { parallelism: 1, retries: 0 },
-      { fetch } as any
-    )
+    await deployV2('https://example.com', { entityId, files, authChain }, { parallelism: 1, retries: 0 }, {
+      fetch
+    } as any)
 
     expect(initCalls).toBe(2)
   })
@@ -188,10 +188,13 @@ describe('deployV2 — eviction recovery', () => {
     const fetch = jest.fn().mockImplementation(async (url, opts) => {
       if (opts?.headers?.['Upload-Incomplete'] === '?1') {
         return {
-          ok: true, status: 202,
+          ok: true,
+          status: 202,
           json: async () => ({
-            availableFiles: [], missingFiles: ['QmA'],
-            deploymentToken: 'tok', expiresAt: Date.now() + 60_000
+            availableFiles: [],
+            missingFiles: ['QmA'],
+            deploymentToken: 'tok',
+            expiresAt: Date.now() + 60_000
           })
         }
       }

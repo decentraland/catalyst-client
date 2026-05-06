@@ -785,10 +785,9 @@ describe('ContentClient.deploy with deploymentProtocolVersion', () => {
       return { ok: true, status: 200, json: async () => ({}) }
     })
     const client = createContentClient({ url: 'https://example.com', fetcher: { fetch } as any })
-    await client.deploy(
-      { entityId: 'QmE', authChain: [], files: new Map([['QmE', Buffer.from('{}')]]) },
-      { deploymentProtocolVersion: 'v1' } as any
-    )
+    await client.deploy({ entityId: 'QmE', authChain: [], files: new Map([['QmE', Buffer.from('{}')]]) }, {
+      deploymentProtocolVersion: 'v1'
+    } as any)
     // No OPTIONS probe should have been issued
     const optionsCalls = fetch.mock.calls.filter((c: any[]) => c[1]?.method === 'OPTIONS')
     expect(optionsCalls).toHaveLength(0)
@@ -801,10 +800,9 @@ describe('ContentClient.deploy with deploymentProtocolVersion', () => {
     })
     const client = createContentClient({ url: 'https://example.com', fetcher: { fetch } as any })
     await expect(
-      client.deploy(
-        { entityId: 'QmE', authChain: [], files: new Map([['QmE', Buffer.from('{}')]]) },
-        { deploymentProtocolVersion: 'v2' } as any
-      )
+      client.deploy({ entityId: 'QmE', authChain: [], files: new Map([['QmE', Buffer.from('{}')]]) }, {
+        deploymentProtocolVersion: 'v2'
+      } as any)
     ).rejects.toBeInstanceOf(ProtocolUnsupportedError)
   })
 })

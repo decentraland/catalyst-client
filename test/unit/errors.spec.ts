@@ -1,9 +1,4 @@
-import {
-  DeploymentInitError,
-  FileUploadError,
-  FinalizeError,
-  ProtocolUnsupportedError
-} from '../../src/client/errors'
+import { DeploymentInitError, FileUploadError, FinalizeError, ProtocolUnsupportedError } from '../../src/client/errors'
 
 describe('typed errors', () => {
   it('DeploymentInitError has the right name and carries cause', () => {

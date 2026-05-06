@@ -219,15 +219,9 @@ export function createContentClient(options: ClientOptions): ContentClient {
     return await fetcher.fetch(`${contentUrl}/entities`, requestOptions)
   }
 
-  async function deploy(
-    deployData: DeploymentData,
-    deployOptions?: DeploymentOptions
-  ): Promise<unknown> {
-    const protocol = await resolveProtocol(
-      contentUrl,
-      deployOptions?.deploymentProtocolVersion,
-      probeCache,
-      (url) => resolveProbeEntityId(url, fetcher)
+  async function deploy(deployData: DeploymentData, deployOptions?: DeploymentOptions): Promise<unknown> {
+    const protocol = await resolveProtocol(contentUrl, deployOptions?.deploymentProtocolVersion, probeCache, (url) =>
+      resolveProbeEntityId(url, fetcher)
     )
 
     if (protocol === 'v2') {

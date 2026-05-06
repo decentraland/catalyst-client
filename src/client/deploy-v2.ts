@@ -15,7 +15,7 @@ export type InitResult = {
 }
 
 function arrayBufferFrom(value: Buffer | Uint8Array): Buffer | ArrayBuffer {
-  return Buffer.isBuffer(value) ? value : value.buffer as ArrayBuffer
+  return Buffer.isBuffer(value) ? value : (value.buffer as ArrayBuffer)
 }
 
 export async function initDeployment(
@@ -59,7 +59,11 @@ export async function initDeployment(
 
   if (!resp.ok) {
     let body = ''
-    try { body = await resp.text() } catch { /* best effort */ }
+    try {
+      body = await resp.text()
+    } catch {
+      /* best effort */
+    }
     throw new DeploymentInitError(`Init returned ${resp.status}: ${body}`)
   }
 
@@ -82,10 +86,7 @@ export type FileUploadOutcome =
 
 const RETRYABLE_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504])
 
-export async function uploadFile(
-  input: UploadFileInput,
-  fetcher: IFetchComponent
-): Promise<FileUploadOutcome> {
+export async function uploadFile(input: UploadFileInput, fetcher: IFetchComponent): Promise<FileUploadOutcome> {
   const url = `${sanitizeUrl(input.serverUrl)}/entities/${input.entityId}/files/${input.fileHash}`
 
   let resp
@@ -109,7 +110,11 @@ export async function uploadFile(
   }
 
   let body = ''
-  try { body = await resp.text() } catch { /* best effort */ }
+  try {
+    body = await resp.text()
+  } catch {
+    /* best effort */
+  }
   return {
     kind: 'fatal',
     error: new FileUploadError(`File upload failed (HTTP ${resp.status}): ${body}`, {
@@ -142,7 +147,11 @@ export async function finalizeDeployment(
   try {
     bodyContent = await resp.clone().json()
   } catch {
-    try { bodyContent = await resp.text() } catch { /* best effort */ }
+    try {
+      bodyContent = await resp.text()
+    } catch {
+      /* best effort */
+    }
   }
 
   throw new FinalizeError(`Finalize returned HTTP ${resp.status}`, {
@@ -189,22 +198,34 @@ export async function deployV2(
         firstFatal = new FileUploadError(`Missing file ${fileHash} in deployment data`, { fileHash })
         break
       }
-      tasks.push(limit(async () => {
-        if (evicted || firstFatal) return
-        const result = await retryUpload(
-          () => uploadFile({ serverUrl, entityId: data.entityId, fileHash, bytes, deploymentToken: init.deploymentToken }, fetcher),
-          { retries, baseDelayMs }
-        )
-        if (result.kind === 'evicted') { evicted = true; return }
-        if (result.kind === 'fatal') { firstFatal = result.error; return }
-        if (result.kind === 'retryable') {
-          firstFatal = new FileUploadError(`File ${fileHash} failed after retries`, { fileHash, cause: result.cause })
-          return
-        }
-        uploaded++
-        bytesUploaded += bytes.byteLength
-        emit()
-      }))
+      tasks.push(
+        limit(async () => {
+          if (evicted || firstFatal) return
+          const result = await retryUpload(
+            () =>
+              uploadFile(
+                { serverUrl, entityId: data.entityId, fileHash, bytes, deploymentToken: init.deploymentToken },
+                fetcher
+              ),
+            { retries, baseDelayMs }
+          )
+          if (result.kind === 'evicted') {
+            evicted = true
+            return
+          }
+          if (result.kind === 'fatal') {
+            firstFatal = result.error
+            return
+          }
+          if (result.kind === 'retryable') {
+            firstFatal = new FileUploadError(`File ${fileHash} failed after retries`, { fileHash, cause: result.cause })
+            return
+          }
+          uploaded++
+          bytesUploaded += bytes.byteLength
+          emit()
+        })
+      )
     }
 
     await Promise.all(tasks)

@@ -4,8 +4,12 @@ import fetch from 'cross-fetch'
 
 describe('deploy v2 — happy path', () => {
   let server: MockServer
-  beforeEach(async () => { server = await startMockContentServer() })
-  afterEach(async () => { await server.close() })
+  beforeEach(async () => {
+    server = await startMockContentServer()
+  })
+  afterEach(async () => {
+    await server.close()
+  })
 
   it('completes init -> upload all -> finalize', async () => {
     server.setMissingFiles(['QmA', 'QmB'])

@@ -45,7 +45,9 @@ describe('uploadFile', () => {
 
   it('returns fatal FileUploadError on 422', async () => {
     const fetch = jest.fn().mockResolvedValue({
-      ok: false, status: 422, text: async () => 'manifest mismatch'
+      ok: false,
+      status: 422,
+      text: async () => 'manifest mismatch'
     })
     const result = await uploadFile(baseInput, makeFetcher(fetch))
     expect(result.kind).toBe('fatal')

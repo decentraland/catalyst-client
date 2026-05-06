@@ -27,11 +27,7 @@ describe('initDeployment', () => {
       })
     })
 
-    const result = await initDeployment(
-      'https://example.com',
-      { entityId, files, authChain },
-      makeFetcher(fetch)
-    )
+    const result = await initDeployment('https://example.com', { entityId, files, authChain }, makeFetcher(fetch))
 
     expect(fetch).toHaveBeenCalledTimes(1)
     const [url, opts] = fetch.mock.calls[0]

@@ -24,11 +24,11 @@ describe('finalizeDeployment', () => {
       status: 400,
       json: async () => ({ errors: ['validation failed'] }),
       text: async () => '{"errors":["validation failed"]}',
-      clone: function () { return this }
+      clone: function () {
+        return this
+      }
     })
-    await expect(
-      finalizeDeployment('https://example.com', 'QmE', 'tok', makeFetcher(fetch))
-    ).rejects.toMatchObject({
+    await expect(finalizeDeployment('https://example.com', 'QmE', 'tok', makeFetcher(fetch))).rejects.toMatchObject({
       name: 'FinalizeError',
       httpStatus: 400
     })
@@ -36,8 +36,8 @@ describe('finalizeDeployment', () => {
 
   it('throws FinalizeError on network failure', async () => {
     const fetch = jest.fn().mockRejectedValue(new Error('boom'))
-    await expect(
-      finalizeDeployment('https://example.com', 'QmE', 'tok', makeFetcher(fetch))
-    ).rejects.toBeInstanceOf(FinalizeError)
+    await expect(finalizeDeployment('https://example.com', 'QmE', 'tok', makeFetcher(fetch))).rejects.toBeInstanceOf(
+      FinalizeError
+    )
   })
 })

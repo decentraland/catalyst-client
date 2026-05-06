@@ -13,7 +13,8 @@ describe('retryUpload', () => {
   })
 
   it('retries on retryable then succeeds', async () => {
-    const op = jest.fn()
+    const op = jest
+      .fn()
       .mockResolvedValueOnce(retryable)
       .mockResolvedValueOnce(retryable)
       .mockResolvedValueOnce(okOutcome)

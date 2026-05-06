@@ -43,16 +43,18 @@ function startLegacyServer(): Promise<{ url: string; close: () => Promise<void>;
 
 describe('deploy auto-fallback', () => {
   let legacy: Awaited<ReturnType<typeof startLegacyServer>>
-  beforeEach(async () => { legacy = await startLegacyServer() })
-  afterEach(async () => { await legacy.close() })
+  beforeEach(async () => {
+    legacy = await startLegacyServer()
+  })
+  afterEach(async () => {
+    await legacy.close()
+  })
 
   it('uses v1 when probe returns 404 (auto)', async () => {
     const fetcher = { fetch: (url: any, init: any) => fetch(url, init) as any }
     const client = createContentClient({ url: legacy.url, fetcher: fetcher as any })
 
-    const files = new Map<string, Uint8Array>([
-      ['QmE', Buffer.from('{}')]
-    ])
+    const files = new Map<string, Uint8Array>([['QmE', Buffer.from('{}')]])
     await client.deploy({ entityId: 'QmE', authChain: [], files }, {} as any)
 
     expect(legacy.received()).toBe(true)

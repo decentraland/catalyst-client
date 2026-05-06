@@ -51,8 +51,8 @@ export type ClientOptions = {
 export type DeploymentProtocolVersion = 'v1' | 'v2' | 'auto'
 
 export type DeploymentProgress = {
-  uploaded: number       // file count uploaded
-  total: number          // total file count to upload
+  uploaded: number // file count uploaded
+  total: number // total file count to upload
   bytesUploaded: number
   bytesTotal: number
 }
