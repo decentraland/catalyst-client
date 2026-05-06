@@ -3,7 +3,14 @@ import { Entity } from '@dcl/schemas'
 import { IFetchComponent, RequestOptions } from '@well-known-components/interfaces'
 import FormData from 'form-data'
 import { ClientOptions, DeploymentData, DeploymentOptions, ParallelConfig } from './types'
-import { addModelToFormData, isNode, mergeRequestOptions, sanitizeUrl, splitAndFetch } from './utils/Helper'
+import {
+  addModelToFormData,
+  isNode,
+  mergeRequestOptions,
+  pickRequestOptions,
+  sanitizeUrl,
+  splitAndFetch
+} from './utils/Helper'
 import { retry } from './utils/retry'
 import { createProbeCache, resolveProtocol } from './protocol'
 import { resolveProbeEntityId } from './probe-entity-id'
@@ -227,7 +234,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
     if (protocol === 'v2') {
       return deployV2(contentUrl, deployData, deployOptions ?? {}, fetcher)
     }
-    return deployV1(deployData, deployOptions)
+    return deployV1(deployData, pickRequestOptions(deployOptions))
   }
 
   async function fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]> {

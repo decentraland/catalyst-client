@@ -1,27 +1,11 @@
 import FormData from 'form-data'
-import { IFetchComponent, RequestOptions } from '@well-known-components/interfaces'
+import { IFetchComponent } from '@well-known-components/interfaces'
 import { DeploymentData, DeploymentOptions, DeploymentProgress } from './types'
 import { retryUpload } from './retry-upload'
 import pLimit from 'p-limit'
 import { DeploymentInitError, FileUploadError, FinalizeError } from './errors'
 import type { Response } from '@well-known-components/interfaces/dist/components/fetcher'
-import { addModelToFormData, isNode, sanitizeUrl } from './utils/Helper'
-
-/**
- * Pulls the standard RequestOptions fields out of DeploymentOptions so they
- * can be merged into a fetcher.fetch init object.
- */
-export function pickRequestOptions(opts: DeploymentOptions | undefined): Partial<RequestOptions> {
-  if (!opts) return {}
-  const { timeout, attempts, retryDelay, headers, signal } = opts as any
-  const out: any = {}
-  if (timeout !== undefined) out.timeout = timeout
-  if (attempts !== undefined) out.attempts = attempts
-  if (retryDelay !== undefined) out.retryDelay = retryDelay
-  if (headers !== undefined) out.headers = headers
-  if (signal !== undefined) out.signal = signal
-  return out
-}
+import { addModelToFormData, isNode, pickRequestOptions, sanitizeUrl } from './utils/Helper'
 
 export type InitResult = {
   availableFiles: string[]

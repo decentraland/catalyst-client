@@ -203,6 +203,22 @@ export function isNode() {
   return Object.prototype.toString.call(typeof process !== 'undefined' ? process : 0) === '[object process]'
 }
 
+/**
+ * Pulls the standard RequestOptions fields out of an options object so they
+ * can be forwarded to fetcher.fetch without leaking v2-only fields.
+ */
+export function pickRequestOptions(opts: RequestOptions | undefined): Partial<RequestOptions> {
+  if (!opts) return {}
+  const { timeout, attempts, retryDelay, headers, signal } = opts as any
+  const out: any = {}
+  if (timeout !== undefined) out.timeout = timeout
+  if (attempts !== undefined) out.attempts = attempts
+  if (retryDelay !== undefined) out.retryDelay = retryDelay
+  if (headers !== undefined) out.headers = headers
+  if (signal !== undefined) out.signal = signal
+  return out
+}
+
 export function mergeRequestOptions(target: RequestOptions, source?: RequestOptions): RequestOptions {
   const combinedHeaders = {
     ...target?.headers,
