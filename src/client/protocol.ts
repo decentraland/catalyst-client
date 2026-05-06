@@ -14,15 +14,20 @@ import { DeploymentProtocolVersion } from './types'
 export async function probeServerSupportsV2(
   serverUrl: string,
   probeEntityId: string,
-  fetcher: IFetchComponent
+  fetcher: IFetchComponent,
+  timeoutMs: number = 5000
 ): Promise<boolean> {
   const url = `${sanitizeUrl(serverUrl)}/entities/${probeEntityId}/status`
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   try {
-    const resp = await fetcher.fetch(url, { method: 'OPTIONS' })
+    const resp = await fetcher.fetch(url, { method: 'OPTIONS', signal: ctrl.signal as any })
     // 200/204 -> route exists; 405 -> route exists but OPTIONS not allowed (still v2-aware)
     return resp.status === 200 || resp.status === 204 || resp.status === 405
   } catch {
     return false
+  } finally {
+    clearTimeout(timer)
   }
 }
 

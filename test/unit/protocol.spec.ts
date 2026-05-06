@@ -46,6 +46,20 @@ describe('probeServerSupportsV2', () => {
     await probeServerSupportsV2('https://example.com/', 'QmX', fakeFetcher(fetch))
     expect(fetch).toHaveBeenCalledWith('https://example.com/entities/QmX/status', expect.anything())
   })
+
+  it('returns false when probe times out', async () => {
+    const fetch = jest.fn().mockImplementation(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          // Never resolves; will be aborted by the probe's internal timer.
+          ;(init.signal as AbortSignal).addEventListener('abort', () =>
+            reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))
+          )
+        })
+    )
+    const result = await probeServerSupportsV2('https://hung.example.com', 'QmX', { fetch } as any, 50)
+    expect(result).toBe(false)
+  }, 1000)
 })
 
 describe('createProbeCache', () => {
