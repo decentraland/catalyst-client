@@ -1,4 +1,4 @@
-import { probeServerSupportsV2 } from '../../src/client/protocol'
+import { probeServerSupportsV2, createProbeCache } from '../../src/client/protocol'
 
 function fakeFetcher(impl: jest.Mock) {
   return { fetch: impl } as any
@@ -47,5 +47,35 @@ describe('probeServerSupportsV2', () => {
       'https://example.com/entities/QmX/status',
       expect.anything()
     )
+  })
+})
+
+describe('createProbeCache', () => {
+  it('caches per serverUrl', async () => {
+    const fetch = jest.fn().mockResolvedValue({ ok: true, status: 200 })
+    const cache = createProbeCache({ fetch } as any)
+    const a1 = await cache.supportsV2('https://a.com', 'QmA')
+    const a2 = await cache.supportsV2('https://a.com', 'QmA')
+    const b1 = await cache.supportsV2('https://b.com', 'QmB')
+    expect(a1).toBe(true)
+    expect(a2).toBe(true)
+    expect(b1).toBe(true)
+    expect(fetch).toHaveBeenCalledTimes(2) // one per unique serverUrl, NOT per call
+  })
+
+  it('treats trailing-slash variants as the same server', async () => {
+    const fetch = jest.fn().mockResolvedValue({ ok: true, status: 200 })
+    const cache = createProbeCache({ fetch } as any)
+    await cache.supportsV2('https://a.com', 'QmA')
+    await cache.supportsV2('https://a.com/', 'QmA')
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('caches negative results too', async () => {
+    const fetch = jest.fn().mockResolvedValue({ ok: false, status: 404 })
+    const cache = createProbeCache({ fetch } as any)
+    expect(await cache.supportsV2('https://legacy.com', 'QmA')).toBe(false)
+    expect(await cache.supportsV2('https://legacy.com', 'QmA')).toBe(false)
+    expect(fetch).toHaveBeenCalledTimes(1)
   })
 })

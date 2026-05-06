@@ -23,3 +23,21 @@ export async function probeServerSupportsV2(
     return false
   }
 }
+
+export type ProbeCache = {
+  supportsV2(serverUrl: string, probeEntityId: string): Promise<boolean>
+}
+
+export function createProbeCache(fetcher: IFetchComponent): ProbeCache {
+  const cache = new Map<string, Promise<boolean>>()
+  return {
+    supportsV2(serverUrl, probeEntityId) {
+      const key = sanitizeUrl(serverUrl)
+      const existing = cache.get(key)
+      if (existing) return existing
+      const promise = probeServerSupportsV2(key, probeEntityId, fetcher)
+      cache.set(key, promise)
+      return promise
+    }
+  }
+}
