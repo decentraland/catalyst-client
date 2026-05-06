@@ -1,5 +1,5 @@
 import { AuthChain, EntityType } from '@dcl/schemas'
-import { IFetchComponent, ILoggerComponent } from '@well-known-components/interfaces'
+import { IFetchComponent, ILoggerComponent, RequestOptions } from '@well-known-components/interfaces'
 
 export type DeploymentPreparationData = {
   entityId: string
@@ -57,7 +57,7 @@ export type DeploymentProgress = {
   bytesTotal: number
 }
 
-export type DeploymentOptions = {
+export type DeploymentOptions = RequestOptions & {
   /** Forces a specific protocol; default 'auto' (probe via OPTIONS). */
   deploymentProtocolVersion?: DeploymentProtocolVersion
   /** Max parallel file uploads in v2. Default 4. */
@@ -70,6 +70,4 @@ export type DeploymentOptions = {
   resumeOnEviction?: boolean
   /** Optional progress callback (v2 only). */
   onProgress?: (state: DeploymentProgress) => void
-  /** Forwarded to the underlying fetcher. */
-  timeout?: number
 }

@@ -1,11 +1,27 @@
 import FormData from 'form-data'
-import { IFetchComponent } from '@well-known-components/interfaces'
+import { IFetchComponent, RequestOptions } from '@well-known-components/interfaces'
 import { DeploymentData, DeploymentOptions, DeploymentProgress } from './types'
 import { retryUpload } from './retry-upload'
 import pLimit from 'p-limit'
 import { DeploymentInitError, FileUploadError, FinalizeError } from './errors'
 import type { Response } from '@well-known-components/interfaces/dist/components/fetcher'
 import { addModelToFormData, isNode, sanitizeUrl } from './utils/Helper'
+
+/**
+ * Pulls the standard RequestOptions fields out of DeploymentOptions so they
+ * can be merged into a fetcher.fetch init object.
+ */
+export function pickRequestOptions(opts: DeploymentOptions | undefined): Partial<RequestOptions> {
+  if (!opts) return {}
+  const { timeout, attempts, retryDelay, headers, signal } = opts as any
+  const out: any = {}
+  if (timeout !== undefined) out.timeout = timeout
+  if (attempts !== undefined) out.attempts = attempts
+  if (retryDelay !== undefined) out.retryDelay = retryDelay
+  if (headers !== undefined) out.headers = headers
+  if (signal !== undefined) out.signal = signal
+  return out
+}
 
 export type InitResult = {
   availableFiles: string[]
@@ -21,7 +37,8 @@ function arrayBufferFrom(value: Buffer | Uint8Array): Buffer | ArrayBuffer {
 export async function initDeployment(
   serverUrl: string,
   data: DeploymentData,
-  fetcher: IFetchComponent
+  fetcher: IFetchComponent,
+  options?: DeploymentOptions
 ): Promise<InitResult> {
   const url = `${sanitizeUrl(serverUrl)}/entities`
   const fileSizesManifest: Record<string, number> = {}
@@ -46,11 +63,13 @@ export async function initDeployment(
     contentType: 'application/json'
   })
 
+  const reqOpts = pickRequestOptions(options)
   let resp
   try {
     resp = await fetcher.fetch(url, {
+      ...reqOpts,
       method: 'POST',
-      headers: { 'Upload-Incomplete': '?1' },
+      headers: { ...(reqOpts.headers ?? {}), 'Upload-Incomplete': '?1' },
       body: form as any
     })
   } catch (err) {
@@ -86,14 +105,21 @@ export type FileUploadOutcome =
 
 const RETRYABLE_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504])
 
-export async function uploadFile(input: UploadFileInput, fetcher: IFetchComponent): Promise<FileUploadOutcome> {
+export async function uploadFile(
+  input: UploadFileInput,
+  fetcher: IFetchComponent,
+  options?: DeploymentOptions
+): Promise<FileUploadOutcome> {
   const url = `${sanitizeUrl(input.serverUrl)}/entities/${input.entityId}/files/${input.fileHash}`
+  const reqOpts = pickRequestOptions(options)
 
   let resp
   try {
     resp = await fetcher.fetch(url, {
+      ...reqOpts,
       method: 'POST',
       headers: {
+        ...(reqOpts.headers ?? {}),
         'X-Deployment-Token': input.deploymentToken,
         'Content-Type': 'application/octet-stream'
       },
@@ -128,14 +154,17 @@ export async function finalizeDeployment(
   serverUrl: string,
   entityId: string,
   deploymentToken: string,
-  fetcher: IFetchComponent
+  fetcher: IFetchComponent,
+  options?: DeploymentOptions
 ): Promise<Response> {
   const url = `${sanitizeUrl(serverUrl)}/entities/${entityId}`
+  const reqOpts = pickRequestOptions(options)
   let resp: Response
   try {
     resp = await fetcher.fetch(url, {
+      ...reqOpts,
       method: 'POST',
-      headers: { 'X-Deployment-Token': deploymentToken }
+      headers: { ...(reqOpts.headers ?? {}), 'X-Deployment-Token': deploymentToken }
     })
   } catch (err) {
     throw new FinalizeError(`Network error during finalize`, { httpStatus: 0, cause: err })
@@ -171,7 +200,7 @@ export async function deployV2(
   const baseDelayMs = options.retryBaseDelayMs ?? 500
   const resumeOnEviction = options.resumeOnEviction ?? true
 
-  let init = await initDeployment(serverUrl, data, fetcher)
+  let init = await initDeployment(serverUrl, data, fetcher, options)
 
   let attemptedReinit = false
   const tryUploads = async (): Promise<'ok' | 'reinit-needed'> => {
@@ -205,7 +234,8 @@ export async function deployV2(
             () =>
               uploadFile(
                 { serverUrl, entityId: data.entityId, fileHash, bytes, deploymentToken: init.deploymentToken },
-                fetcher
+                fetcher,
+                options
               ),
             { retries, baseDelayMs }
           )
@@ -241,12 +271,12 @@ export async function deployV2(
       throw new DeploymentInitError('Deployment evicted mid-upload and resume is disabled or already attempted')
     }
     attemptedReinit = true
-    init = await initDeployment(serverUrl, data, fetcher)
+    init = await initDeployment(serverUrl, data, fetcher, options)
     uploadResult = await tryUploads()
     if (uploadResult !== 'ok') {
       throw new DeploymentInitError('Deployment evicted twice — giving up')
     }
   }
 
-  return finalizeDeployment(serverUrl, data.entityId, init.deploymentToken, fetcher)
+  return finalizeDeployment(serverUrl, data.entityId, init.deploymentToken, fetcher, options)
 }
