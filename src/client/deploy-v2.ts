@@ -1,7 +1,7 @@
 import FormData from 'form-data'
 import { IFetchComponent } from '@well-known-components/interfaces'
 import { DeploymentData } from './types'
-import { DeploymentInitError } from './errors'
+import { DeploymentInitError, FileUploadError } from './errors'
 import { addModelToFormData, isNode, sanitizeUrl } from './utils/Helper'
 
 export type InitResult = {
@@ -61,4 +61,57 @@ export async function initDeployment(
   }
 
   return (await resp.json()) as InitResult
+}
+
+export type UploadFileInput = {
+  serverUrl: string
+  entityId: string
+  fileHash: string
+  bytes: Uint8Array
+  deploymentToken: string
+}
+
+export type FileUploadOutcome =
+  | { kind: 'ok' }
+  | { kind: 'evicted' }
+  | { kind: 'retryable'; cause: unknown }
+  | { kind: 'fatal'; error: FileUploadError }
+
+const RETRYABLE_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504])
+
+export async function uploadFile(
+  input: UploadFileInput,
+  fetcher: IFetchComponent
+): Promise<FileUploadOutcome> {
+  const url = `${sanitizeUrl(input.serverUrl)}/entities/${input.entityId}/files/${input.fileHash}`
+
+  let resp
+  try {
+    resp = await fetcher.fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-Deployment-Token': input.deploymentToken,
+        'Content-Type': 'application/octet-stream'
+      },
+      body: Buffer.from(input.bytes.buffer, input.bytes.byteOffset, input.bytes.byteLength) as any
+    })
+  } catch (err) {
+    return { kind: 'retryable', cause: err }
+  }
+
+  if (resp.ok && resp.status === 204) return { kind: 'ok' }
+  if (resp.status === 404) return { kind: 'evicted' }
+  if (RETRYABLE_STATUSES.has(resp.status)) {
+    return { kind: 'retryable', cause: new Error(`HTTP ${resp.status}`) }
+  }
+
+  let body = ''
+  try { body = await resp.text() } catch { /* best effort */ }
+  return {
+    kind: 'fatal',
+    error: new FileUploadError(`File upload failed (HTTP ${resp.status}): ${body}`, {
+      fileHash: input.fileHash,
+      httpStatus: resp.status
+    })
+  }
 }
