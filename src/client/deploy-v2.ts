@@ -113,7 +113,7 @@ export async function uploadFile(
     return { kind: 'retryable', cause: err }
   }
 
-  if (resp.ok && resp.status === 204) return { kind: 'ok' }
+  if (resp.ok) return { kind: 'ok' }
   if (resp.status === 404) return { kind: 'evicted' }
   if (RETRYABLE_STATUSES.has(resp.status)) {
     return { kind: 'retryable', cause: new Error(`HTTP ${resp.status}`) }
@@ -186,7 +186,6 @@ export async function deployV2(
 
   let init = await initDeployment(serverUrl, data, fetcher, options)
 
-  let attemptedReinit = false
   const tryUploads = async (): Promise<'ok' | 'reinit-needed'> => {
     const limit = pLimit(parallelism)
     let uploaded = 0
@@ -203,6 +202,8 @@ export async function deployV2(
         options.onProgress(progress)
       }
     }
+
+    emit() // initial 0/total event
 
     const tasks: Promise<void>[] = []
     for (const fileHash of init.missingFiles) {
@@ -251,10 +252,9 @@ export async function deployV2(
 
   let uploadResult = await tryUploads()
   if (uploadResult === 'reinit-needed') {
-    if (!resumeOnEviction || attemptedReinit) {
+    if (!resumeOnEviction) {
       throw new DeploymentInitError('Deployment evicted mid-upload and resume is disabled or already attempted')
     }
-    attemptedReinit = true
     init = await initDeployment(serverUrl, data, fetcher, options)
     uploadResult = await tryUploads()
     if (uploadResult !== 'ok') {

@@ -25,6 +25,7 @@ describe('deploy v2 — eviction recovery', () => {
     ])
     await client.deploy({ entityId: 'QmEntity', authChain: [], files }, {
       deploymentProtocolVersion: 'v2' as const,
+      parallelism: 4,
       retries: 0
     } as any)
 
