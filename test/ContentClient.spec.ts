@@ -3,6 +3,7 @@ import { Entity, EntityType } from '@dcl/schemas'
 import { createFetchComponent } from '@well-known-components/fetch-component'
 import { IFetchComponent } from '@well-known-components/interfaces'
 import { AvailableContentResult, ContentClient, createContentClient } from '../src'
+import { ProtocolUnsupportedError } from '../src/client/errors'
 
 describe('ContentClient', () => {
   const URL = 'https://url.com'
@@ -771,5 +772,37 @@ describe('ContentClient', () => {
         })
       })
     })
+  })
+})
+
+describe('ContentClient.deploy with deploymentProtocolVersion', () => {
+  it('forces v1 path when option = v1 (no probe)', async () => {
+    const fetch = jest.fn()
+    fetch.mockImplementation(async (url, opts) => {
+      if (url.includes('/available-content')) {
+        return { ok: true, status: 200, json: async () => [] }
+      }
+      return { ok: true, status: 200, json: async () => ({}) }
+    })
+    const client = createContentClient({ url: 'https://example.com', fetcher: { fetch } as any })
+    await client.deploy({ entityId: 'QmE', authChain: [], files: new Map([['QmE', Buffer.from('{}')]]) }, {
+      deploymentProtocolVersion: 'v1'
+    } as any)
+    // No OPTIONS probe should have been issued
+    const optionsCalls = fetch.mock.calls.filter((c: any[]) => c[1]?.method === 'OPTIONS')
+    expect(optionsCalls).toHaveLength(0)
+  })
+
+  it('throws ProtocolUnsupportedError when option=v2 but probe says no', async () => {
+    const fetch = jest.fn().mockImplementation(async (url, opts) => {
+      if (opts?.method === 'OPTIONS') return { ok: false, status: 404 }
+      return { ok: true, status: 200, json: async () => ({}) }
+    })
+    const client = createContentClient({ url: 'https://example.com', fetcher: { fetch } as any })
+    await expect(
+      client.deploy({ entityId: 'QmE', authChain: [], files: new Map([['QmE', Buffer.from('{}')]]) }, {
+        deploymentProtocolVersion: 'v2'
+      } as any)
+    ).rejects.toBeInstanceOf(ProtocolUnsupportedError)
   })
 })

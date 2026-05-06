@@ -16,6 +16,9 @@ describe('test client post', () => {
   })
 
   it('publishes an entity', async () => {
+    // OPTIONS probe for auto-detect (returns 404 → falls back to v1)
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 404 })
+    // /available-content check
     mockFetch.mockResolvedValueOnce({
       ok: true,
       status: 200,
@@ -24,6 +27,8 @@ describe('test client post', () => {
         { cid: 'QmB', available: true }
       ]
     })
+    // final POST /entities
+    mockFetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({}) })
 
     const files = new Map<string, Uint8Array>()
     files.set('QmA', new Uint8Array([111, 112, 113]))
@@ -31,8 +36,8 @@ describe('test client post', () => {
 
     await client.deploy({ authChain: [], entityId: 'QmENTITY', files })
 
-    expect(mockFetch).toHaveBeenCalledTimes(2)
-    const [_checkAvailabilityCall, deployCall] = mockFetch.mock.calls
+    expect(mockFetch).toHaveBeenCalledTimes(3)
+    const [_probeCall, _checkAvailabilityCall, deployCall] = mockFetch.mock.calls
     expect(deployCall[0]).toContain('/entities')
     expect(deployCall[1].method).toBe('POST')
   })

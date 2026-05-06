@@ -2,9 +2,19 @@ import { hashV0, hashV1 } from '@dcl/hashing'
 import { Entity } from '@dcl/schemas'
 import { IFetchComponent, RequestOptions } from '@well-known-components/interfaces'
 import FormData from 'form-data'
-import { ClientOptions, DeploymentData, ParallelConfig } from './types'
-import { addModelToFormData, isNode, mergeRequestOptions, sanitizeUrl, splitAndFetch } from './utils/Helper'
+import { ClientOptions, DeploymentData, DeploymentOptions, ParallelConfig } from './types'
+import {
+  addModelToFormData,
+  isNode,
+  mergeRequestOptions,
+  pickRequestOptions,
+  sanitizeUrl,
+  splitAndFetch
+} from './utils/Helper'
 import { retry } from './utils/retry'
+import { createProbeCache, resolveProtocol } from './protocol'
+import { resolveProbeEntityId } from './probe-entity-id'
+import { deployV2 } from './deploy-v2'
 
 function arrayBufferFrom(value: Buffer | Uint8Array) {
   if (value.buffer) {
@@ -32,7 +42,7 @@ export type ContentClient = {
   /**
    * Deploys an entity to the content server.
    */
-  deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown>
+  deploy(deployData: DeploymentData, options?: RequestOptions | DeploymentOptions): Promise<unknown>
 
   /**
    * Checks if a pointer is consistent across multiple content servers
@@ -80,6 +90,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
   const { fetcher, logger } = options
   const contentUrl = sanitizeUrl(options.url)
   const defaultParallelConfig = options?.parallelConfig
+  const probeCache = createProbeCache(fetcher)
 
   async function fetchFromMultipleServersRace(
     urls: string[],
@@ -204,7 +215,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
     return form
   }
 
-  async function deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
+  async function deployV1(deployData: DeploymentData, options?: RequestOptions | DeploymentOptions): Promise<unknown> {
     const form = await buildEntityFormDataForDeployment(deployData, options)
 
     const requestOptions = mergeRequestOptions(options ? options : {}, {
@@ -213,6 +224,17 @@ export function createContentClient(options: ClientOptions): ContentClient {
     })
 
     return await fetcher.fetch(`${contentUrl}/entities`, requestOptions)
+  }
+
+  async function deploy(deployData: DeploymentData, deployOptions?: DeploymentOptions): Promise<unknown> {
+    const protocol = await resolveProtocol(contentUrl, deployOptions?.deploymentProtocolVersion, probeCache, (url) =>
+      resolveProbeEntityId(url, fetcher)
+    )
+
+    if (protocol === 'v2') {
+      return deployV2(contentUrl, deployData, deployOptions ?? {}, fetcher)
+    }
+    return deployV1(deployData, pickRequestOptions(deployOptions))
   }
 
   async function fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]> {
