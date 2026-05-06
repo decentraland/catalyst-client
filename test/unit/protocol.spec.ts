@@ -1,4 +1,5 @@
-import { probeServerSupportsV2, createProbeCache } from '../../src/client/protocol'
+import { probeServerSupportsV2, createProbeCache, resolveProtocol } from '../../src/client/protocol'
+import { ProtocolUnsupportedError } from '../../src/client/errors'
 
 function fakeFetcher(impl: jest.Mock) {
   return { fetch: impl } as any
@@ -77,5 +78,39 @@ describe('createProbeCache', () => {
     expect(await cache.supportsV2('https://legacy.com', 'QmA')).toBe(false)
     expect(await cache.supportsV2('https://legacy.com', 'QmA')).toBe(false)
     expect(fetch).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('resolveProtocol', () => {
+  function probeReturning(supports: boolean) {
+    return { supportsV2: jest.fn().mockResolvedValue(supports) } as any
+  }
+
+  it("returns 'v1' when explicit", async () => {
+    const probe = probeReturning(true)
+    expect(await resolveProtocol('https://example.com', 'v1', probe, async () => 'QmX')).toBe('v1')
+    expect(probe.supportsV2).not.toHaveBeenCalled()
+  })
+
+  it("returns 'v2' when explicit and server supports it", async () => {
+    expect(await resolveProtocol('https://example.com', 'v2', probeReturning(true), async () => 'QmX')).toBe('v2')
+  })
+
+  it("throws ProtocolUnsupportedError when 'v2' explicit but server is legacy", async () => {
+    await expect(
+      resolveProtocol('https://example.com', 'v2', probeReturning(false), async () => 'QmX')
+    ).rejects.toBeInstanceOf(ProtocolUnsupportedError)
+  })
+
+  it("auto: returns 'v2' when supported", async () => {
+    expect(await resolveProtocol('https://example.com', 'auto', probeReturning(true), async () => 'QmX')).toBe('v2')
+  })
+
+  it("auto: returns 'v1' when not supported", async () => {
+    expect(await resolveProtocol('https://example.com', 'auto', probeReturning(false), async () => 'QmX')).toBe('v1')
+  })
+
+  it("treats undefined as 'auto'", async () => {
+    expect(await resolveProtocol('https://example.com', undefined, probeReturning(true), async () => 'QmX')).toBe('v2')
   })
 })

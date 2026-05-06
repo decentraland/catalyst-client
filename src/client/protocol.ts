@@ -1,5 +1,7 @@
 import { IFetchComponent } from '@well-known-components/interfaces'
 import { sanitizeUrl } from './utils/Helper'
+import { ProtocolUnsupportedError } from './errors'
+import { DeploymentProtocolVersion } from './types'
 
 /**
  * Probes whether `serverUrl` exposes the v2 deploy protocol.
@@ -40,4 +42,26 @@ export function createProbeCache(fetcher: IFetchComponent): ProbeCache {
       return promise
     }
   }
+}
+
+export type ResolvedProtocol = 'v1' | 'v2'
+
+export async function resolveProtocol(
+  serverUrl: string,
+  requested: DeploymentProtocolVersion | undefined,
+  probe: ProbeCache,
+  resolveProbeId: (serverUrl: string) => Promise<string>
+): Promise<ResolvedProtocol> {
+  const choice = requested ?? 'auto'
+  if (choice === 'v1') return 'v1'
+
+  const probeId = await resolveProbeId(serverUrl)
+  const supported = await probe.supportsV2(serverUrl, probeId)
+
+  if (choice === 'v2') {
+    if (!supported) throw new ProtocolUnsupportedError(serverUrl)
+    return 'v2'
+  }
+  // 'auto'
+  return supported ? 'v2' : 'v1'
 }
