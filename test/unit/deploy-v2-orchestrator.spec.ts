@@ -137,3 +137,80 @@ describe('deployV2 orchestrator', () => {
     expect(last.bytesTotal).toBe(5)
   })
 })
+
+describe('deployV2 — eviction recovery', () => {
+  const entityId = 'QmEntity'
+  const entityFile = Buffer.from('{}')
+  const authChain = [{ type: AuthLinkType.SIGNER, payload: '0x', signature: '' }]
+
+  it('reinits on 404 mid-upload then completes', async () => {
+    let initCalls = 0
+    const fetch = jest.fn().mockImplementation(async (url, opts) => {
+      if (opts?.headers?.['Upload-Incomplete'] === '?1') {
+        initCalls++
+        return {
+          ok: true, status: 202,
+          json: async () => ({
+            availableFiles: [],
+            missingFiles: ['QmA', 'QmB'],
+            deploymentToken: `tok-${initCalls}`,
+            expiresAt: Date.now() + 60_000
+          })
+        }
+      }
+      if (url.includes('/files/')) {
+        if (initCalls === 1) {
+          // first round: simulate eviction
+          return { ok: false, status: 404 }
+        }
+        return { ok: true, status: 204 }
+      }
+      return { ok: true, status: 200, json: async () => ({}) }
+    })
+
+    const files = new Map<string, Uint8Array>([
+      [entityId, entityFile],
+      ['QmA', new Uint8Array([1])],
+      ['QmB', new Uint8Array([2])]
+    ])
+
+    await deployV2(
+      'https://example.com',
+      { entityId, files, authChain },
+      { parallelism: 1, retries: 0 },
+      { fetch } as any
+    )
+
+    expect(initCalls).toBe(2)
+  })
+
+  it('throws when resumeOnEviction=false', async () => {
+    const fetch = jest.fn().mockImplementation(async (url, opts) => {
+      if (opts?.headers?.['Upload-Incomplete'] === '?1') {
+        return {
+          ok: true, status: 202,
+          json: async () => ({
+            availableFiles: [], missingFiles: ['QmA'],
+            deploymentToken: 'tok', expiresAt: Date.now() + 60_000
+          })
+        }
+      }
+      if (url.includes('/files/')) return { ok: false, status: 404 }
+      return { ok: true, status: 200, json: async () => ({}) }
+    })
+
+    const files = new Map<string, Uint8Array>([
+      [entityId, entityFile],
+      ['QmA', new Uint8Array([1])]
+    ])
+
+    await expect(
+      deployV2(
+        'https://example.com',
+        { entityId, files, authChain },
+        { parallelism: 1, retries: 0, resumeOnEviction: false },
+        { fetch } as any
+      )
+    ).rejects.toThrow(/evicted/)
+  })
+})
