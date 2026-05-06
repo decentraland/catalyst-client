@@ -1,7 +1,8 @@
 import FormData from 'form-data'
 import { IFetchComponent } from '@well-known-components/interfaces'
 import { DeploymentData } from './types'
-import { DeploymentInitError, FileUploadError } from './errors'
+import { DeploymentInitError, FileUploadError, FinalizeError } from './errors'
+import type { Response } from '@well-known-components/interfaces/dist/components/fetcher'
 import { addModelToFormData, isNode, sanitizeUrl } from './utils/Helper'
 
 export type InitResult = {
@@ -114,4 +115,36 @@ export async function uploadFile(
       httpStatus: resp.status
     })
   }
+}
+
+export async function finalizeDeployment(
+  serverUrl: string,
+  entityId: string,
+  deploymentToken: string,
+  fetcher: IFetchComponent
+): Promise<Response> {
+  const url = `${sanitizeUrl(serverUrl)}/entities/${entityId}`
+  let resp: Response
+  try {
+    resp = await fetcher.fetch(url, {
+      method: 'POST',
+      headers: { 'X-Deployment-Token': deploymentToken }
+    })
+  } catch (err) {
+    throw new FinalizeError(`Network error during finalize`, { httpStatus: 0, cause: err })
+  }
+
+  if (resp.ok) return resp
+
+  let bodyContent: unknown = undefined
+  try {
+    bodyContent = await resp.clone().json()
+  } catch {
+    try { bodyContent = await resp.text() } catch { /* best effort */ }
+  }
+
+  throw new FinalizeError(`Finalize returned HTTP ${resp.status}`, {
+    httpStatus: resp.status,
+    responseBody: bodyContent
+  })
 }
