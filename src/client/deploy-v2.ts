@@ -1,6 +1,8 @@
 import FormData from 'form-data'
 import { IFetchComponent } from '@well-known-components/interfaces'
-import { DeploymentData } from './types'
+import { DeploymentData, DeploymentOptions, DeploymentProgress } from './types'
+import { retryUpload } from './retry-upload'
+import pLimit from 'p-limit'
 import { DeploymentInitError, FileUploadError, FinalizeError } from './errors'
 import type { Response } from '@well-known-components/interfaces/dist/components/fetcher'
 import { addModelToFormData, isNode, sanitizeUrl } from './utils/Helper'
@@ -147,4 +149,83 @@ export async function finalizeDeployment(
     httpStatus: resp.status,
     responseBody: bodyContent
   })
+}
+
+export async function deployV2(
+  serverUrl: string,
+  data: DeploymentData,
+  options: DeploymentOptions,
+  fetcher: IFetchComponent
+): Promise<Response> {
+  const parallelism = options.parallelism ?? 4
+  const retries = options.retries ?? 3
+  const baseDelayMs = options.retryBaseDelayMs ?? 500
+  const resumeOnEviction = options.resumeOnEviction ?? true
+
+  let init = await initDeployment(serverUrl, data, fetcher)
+
+  let attemptedReinit = false
+  const tryUploads = async (): Promise<'ok' | 'reinit-needed'> => {
+    const limit = pLimit(parallelism)
+    let uploaded = 0
+    let bytesUploaded = 0
+    const total = init.missingFiles.length
+    const bytesTotal = init.missingFiles.reduce((acc, h) => acc + (data.files.get(h)?.byteLength ?? 0), 0)
+
+    let evicted = false
+    let firstFatal: FileUploadError | undefined
+
+    const emit = () => {
+      if (options.onProgress) {
+        const progress: DeploymentProgress = { uploaded, total, bytesUploaded, bytesTotal }
+        options.onProgress(progress)
+      }
+    }
+
+    const tasks: Promise<void>[] = []
+    for (const fileHash of init.missingFiles) {
+      const bytes = data.files.get(fileHash)
+      if (!bytes) {
+        firstFatal = new FileUploadError(`Missing file ${fileHash} in deployment data`, { fileHash })
+        break
+      }
+      tasks.push(limit(async () => {
+        if (evicted || firstFatal) return
+        const result = await retryUpload(
+          () => uploadFile({ serverUrl, entityId: data.entityId, fileHash, bytes, deploymentToken: init.deploymentToken }, fetcher),
+          { retries, baseDelayMs }
+        )
+        if (result.kind === 'evicted') { evicted = true; return }
+        if (result.kind === 'fatal') { firstFatal = result.error; return }
+        if (result.kind === 'retryable') {
+          firstFatal = new FileUploadError(`File ${fileHash} failed after retries`, { fileHash, cause: result.cause })
+          return
+        }
+        uploaded++
+        bytesUploaded += bytes.byteLength
+        emit()
+      }))
+    }
+
+    await Promise.all(tasks)
+
+    if (firstFatal) throw firstFatal
+    if (evicted) return 'reinit-needed'
+    return 'ok'
+  }
+
+  let uploadResult = await tryUploads()
+  if (uploadResult === 'reinit-needed') {
+    if (!resumeOnEviction || attemptedReinit) {
+      throw new DeploymentInitError('Deployment evicted mid-upload and resume is disabled or already attempted')
+    }
+    attemptedReinit = true
+    init = await initDeployment(serverUrl, data, fetcher)
+    uploadResult = await tryUploads()
+    if (uploadResult !== 'ok') {
+      throw new DeploymentInitError('Deployment evicted twice — giving up')
+    }
+  }
+
+  return finalizeDeployment(serverUrl, data.entityId, init.deploymentToken, fetcher)
 }
