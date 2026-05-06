@@ -30,10 +30,6 @@ export type InitResult = {
   expiresAt: number
 }
 
-function arrayBufferFrom(value: Buffer | Uint8Array): Buffer | ArrayBuffer {
-  return Buffer.isBuffer(value) ? value : (value.buffer as ArrayBuffer)
-}
-
 export async function initDeployment(
   serverUrl: string,
   data: DeploymentData,
@@ -50,14 +46,18 @@ export async function initDeployment(
   form.append('entityId', data.entityId)
   addModelToFormData(data.authChain, form, 'authChain')
 
-  const entityFile = data.files.get(data.entityId)
-  if (!entityFile) {
+  const entityBytes = data.files.get(data.entityId)
+  if (!entityBytes) {
     throw new DeploymentInitError(`Entity file ${data.entityId} not found in deployment data`)
   }
+  const entityBuffer = Buffer.isBuffer(entityBytes)
+    ? entityBytes
+    : Buffer.from(entityBytes.buffer, entityBytes.byteOffset, entityBytes.byteLength)
+
   if (isNode()) {
-    form.append(data.entityId, Buffer.from(arrayBufferFrom(entityFile)), data.entityId)
+    form.append(data.entityId, entityBuffer, data.entityId)
   } else {
-    form.append(data.entityId, new Blob([arrayBufferFrom(entityFile)]), data.entityId)
+    form.append(data.entityId, new Blob([entityBuffer]), data.entityId)
   }
   form.append('fileSizesManifest', JSON.stringify(fileSizesManifest), {
     contentType: 'application/json'
