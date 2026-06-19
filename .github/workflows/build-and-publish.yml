@@ -16,7 +16,6 @@ jobs:
       SDK_TEAM_S3_BUCKET: ${{ secrets.SDK_TEAM_S3_BUCKET }}
       GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
       GITLAB_URL: ${{ secrets.GITLAB_URL }}
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       SDK_TEAM_AWS_ID: ${{ secrets.SDK_TEAM_AWS_ID }}
       SDK_TEAM_AWS_SECRET: ${{ secrets.SDK_TEAM_AWS_SECRET }}
       SDK_TEAM_S3_BASE_URL: ${{ secrets.SDK_TEAM_S3_BASE_URL }}
