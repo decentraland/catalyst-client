@@ -1,8 +1,7 @@
 import { hashV0 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
 import { createFetchComponent } from '@well-known-components/fetch-component'
-import { IFetchComponent } from '@well-known-components/interfaces'
-import { AvailableContentResult, ContentClient, createContentClient } from '../src'
+import { AvailableContentResult, ContentClient, createContentClient, IFetchComponent } from '../src'
 
 describe('ContentClient', () => {
   const URL = 'https://url.com'
