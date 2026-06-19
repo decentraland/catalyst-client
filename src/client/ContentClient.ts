@@ -1,8 +1,7 @@
 import { hashV0, hashV1 } from '@dcl/hashing'
 import { Entity } from '@dcl/schemas'
-import { IFetchComponent, RequestOptions } from '@well-known-components/interfaces'
 import FormData from 'form-data'
-import { ClientOptions, DeploymentData, ParallelConfig } from './types'
+import { ClientOptions, DeploymentData, IFetchComponent, ParallelConfig, RequestOptions } from './types'
 import { addModelToFormData, isNode, mergeRequestOptions, sanitizeUrl, splitAndFetch } from './utils/Helper'
 import { retry } from './utils/retry'
 
@@ -59,7 +58,8 @@ export async function downloadContent(
   return retry(
     `fetch file with hash ${contentHash} from ${baseUrl}`,
     async () => {
-      const content = await (await fetcher.fetch(`${baseUrl}/${contentHash}`, timeout)).buffer()
+      const response = await fetcher.fetch(`${baseUrl}/${contentHash}`, timeout)
+      const content = Buffer.from(await response.arrayBuffer())
       if (!options?.avoidChecks) {
         const downloadedHash = contentHash.startsWith('Qm') ? await hashV0(content) : await hashV1(content)
 

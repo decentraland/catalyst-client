@@ -1,8 +1,7 @@
 import { hashV0 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
 import { createFetchComponent } from '@well-known-components/fetch-component'
-import { IFetchComponent } from '@well-known-components/interfaces'
-import { AvailableContentResult, ContentClient, createContentClient } from '../src'
+import { AvailableContentResult, ContentClient, createContentClient, IFetchComponent } from '../src'
 
 describe('ContentClient', () => {
   const URL = 'https://url.com'
@@ -149,7 +148,7 @@ describe('ContentClient', () => {
 
     const fetcher = createFetchComponent()
     fetcher.fetch = jest.fn().mockResolvedValue({
-      buffer: jest.fn().mockResolvedValueOnce(failBuffer).mockResolvedValueOnce(realBuffer)
+      arrayBuffer: jest.fn().mockResolvedValueOnce(failBuffer).mockResolvedValueOnce(realBuffer)
     })
     const client = buildClient(URL, fetcher)
 
@@ -168,7 +167,7 @@ describe('ContentClient', () => {
 
     const fetcher = createFetchComponent()
     fetcher.fetch = jest.fn().mockResolvedValue({
-      buffer: jest.fn().mockResolvedValueOnce(failBuffer).mockResolvedValueOnce(realBuffer)
+      arrayBuffer: jest.fn().mockResolvedValueOnce(failBuffer).mockResolvedValueOnce(realBuffer)
     })
 
     const client = buildClient(URL, fetcher)
@@ -184,7 +183,7 @@ describe('ContentClient', () => {
     // Create mock, and return the wrong buffer always
     const fetcher = createFetchComponent()
     fetcher.fetch = jest.fn().mockResolvedValue({
-      buffer: jest.fn().mockResolvedValueOnce(failBuffer).mockResolvedValueOnce(failBuffer)
+      arrayBuffer: jest.fn().mockResolvedValueOnce(failBuffer).mockResolvedValueOnce(failBuffer)
     })
 
     const client = buildClient(URL, fetcher)
