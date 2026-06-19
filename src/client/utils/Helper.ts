@@ -1,6 +1,6 @@
 import { createFetchComponent } from '@well-known-components/fetch-component'
-import { IFetchComponent, RequestOptions } from '@well-known-components/interfaces'
 import type FormData from 'form-data'
+import { IFetchComponent, RequestOptions } from '../types'
 import { commit, version } from './../../package.json'
 
 export function getCurrentVersion(): string {

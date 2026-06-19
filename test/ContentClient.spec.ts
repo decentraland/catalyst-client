@@ -149,7 +149,7 @@ describe('ContentClient', () => {
 
     const fetcher = createFetchComponent()
     fetcher.fetch = jest.fn().mockResolvedValue({
-      buffer: jest.fn().mockResolvedValueOnce(failBuffer).mockResolvedValueOnce(realBuffer)
+      arrayBuffer: jest.fn().mockResolvedValueOnce(failBuffer).mockResolvedValueOnce(realBuffer)
     })
     const client = buildClient(URL, fetcher)
 
@@ -168,7 +168,7 @@ describe('ContentClient', () => {
 
     const fetcher = createFetchComponent()
     fetcher.fetch = jest.fn().mockResolvedValue({
-      buffer: jest.fn().mockResolvedValueOnce(failBuffer).mockResolvedValueOnce(realBuffer)
+      arrayBuffer: jest.fn().mockResolvedValueOnce(failBuffer).mockResolvedValueOnce(realBuffer)
     })
 
     const client = buildClient(URL, fetcher)
@@ -184,7 +184,7 @@ describe('ContentClient', () => {
     // Create mock, and return the wrong buffer always
     const fetcher = createFetchComponent()
     fetcher.fetch = jest.fn().mockResolvedValue({
-      buffer: jest.fn().mockResolvedValueOnce(failBuffer).mockResolvedValueOnce(failBuffer)
+      arrayBuffer: jest.fn().mockResolvedValueOnce(failBuffer).mockResolvedValueOnce(failBuffer)
     })
 
     const client = buildClient(URL, fetcher)

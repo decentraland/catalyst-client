@@ -1,4 +1,4 @@
-import { IFetchComponent } from '@well-known-components/interfaces'
+import { IFetchComponent } from '../types'
 
 type Context = {
   url: string
