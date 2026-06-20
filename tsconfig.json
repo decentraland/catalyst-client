@@ -12,6 +12,7 @@
       "node"
     ],
     "sourceMap": true,
+    "skipLibCheck": true,
     "moduleResolution": "node16",
     "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,

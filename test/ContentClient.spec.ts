@@ -1,6 +1,6 @@
 import { hashV0 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
-import { createFetchComponent } from '@well-known-components/fetch-component'
+import { createFetchComponent } from '@dcl/fetch-component'
 import { AvailableContentResult, ContentClient, createContentClient, IFetchComponent } from '../src'
 
 describe('ContentClient', () => {

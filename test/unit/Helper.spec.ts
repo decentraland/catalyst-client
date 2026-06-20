@@ -1,4 +1,4 @@
-import { createFetchComponent } from '@well-known-components/fetch-component'
+import { createFetchComponent } from '@dcl/fetch-component'
 import {
   MAX_URL_LENGTH,
   convertFiltersToQueryParams,
