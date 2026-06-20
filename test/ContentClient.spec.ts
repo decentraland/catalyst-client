@@ -18,42 +18,19 @@ describe('ContentClient', () => {
 
       const form = await client.buildEntityFormDataForDeployment({ authChain: [], entityId: 'QmENTITY', files })
 
-      const formData = form.getBuffer().toString().replace(/\s*$/gm, '')
+      // The deployment form is now a web-standard FormData: plain fields are strings and files are
+      // File/Blob entries keyed (and named) by their hash.
+      expect(form.get('entityId')).toBe('QmENTITY')
 
-      expect(formData).toContain(
-        `
-        | Content-Disposition: form-data; name="QmA"; filename="QmA"
-        | Content-Type: application/octet-stream
-        |
-        |
-        | opq
-        `
-          .replace(/^(\s*\|\s)*/gm, '') // scala, I miss you buddy...
-          .trim()
-      )
+      const qmA = form.get('QmA') as File
+      expect(qmA).toBeInstanceOf(Blob)
+      expect(qmA.name).toBe('QmA')
+      expect(await qmA.text()).toBe('opq')
 
-      expect(formData).toContain(
-        `
-        | Content-Disposition: form-data; name="entityId"
-        |
-        |
-        | QmENTITY
-        `
-          .replace(/^(\s*\|\s)*/gm, '') // scala, I miss you buddy...
-          .trim()
-      )
-
-      expect(formData).toContain(
-        `
-        | Content-Disposition: form-data; name="QmB"; filename="QmB"
-        | Content-Type: application/octet-stream
-        |
-        |
-        | asd
-        `
-          .replace(/^(\s*\|\s)*/gm, '') // scala, I miss you buddy...
-          .trim()
-      )
+      const qmB = form.get('QmB') as File
+      expect(qmB).toBeInstanceOf(Blob)
+      expect(qmB.name).toBe('QmB')
+      expect(await qmB.text()).toBe('asd')
     })
   })
 

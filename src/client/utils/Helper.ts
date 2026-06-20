@@ -1,5 +1,4 @@
 import { createFetchComponent } from '@well-known-components/fetch-component'
-import type FormData from 'form-data'
 import { IFetchComponent, RequestOptions } from '../types'
 import { commit, version } from './../../package.json'
 
