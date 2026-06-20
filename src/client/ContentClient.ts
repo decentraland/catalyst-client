@@ -1,16 +1,8 @@
 import { hashV0, hashV1 } from '@dcl/hashing'
 import { Entity } from '@dcl/schemas'
-import FormData from 'form-data'
 import { ClientOptions, DeploymentData, IFetchComponent, ParallelConfig, RequestOptions } from './types'
-import { addModelToFormData, isNode, mergeRequestOptions, sanitizeUrl, splitAndFetch } from './utils/Helper'
+import { addModelToFormData, mergeRequestOptions, sanitizeUrl, splitAndFetch } from './utils/Helper'
 import { retry } from './utils/retry'
-
-function arrayBufferFrom(value: Buffer | Uint8Array) {
-  if (value.buffer) {
-    return value.buffer
-  }
-  return value
-}
 
 export type AvailableContentResult = {
   cid: string
@@ -24,7 +16,7 @@ export type ContentClient = {
   fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]>
   fetchEntitiesByIds(ids: string[], options?: RequestOptions & { parallel?: ParallelConfig }): Promise<Entity[]>
   fetchEntityById(id: string, options?: RequestOptions & { parallel?: ParallelConfig }): Promise<Entity>
-  downloadContent(contentHash: string, options?: RequestOptions & { avoidChecks?: boolean }): Promise<Buffer>
+  downloadContent(contentHash: string, options?: RequestOptions & { avoidChecks?: boolean }): Promise<Uint8Array>
 
   isContentAvailable(cids: string[], options?: RequestOptions): Promise<AvailableContentResult>
 
@@ -51,7 +43,7 @@ export async function downloadContent(
   baseUrl: string,
   contentHash: string,
   options?: Partial<RequestOptions> & { avoidChecks?: boolean }
-): Promise<Buffer> {
+): Promise<Uint8Array> {
   const { attempts = 3, retryDelay = 500 } = options ? options : {}
   const timeout = options?.timeout ? { timeout: options.timeout } : {}
 
@@ -59,7 +51,7 @@ export async function downloadContent(
     `fetch file with hash ${contentHash} from ${baseUrl}`,
     async () => {
       const response = await fetcher.fetch(`${baseUrl}/${contentHash}`, timeout)
-      const content = Buffer.from(await response.arrayBuffer())
+      const content = new Uint8Array(await response.arrayBuffer())
       if (!options?.avoidChecks) {
         const downloadedHash = contentHash.startsWith('Qm') ? await hashV0(content) : await hashV1(content)
 
@@ -177,9 +169,9 @@ export function createContentClient(options: ClientOptions): ContentClient {
     deployData: DeploymentData,
     options?: RequestOptions
   ): Promise<FormData> {
-    // Check if we are running in node or browser
-    const areWeRunningInNode = isNode()
-
+    // Use the web-standard FormData/Blob (global in browsers and Node >= 18). When this form is
+    // used as a request body, native fetch (and node-fetch v3) set the multipart Content-Type with
+    // the boundary automatically, so the deployment works without a node-fetch-specific fetcher.
     const form = new FormData()
     form.append('entityId', deployData.entityId)
     addModelToFormData(deployData.authChain, form, 'authChain')
@@ -187,17 +179,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
     const alreadyUploadedHashes = await hashesAlreadyOnServer(Array.from(deployData.files.keys()), options)
     for (const [fileHash, file] of deployData.files) {
       if (!alreadyUploadedHashes.has(fileHash) || fileHash === deployData.entityId) {
-        if (areWeRunningInNode) {
-          // Node
-          form.append(
-            fileHash,
-            Buffer.isBuffer(file) ? file : Buffer.from(arrayBufferFrom(file) as ArrayBuffer),
-            fileHash
-          )
-        } else {
-          // Browser
-          form.append(fileHash, new Blob([arrayBufferFrom(file) as ArrayBuffer]), fileHash)
-        }
+        form.append(fileHash, new Blob([file]), fileHash)
       }
     }
 

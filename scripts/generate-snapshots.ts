@@ -12,7 +12,7 @@ import {
   NameDenylistContract,
   PoiContract
 } from '@dcl/catalyst-contracts'
-import { createFetchComponent } from '@well-known-components/fetch-component'
+import { createFetchComponent } from '@dcl/fetch-component'
 import RequestManager, { bytesToHex, ContractFactory, HTTPProvider } from 'eth-connect'
 import fs from 'fs'
 

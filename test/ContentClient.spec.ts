@@ -1,6 +1,6 @@
 import { hashV0 } from '@dcl/hashing'
 import { Entity, EntityType } from '@dcl/schemas'
-import { createFetchComponent } from '@well-known-components/fetch-component'
+import { createFetchComponent } from '@dcl/fetch-component'
 import { AvailableContentResult, ContentClient, createContentClient, IFetchComponent } from '../src'
 
 describe('ContentClient', () => {
@@ -18,42 +18,19 @@ describe('ContentClient', () => {
 
       const form = await client.buildEntityFormDataForDeployment({ authChain: [], entityId: 'QmENTITY', files })
 
-      const formData = form.getBuffer().toString().replace(/\s*$/gm, '')
+      // The deployment form is now a web-standard FormData: plain fields are strings and files are
+      // File/Blob entries keyed (and named) by their hash.
+      expect(form.get('entityId')).toBe('QmENTITY')
 
-      expect(formData).toContain(
-        `
-        | Content-Disposition: form-data; name="QmA"; filename="QmA"
-        | Content-Type: application/octet-stream
-        |
-        |
-        | opq
-        `
-          .replace(/^(\s*\|\s)*/gm, '') // scala, I miss you buddy...
-          .trim()
-      )
+      const qmA = form.get('QmA') as File
+      expect(qmA).toBeInstanceOf(Blob)
+      expect(qmA.name).toBe('QmA')
+      expect(await qmA.text()).toBe('opq')
 
-      expect(formData).toContain(
-        `
-        | Content-Disposition: form-data; name="entityId"
-        |
-        |
-        | QmENTITY
-        `
-          .replace(/^(\s*\|\s)*/gm, '') // scala, I miss you buddy...
-          .trim()
-      )
-
-      expect(formData).toContain(
-        `
-        | Content-Disposition: form-data; name="QmB"; filename="QmB"
-        | Content-Type: application/octet-stream
-        |
-        |
-        | asd
-        `
-          .replace(/^(\s*\|\s)*/gm, '') // scala, I miss you buddy...
-          .trim()
-      )
+      const qmB = form.get('QmB') as File
+      expect(qmB).toBeInstanceOf(Blob)
+      expect(qmB.name).toBe('QmB')
+      expect(await qmB.text()).toBe('asd')
     })
   })
 
@@ -154,8 +131,8 @@ describe('ContentClient', () => {
 
     const result = await client.downloadContent(fileHash, { retryDelay: 20 })
 
-    // Assert that the correct buffer is returned, and that there was a retry attempt
-    expect(result).toEqual(realBuffer)
+    // Assert that the correct content is returned, and that there was a retry attempt
+    expect(result).toEqual(new Uint8Array(realBuffer))
     expect(fetcher.fetch).toHaveBeenCalledTimes(2)
   })
 
@@ -172,7 +149,7 @@ describe('ContentClient', () => {
 
     const client = buildClient(URL, fetcher)
     const result = await client.downloadContent(fileHash, { retryDelay: 20, avoidChecks: true })
-    expect(result).toEqual(failBuffer)
+    expect(result).toEqual(new Uint8Array(failBuffer))
     expect(fetcher.fetch).toHaveBeenCalledTimes(1)
   })
 

@@ -1,5 +1,4 @@
-import { createFetchComponent } from '@well-known-components/fetch-component'
-import type FormData from 'form-data'
+import { createFetchComponent } from '@dcl/fetch-component'
 import { IFetchComponent, RequestOptions } from '../types'
 import { commit, version } from './../../package.json'
 
@@ -197,10 +196,6 @@ export function convertFiltersToQueryParams(filters?: Record<string, any>): Map<
     })
     .filter(([_, values]) => values.length > 0)
   return new Map(entries)
-}
-
-export function isNode() {
-  return Object.prototype.toString.call(typeof process !== 'undefined' ? process : 0) === '[object process]'
 }
 
 export function mergeRequestOptions(target: RequestOptions, source?: RequestOptions): RequestOptions {
