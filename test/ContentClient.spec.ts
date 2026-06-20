@@ -131,8 +131,8 @@ describe('ContentClient', () => {
 
     const result = await client.downloadContent(fileHash, { retryDelay: 20 })
 
-    // Assert that the correct buffer is returned, and that there was a retry attempt
-    expect(result).toEqual(realBuffer)
+    // Assert that the correct content is returned, and that there was a retry attempt
+    expect(result).toEqual(new Uint8Array(realBuffer))
     expect(fetcher.fetch).toHaveBeenCalledTimes(2)
   })
 
@@ -149,7 +149,7 @@ describe('ContentClient', () => {
 
     const client = buildClient(URL, fetcher)
     const result = await client.downloadContent(fileHash, { retryDelay: 20, avoidChecks: true })
-    expect(result).toEqual(failBuffer)
+    expect(result).toEqual(new Uint8Array(failBuffer))
     expect(fetcher.fetch).toHaveBeenCalledTimes(1)
   })
 

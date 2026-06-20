@@ -16,7 +16,7 @@ export type ContentClient = {
   fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]>
   fetchEntitiesByIds(ids: string[], options?: RequestOptions & { parallel?: ParallelConfig }): Promise<Entity[]>
   fetchEntityById(id: string, options?: RequestOptions & { parallel?: ParallelConfig }): Promise<Entity>
-  downloadContent(contentHash: string, options?: RequestOptions & { avoidChecks?: boolean }): Promise<Buffer>
+  downloadContent(contentHash: string, options?: RequestOptions & { avoidChecks?: boolean }): Promise<Uint8Array>
 
   isContentAvailable(cids: string[], options?: RequestOptions): Promise<AvailableContentResult>
 
@@ -43,7 +43,7 @@ export async function downloadContent(
   baseUrl: string,
   contentHash: string,
   options?: Partial<RequestOptions> & { avoidChecks?: boolean }
-): Promise<Buffer> {
+): Promise<Uint8Array> {
   const { attempts = 3, retryDelay = 500 } = options ? options : {}
   const timeout = options?.timeout ? { timeout: options.timeout } : {}
 
@@ -51,7 +51,7 @@ export async function downloadContent(
     `fetch file with hash ${contentHash} from ${baseUrl}`,
     async () => {
       const response = await fetcher.fetch(`${baseUrl}/${contentHash}`, timeout)
-      const content = Buffer.from(await response.arrayBuffer())
+      const content = new Uint8Array(await response.arrayBuffer())
       if (!options?.avoidChecks) {
         const downloadedHash = contentHash.startsWith('Qm') ? await hashV0(content) : await hashV1(content)
 
