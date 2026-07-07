@@ -19,6 +19,26 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+// Combines several abort signals into one that aborts as soon as any of them does. Used so a request
+// honors both the caller's cancellation signal and deployPartial's internal first-200-wins controller.
+// (Hand-rolled rather than AbortSignal.any, which is only available on Node >= 20.3.)
+function combineSignals(signals: Array<AbortSignal | undefined>): AbortSignal | undefined {
+  const present = signals.filter((signal): signal is AbortSignal => !!signal)
+  if (present.length <= 1) {
+    return present[0]
+  }
+  const controller = new AbortController()
+  const abort = () => controller.abort()
+  for (const signal of present) {
+    if (signal.aborted) {
+      controller.abort()
+      break
+    }
+    signal.addEventListener('abort', abort, { once: true })
+  }
+  return controller.signal
+}
+
 export type AvailableContentResult = {
   cid: string
   available: boolean
@@ -253,18 +273,24 @@ export function createContentClient(options: ClientOptions): ContentClient {
     const sizeOf = (hash: string) => deployData.files.get(hash)?.byteLength ?? 0
     const totalBytes = allContentHashes.reduce((acc, hash) => acc + sizeOf(hash), 0)
 
-    // Request-scoped options without the partial-specific keys, so they aren't forwarded to fetch.
+    // Request-scoped options without the partial-specific keys or the abort signal (the signal is
+    // combined per-request with the internal pool controller, see sendRequest).
     const requestBase: RequestOptions = {
       headers: options?.headers,
       timeout: options?.timeout,
       attempts: options?.attempts,
-      retryDelay: options?.retryDelay,
-      signal: options?.signal,
-      abortController: options?.abortController
+      retryDelay: options?.retryDelay
     }
+    // The caller's cancellation signal, honored on every request of every session.
+    const callerSignal = options?.signal ?? options?.abortController?.signal
 
+    // A server that predates partial deployments runs the staging request through the full deploy
+    // pipeline and rejects the missing content. Match either server's phrasing: worlds-content-server
+    // says "neither present in the storage...", and catalyst (via @dcl/content-validator) says
+    // "referenced in the entity but was not uploaded or previously available".
+    const notSupportedPattern = /neither present in the storage|was not uploaded or previously available/i
     const classify4xx = (status: number, body: string): DeploymentError => {
-      if (/neither present in the storage/i.test(body)) {
+      if (notSupportedPattern.test(body)) {
         return new PartialDeploymentNotSupportedError(
           `The server does not support partial deployments (it validated a staging request as a full deployment). ` +
             `Use deploy() for this server. Server response: ${body}`,
@@ -277,10 +303,12 @@ export function createContentClient(options: ClientOptions): ContentClient {
 
     type BatchOutcome = { kind: 'deployed'; result: PartialDeploymentResult } | { kind: 'incomplete' }
 
-    // Sends one request. Throws a DeploymentError for terminal (4xx) failures and a plain Error for
-    // retryable ones (5xx / network), which the resume loop distinguishes by `instanceof DeploymentError`.
-    const sendRequest = async (fileHashes: string[], signal?: AbortSignal): Promise<BatchOutcome> => {
+    // Sends one request. Throws a terminal DeploymentError for a 4xx validation/not-supported failure,
+    // and a plain Error for retryable conditions (429 rate-limited, 5xx, network) which the resume loop
+    // re-attempts. `poolSignal` is deployPartial's internal first-200-wins controller signal.
+    const sendRequest = async (fileHashes: string[], poolSignal?: AbortSignal): Promise<BatchOutcome> => {
       const form = buildDeploymentForm(deployData, fileHashes, true)
+      const signal = combineSignals([callerSignal, poolSignal])
       const requestOptions = mergeRequestOptions(requestBase, { body: form as any, method: 'POST', signal })
       const response: FetchResponse = await fetcher.fetch(`${contentUrl}/entities`, requestOptions)
       if (response.status === 200) {
@@ -290,10 +318,13 @@ export function createContentClient(options: ClientOptions): ContentClient {
         return { kind: 'incomplete' }
       }
       const body = await response.text().catch(() => '')
-      if (response.status >= 400 && response.status < 500) {
-        throw classify4xx(response.status, body)
+      // 429 (rate limited / other transient conditions the server surfaces as 429) and 5xx are
+      // retryable — the resume loop re-queries available content and re-uploads only what's missing.
+      if (response.status === 429 || response.status >= 500) {
+        throw new Error(`Server responded with status ${response.status}: ${body}`)
       }
-      throw new Error(`Server responded with status ${response.status}: ${body}`)
+      // Any other non-2xx (4xx) is a terminal validation or not-supported error.
+      throw classify4xx(response.status, body)
     }
 
     const runSession = async (): Promise<PartialDeploymentResult> => {

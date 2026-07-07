@@ -144,19 +144,83 @@ describe('deployPartial', () => {
     })
   })
 
-  describe('when an old server rejects a staging request as a full deployment', () => {
+  describe('when an old worlds-content-server rejects a staging request as a full deployment', () => {
     it('should reject with a PartialDeploymentNotSupportedError', async () => {
       deployData = makeDeployData({ hashA: 80, hashB: 80 })
       entitiesResponses = [
         {
           status: 400,
-          text: 'This hash is referenced in the entity but was not uploaded or previously available: hashB (neither present in the storage)'
+          text: 'Deployment failed: The file hashB (b.txt) is neither present in the storage or in the provided entity'
         }
       ]
 
       await expect(client.deployPartial(deployData, { maxBatchSizeBytes: 100, concurrency: 1 })).rejects.toBeInstanceOf(
         PartialDeploymentNotSupportedError
       )
+    })
+  })
+
+  describe('when an old catalyst rejects a staging request as a full deployment', () => {
+    it('should reject with a PartialDeploymentNotSupportedError', async () => {
+      deployData = makeDeployData({ hashA: 80, hashB: 80 })
+      // Catalyst validates missing content via @dcl/content-validator, whose message differs from
+      // worlds-content-server's — the detection must recognize both.
+      entitiesResponses = [
+        {
+          status: 400,
+          text: 'This hash is referenced in the entity but was not uploaded or previously available: hashB'
+        }
+      ]
+
+      await expect(client.deployPartial(deployData, { maxBatchSizeBytes: 100, concurrency: 1 })).rejects.toBeInstanceOf(
+        PartialDeploymentNotSupportedError
+      )
+    })
+  })
+
+  describe('when the server responds 429 (rate limited)', () => {
+    it('should resume rather than fail terminally', async () => {
+      deployData = makeDeployData({ hashA: 100 })
+      entitiesResponses = [
+        { status: 429, text: 'Entity rate limited' },
+        // resume: succeeds on the next session
+        { status: 200, body: { creationTimestamp: 3 } }
+      ]
+
+      const result = await client.deployPartial(deployData, { resumeDelay: 0 })
+
+      expect(result).toEqual({ creationTimestamp: 3 })
+    })
+  })
+
+  describe('when the caller aborts via options.signal', () => {
+    let controller: AbortController
+    let sawAbortedSignal: boolean
+
+    beforeEach(async () => {
+      controller = new AbortController()
+      sawAbortedSignal = false
+      deployData = makeDeployData({ hashA: 100 })
+      // Abort before the request resolves; assert the request carried an already-aborted signal.
+      controller.abort()
+      entitiesResponses = [{ status: 200, body: { creationTimestamp: 1 } }]
+      const originalFetch = fetcher.fetch as jest.Mock
+      ;(fetcher.fetch as jest.Mock) = jest.fn(async (url: string, init?: any) => {
+        if (!url.includes('/available-content') && init?.signal?.aborted) {
+          sawAbortedSignal = true
+        }
+        return originalFetch(url, init)
+      })
+
+      try {
+        await client.deployPartial(deployData, { signal: controller.signal })
+      } catch {
+        // May resolve or reject depending on timing; the assertion is about signal propagation.
+      }
+    })
+
+    it('should propagate the caller signal to the deployment request', () => {
+      expect(sawAbortedSignal).toBe(true)
     })
   })
 
