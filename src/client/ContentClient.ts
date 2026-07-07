@@ -1,8 +1,23 @@
 import { hashV0, hashV1 } from '@dcl/hashing'
 import { Entity } from '@dcl/schemas'
-import { ClientOptions, DeploymentData, IFetchComponent, ParallelConfig, RequestOptions } from './types'
+import {
+  ClientOptions,
+  DeploymentData,
+  FetchResponse,
+  IFetchComponent,
+  ParallelConfig,
+  PartialDeploymentOptions,
+  PartialDeploymentResult,
+  RequestOptions
+} from './types'
 import { addModelToFormData, mergeRequestOptions, sanitizeUrl, splitAndFetch } from './utils/Helper'
+import { DEFAULT_MAX_BATCH_SIZE_BYTES, splitIntoBatches } from './utils/batching'
+import { DeploymentError, PartialDeploymentNotSupportedError, PartialDeploymentValidationError } from './utils/errors'
 import { retry } from './utils/retry'
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 export type AvailableContentResult = {
   cid: string
@@ -24,6 +39,18 @@ export type ContentClient = {
    * Deploys an entity to the content server.
    */
   deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown>
+
+  /**
+   * Deploys an entity across multiple requests (partial deployment): content files are split into
+   * size-bounded batches and uploaded in several `POST /entities` requests, and the entity only becomes
+   * live once the server has all of it. Useful for scenes too large for a single request. The server
+   * must support the partial-deployment protocol; against one that doesn't, if everything fits in a
+   * single batch this still succeeds, otherwise it rejects with {@link PartialDeploymentNotSupportedError}.
+   */
+  deployPartial(
+    deployData: DeploymentData,
+    options?: RequestOptions & PartialDeploymentOptions
+  ): Promise<PartialDeploymentResult>
 
   /**
    * Checks if a pointer is consistent across multiple content servers
@@ -165,25 +192,39 @@ export function createContentClient(options: ClientOptions): ContentClient {
     }
   }
 
-  async function buildEntityFormDataForDeployment(
-    deployData: DeploymentData,
-    options?: RequestOptions
-  ): Promise<FormData> {
+  // Builds the multipart body shared by full and partial deployments. Appends the fixed fields
+  // (entityId, the `partial` flag when set, and the auth chain) BEFORE any file part, so streaming
+  // multipart parsers see them early, then appends one file part per hash in `fileHashes`.
+  function buildDeploymentForm(deployData: DeploymentData, fileHashes: Iterable<string>, partial: boolean): FormData {
     // Use the web-standard FormData/Blob (global in browsers and Node >= 18). When this form is
     // used as a request body, native fetch (and node-fetch v3) set the multipart Content-Type with
     // the boundary automatically, so the deployment works without a node-fetch-specific fetcher.
     const form = new FormData()
     form.append('entityId', deployData.entityId)
+    if (partial) {
+      form.append('partial', 'true')
+    }
     addModelToFormData(deployData.authChain, form, 'authChain')
 
-    const alreadyUploadedHashes = await hashesAlreadyOnServer(Array.from(deployData.files.keys()), options)
-    for (const [fileHash, file] of deployData.files) {
-      if (!alreadyUploadedHashes.has(fileHash) || fileHash === deployData.entityId) {
+    for (const fileHash of fileHashes) {
+      const file = deployData.files.get(fileHash)
+      if (file) {
         form.append(fileHash, new Blob([file]), fileHash)
       }
     }
 
     return form
+  }
+
+  async function buildEntityFormDataForDeployment(
+    deployData: DeploymentData,
+    options?: RequestOptions
+  ): Promise<FormData> {
+    const alreadyUploadedHashes = await hashesAlreadyOnServer(Array.from(deployData.files.keys()), options)
+    const fileHashes = Array.from(deployData.files.keys()).filter(
+      (fileHash) => !alreadyUploadedHashes.has(fileHash) || fileHash === deployData.entityId
+    )
+    return buildDeploymentForm(deployData, fileHashes, false)
   }
 
   async function deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
@@ -195,6 +236,164 @@ export function createContentClient(options: ClientOptions): ContentClient {
     })
 
     return await fetcher.fetch(`${contentUrl}/entities`, requestOptions)
+  }
+
+  async function deployPartial(
+    deployData: DeploymentData,
+    options?: RequestOptions & PartialDeploymentOptions
+  ): Promise<PartialDeploymentResult> {
+    const maxBatchSizeBytes = options?.maxBatchSizeBytes ?? DEFAULT_MAX_BATCH_SIZE_BYTES
+    const concurrency = Math.max(1, options?.concurrency ?? 2)
+    const maxResumeAttempts = options?.maxResumeAttempts ?? 3
+    const resumeDelay = options?.resumeDelay ?? 1000
+    const onProgress = options?.onProgress
+
+    const entityId = deployData.entityId
+    const allContentHashes = Array.from(deployData.files.keys()).filter((hash) => hash !== entityId)
+    const sizeOf = (hash: string) => deployData.files.get(hash)?.byteLength ?? 0
+    const totalBytes = allContentHashes.reduce((acc, hash) => acc + sizeOf(hash), 0)
+
+    // Request-scoped options without the partial-specific keys, so they aren't forwarded to fetch.
+    const requestBase: RequestOptions = {
+      headers: options?.headers,
+      timeout: options?.timeout,
+      attempts: options?.attempts,
+      retryDelay: options?.retryDelay,
+      signal: options?.signal,
+      abortController: options?.abortController
+    }
+
+    const classify4xx = (status: number, body: string): DeploymentError => {
+      if (/neither present in the storage/i.test(body)) {
+        return new PartialDeploymentNotSupportedError(
+          `The server does not support partial deployments (it validated a staging request as a full deployment). ` +
+            `Use deploy() for this server. Server response: ${body}`,
+          status,
+          body
+        )
+      }
+      return new PartialDeploymentValidationError(`The partial deployment was rejected: ${body}`, status, body)
+    }
+
+    type BatchOutcome = { kind: 'deployed'; result: PartialDeploymentResult } | { kind: 'incomplete' }
+
+    // Sends one request. Throws a DeploymentError for terminal (4xx) failures and a plain Error for
+    // retryable ones (5xx / network), which the resume loop distinguishes by `instanceof DeploymentError`.
+    const sendRequest = async (fileHashes: string[], signal?: AbortSignal): Promise<BatchOutcome> => {
+      const form = buildDeploymentForm(deployData, fileHashes, true)
+      const requestOptions = mergeRequestOptions(requestBase, { body: form as any, method: 'POST', signal })
+      const response: FetchResponse = await fetcher.fetch(`${contentUrl}/entities`, requestOptions)
+      if (response.status === 200) {
+        return { kind: 'deployed', result: (await response.json()) as PartialDeploymentResult }
+      }
+      if (response.status === 202) {
+        return { kind: 'incomplete' }
+      }
+      const body = await response.text().catch(() => '')
+      if (response.status >= 400 && response.status < 500) {
+        throw classify4xx(response.status, body)
+      }
+      throw new Error(`Server responded with status ${response.status}: ${body}`)
+    }
+
+    const runSession = async (): Promise<PartialDeploymentResult> => {
+      const alreadyOnServer =
+        allContentHashes.length > 0 ? await hashesAlreadyOnServer(allContentHashes, requestBase) : new Set<string>()
+      const missingFiles = new Map<string, Uint8Array>()
+      for (const hash of allContentHashes) {
+        if (!alreadyOnServer.has(hash)) {
+          missingFiles.set(hash, deployData.files.get(hash)!)
+        }
+      }
+      const batches = splitIntoBatches(missingFiles, maxBatchSizeBytes)
+      const totalBatches = Math.max(1, batches.length)
+
+      let uploadedBytes = totalBytes - Array.from(missingFiles.values()).reduce((acc, f) => acc + f.byteLength, 0)
+      let completedBatches = 0
+      const reportProgress = () => onProgress?.({ uploadedBytes, totalBytes, completedBatches, totalBatches })
+
+      // First request carries the entity file (the server needs the manifest before parallel batches).
+      const first = await sendRequest([entityId, ...(batches[0]?.hashes ?? [])])
+      if (first.kind === 'deployed') {
+        return first.result
+      }
+      if (batches[0]) {
+        uploadedBytes += batches[0].sizeBytes
+        completedBatches++
+        reportProgress()
+      }
+
+      // Remaining batches through a bounded worker pool. First 200 wins; a terminal error aborts the rest.
+      const remaining = batches.slice(1)
+      const controller = new AbortController()
+      let deployed: PartialDeploymentResult | undefined
+      let terminalError: DeploymentError | undefined
+      let nextIndex = 0
+
+      const worker = async (): Promise<void> => {
+        while (!deployed && !terminalError) {
+          const index = nextIndex++
+          if (index >= remaining.length) {
+            return
+          }
+          const batch = remaining[index]
+          try {
+            const outcome = await sendRequest(batch.hashes, controller.signal)
+            if (outcome.kind === 'deployed') {
+              deployed = outcome.result
+              controller.abort()
+              return
+            }
+            uploadedBytes += batch.sizeBytes
+            completedBatches++
+            reportProgress()
+          } catch (error) {
+            if (error instanceof DeploymentError) {
+              terminalError = error
+              controller.abort()
+              return
+            }
+            throw error
+          }
+        }
+      }
+
+      await Promise.all(Array.from({ length: Math.min(concurrency, Math.max(1, remaining.length)) }, () => worker()))
+
+      if (terminalError) {
+        throw terminalError
+      }
+      if (deployed) {
+        return deployed
+      }
+
+      // Every batch returned 202 but the server never finalized: the pending upload's state must have
+      // changed under us (expired or replaced by an overlapping deployment). Signal a resume.
+      throw new Error('The partial deployment did not finalize; the pending upload may have expired or been replaced.')
+    }
+
+    let lastError: unknown
+    for (let attempt = 0; attempt <= maxResumeAttempts; attempt++) {
+      try {
+        return await runSession()
+      } catch (error) {
+        // 4xx validation / not-supported errors are terminal; anything else (5xx, network, non-finalize)
+        // is retried by re-querying available content and re-uploading only what's still missing.
+        if (error instanceof DeploymentError) {
+          throw error
+        }
+        lastError = error
+        if (attempt < maxResumeAttempts) {
+          await delay(resumeDelay)
+        }
+      }
+    }
+
+    throw new DeploymentError(
+      `The partial deployment failed after ${maxResumeAttempts + 1} attempt(s): ${
+        lastError instanceof Error ? lastError.message : String(lastError)
+      }`
+    )
   }
 
   async function fetchEntitiesByPointers(pointers: string[], options?: RequestOptions): Promise<Entity[]> {
@@ -325,6 +524,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
       return downloadContent(fetcher, contentUrl + '/contents', contentHash, options)
     },
     deploy,
+    deployPartial,
     isContentAvailable,
     checkPointerConsistency
   }
