@@ -353,6 +353,12 @@ export function createContentClient(options: ClientOptions): ContentClient {
               controller.abort()
               return
             }
+            // A sibling worker already finalized (or the pool was aborted), so this request was
+            // cancelled on purpose — swallow its abort/network error instead of failing the session
+            // (which would trigger a spurious resume). Genuine failures still propagate.
+            if (deployed || controller.signal.aborted) {
+              return
+            }
             throw error
           }
         }

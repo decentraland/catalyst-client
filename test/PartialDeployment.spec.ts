@@ -178,4 +178,90 @@ describe('deployPartial', () => {
       expect(progress[progress.length - 1]).toBeGreaterThanOrEqual(1)
     })
   })
+
+  // Uses its own content-routed fetcher (rather than the ordered queue above) because parallel workers
+  // don't send requests in a deterministic order, and this fetcher must honor the abort signal.
+  describe('when batches run in parallel and one finalizes while another is in flight', () => {
+    let availableContentCalls: number
+    let parallelClient: ContentClient
+    let result: { creationTimestamp: number }
+
+    beforeEach(async () => {
+      availableContentCalls = 0
+      let finalized = false
+      // Three files, each its own batch (cap 250): the largest ships with the entity file in the first
+      // request; the other two run concurrently. `hashWin` finalizes (200); `hashSlow` never resolves
+      // on its own and rejects when the pool aborts it after the win.
+      const files = new Map<string, Uint8Array>()
+      files.set(entityId, new Uint8Array([1, 2, 3]))
+      files.set('hashBig', new Uint8Array(300))
+      files.set('hashWin', new Uint8Array(240))
+      files.set('hashSlow', new Uint8Array(230))
+      const parallelDeployData: DeploymentData = { entityId, authChain: [], files }
+
+      const ok200 = () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ creationTimestamp: 1 }),
+        text: async () => '',
+        arrayBuffer: async () => new ArrayBuffer(0)
+      })
+
+      const parallelFetcher: IFetchComponent = {
+        fetch: jest.fn(async (url: string, init?: any) => {
+          if (url.includes('/available-content')) {
+            availableContentCalls++
+            const cids = (url.split('?')[1] || '')
+              .split('&')
+              .filter((p) => p.startsWith('cid='))
+              .map((p) => decodeURIComponent(p.slice('cid='.length)))
+            return {
+              ok: true,
+              status: 200,
+              json: async () => cids.map((cid) => ({ cid, available: finalized })),
+              text: async () => '',
+              arrayBuffer: async () => new ArrayBuffer(0)
+            }
+          }
+          const form = init.body as FormData
+          if (form.has('hashSlow')) {
+            return await new Promise((_resolve, reject) => {
+              const signal: AbortSignal | undefined = init.signal
+              if (signal?.aborted) return reject(new Error('AbortError'))
+              signal?.addEventListener('abort', () => reject(new Error('AbortError')))
+            })
+          }
+          if (form.has('hashWin')) {
+            finalized = true
+            return ok200()
+          }
+          if (form.has('hashBig')) {
+            return {
+              ok: true,
+              status: 202,
+              json: async () => ({ missing: ['hashWin', 'hashSlow'] }),
+              text: async () => '',
+              arrayBuffer: async () => new ArrayBuffer(0)
+            }
+          }
+          return ok200()
+        })
+      }
+
+      parallelClient = createContentClient({ url: URL, fetcher: parallelFetcher })
+      result = await parallelClient.deployPartial(parallelDeployData, {
+        maxBatchSizeBytes: 250,
+        concurrency: 2,
+        resumeDelay: 0
+      })
+    })
+
+    it('should resolve with the creationTimestamp', () => {
+      expect(result).toEqual({ creationTimestamp: 1 })
+    })
+
+    it('should not restart the session (the aborted sibling must not trigger a resume)', () => {
+      expect(availableContentCalls).toBe(1)
+    })
+  })
 })
