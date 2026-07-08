@@ -19,13 +19,24 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+// Ceiling for the exponential resume backoff, so a caller-tuned maxResumeAttempts can't grow
+// 2^attempt into effectively-hung multi-hour sleeps.
+const MAX_RESUME_BACKOFF_MS = 60_000
+
 // Combines several abort signals into one that aborts as soon as any of them does. Used so a request
 // honors both the caller's cancellation signal and deployPartial's internal first-200-wins controller.
 // (Hand-rolled rather than AbortSignal.any, which is only available on Node >= 20.3.)
-function combineSignals(signals: Array<AbortSignal | undefined>): AbortSignal | undefined {
+//
+// `dispose` detaches the listeners from the source signals. Call it when the combined signal is no
+// longer needed: sources like a caller-provided signal can outlive many sessions, and undisposed
+// listeners would accumulate on them (Node warns past ~10 listeners on one signal).
+function combineSignals(signals: Array<AbortSignal | undefined>): {
+  signal: AbortSignal | undefined
+  dispose: () => void
+} {
   const present = signals.filter((signal): signal is AbortSignal => !!signal)
   if (present.length <= 1) {
-    return present[0]
+    return { signal: present[0], dispose: () => {} }
   }
   const controller = new AbortController()
   const abort = () => controller.abort()
@@ -36,7 +47,14 @@ function combineSignals(signals: Array<AbortSignal | undefined>): AbortSignal | 
     }
     signal.addEventListener('abort', abort, { once: true })
   }
-  return controller.signal
+  return {
+    signal: controller.signal,
+    dispose: () => {
+      for (const signal of present) {
+        signal.removeEventListener('abort', abort)
+      }
+    }
+  }
 }
 
 export type AvailableContentResult = {
@@ -325,9 +343,17 @@ export function createContentClient(options: ClientOptions): ContentClient {
       const requestOptions = mergeRequestOptions(requestBase, { body: form as any, method: 'POST', signal })
       const response: FetchResponse = await fetcher.fetch(`${contentUrl}/entities`, requestOptions)
       if (response.status === 200) {
-        return { kind: 'deployed', result: (await response.json()) as PartialDeploymentResult }
+        // A 200 means the server finalized the deployment; a body that fails to parse (empty, proxy
+        // rewrite) must not turn that success into a retry storm — every retry would re-observe the
+        // same deployed entity. Fall back to a response-time timestamp.
+        const result = await response.json().catch(() => ({ creationTimestamp: Date.now() } as PartialDeploymentResult))
+        return { kind: 'deployed', result: result as PartialDeploymentResult }
       }
       if (response.status === 202) {
+        // Consume the body even though the outcome doesn't need it: with native fetch an unread
+        // response body pins the undici socket and buffered bytes, and a large upload produces one
+        // 202 per non-finalizing batch.
+        await response.json().catch(() => undefined)
         return { kind: 'incomplete' }
       }
       const body = await response.text().catch(() => '')
@@ -375,8 +401,9 @@ export function createContentClient(options: ClientOptions): ContentClient {
       // Remaining batches through a bounded worker pool. First 200 wins; a terminal error aborts the rest.
       const remaining = batches.slice(1)
       const controller = new AbortController()
-      // Combined once per session: aborts when the caller cancels or when the pool wins/fails.
-      const sessionSignal = combineSignals([callerSignal, controller.signal])
+      // Combined once per session: aborts when the caller cancels or when the pool wins/fails. Disposed
+      // after the pool drains so a long-lived caller signal doesn't accumulate one listener per session.
+      const { signal: sessionSignal, dispose: disposeSessionSignal } = combineSignals([callerSignal, controller.signal])
       let deployed: PartialDeploymentResult | undefined
       let terminalError: DeploymentError | undefined
       let nextIndex = 0
@@ -415,7 +442,11 @@ export function createContentClient(options: ClientOptions): ContentClient {
         }
       }
 
-      await Promise.all(Array.from({ length: Math.min(concurrency, Math.max(1, remaining.length)) }, () => worker()))
+      try {
+        await Promise.all(Array.from({ length: Math.min(concurrency, Math.max(1, remaining.length)) }, () => worker()))
+      } finally {
+        disposeSessionSignal()
+      }
 
       if (terminalError) {
         throw terminalError
@@ -447,8 +478,9 @@ export function createContentClient(options: ClientOptions): ContentClient {
         lastError = error
         if (attempt < maxResumeAttempts) {
           // Exponential backoff: transient conditions (429 rate limits, 5xx blips) rarely clear within
-          // a fixed short delay, and hammering a rate limiter only extends the window.
-          await delay(resumeDelay * 2 ** attempt)
+          // a fixed short delay, and hammering a rate limiter only extends the window. Capped so a
+          // large maxResumeAttempts can't grow 2^attempt into multi-hour/day sleeps.
+          await delay(Math.min(resumeDelay * 2 ** attempt, MAX_RESUME_BACKOFF_MS))
         }
       }
     }

@@ -3,7 +3,7 @@ import { PartialDeploymentNotSupportedError, PartialDeploymentValidationError } 
 
 const URL = 'https://content.example.com'
 
-type EntitiesResponse = { status: number; body?: any; text?: string; throwNetwork?: boolean }
+type EntitiesResponse = { status: number; body?: any; text?: string; throwNetwork?: boolean; jsonThrows?: boolean }
 
 describe('deployPartial', () => {
   const entityId = 'bafyEntity'
@@ -55,7 +55,12 @@ describe('deployPartial', () => {
         return {
           ok: next.status >= 200 && next.status < 300,
           status: next.status,
-          json: async () => next.body ?? {},
+          json: async () => {
+            if (next.jsonThrows) {
+              throw new SyntaxError('Unexpected end of JSON input')
+            }
+            return next.body ?? {}
+          },
           text: async () => next.text ?? '',
           arrayBuffer: async () => new ArrayBuffer(0)
         }
@@ -187,6 +192,24 @@ describe('deployPartial', () => {
       )
       // No availability query and no upload was attempted.
       expect(fetcher.fetch).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('when the finalizing 200 response has an unparseable body', () => {
+    let result: { creationTimestamp: number }
+
+    beforeEach(async () => {
+      deployData = makeDeployData({ hashA: 100 })
+      // e.g. a proxy strips or rewrites the body: the deployment DID succeed server-side.
+      entitiesResponses = [{ status: 200, jsonThrows: true }]
+
+      result = await client.deployPartial(deployData)
+    })
+
+    it('should still resolve as a success with a fallback timestamp instead of retrying', () => {
+      expect(typeof result.creationTimestamp).toBe('number')
+      // One available-content query + one POST — no resume sessions were burned on the parse failure.
+      expect((fetcher.fetch as jest.Mock).mock.calls).toHaveLength(2)
     })
   })
 
