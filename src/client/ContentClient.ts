@@ -273,8 +273,20 @@ export function createContentClient(options: ClientOptions): ContentClient {
     const sizeOf = (hash: string) => deployData.files.get(hash)?.byteLength ?? 0
     const totalBytes = allContentHashes.reduce((acc, hash) => acc + sizeOf(hash), 0)
 
-    // Request-scoped options without the partial-specific keys or the abort signal (the signal is
-    // combined per-request with the internal pool controller, see sendRequest).
+    // Files are never split across requests, so a single file above the request cap would produce a
+    // request the infrastructure may time out — and the resume loop would re-upload it on every
+    // attempt. Fail fast with a clear message instead of uploading hundreds of MB that cannot succeed.
+    const oversized = allContentHashes.find((hash) => sizeOf(hash) > maxBatchSizeBytes)
+    if (oversized) {
+      throw new PartialDeploymentValidationError(
+        `The file '${oversized}' (${sizeOf(oversized)} bytes) exceeds the maximum request size of ` +
+          `${maxBatchSizeBytes} bytes and files cannot be split across requests. If your infrastructure ` +
+          `allows larger requests, raise options.maxBatchSizeBytes.`
+      )
+    }
+
+    // Request-scoped options without the partial-specific keys or the abort signal (the caller signal
+    // and the pool controller are combined once per session in runSession and threaded from there).
     const requestBase: RequestOptions = {
       headers: options?.headers,
       timeout: options?.timeout,
@@ -305,10 +317,11 @@ export function createContentClient(options: ClientOptions): ContentClient {
 
     // Sends one request. Throws a terminal DeploymentError for a 4xx validation/not-supported failure,
     // and a plain Error for retryable conditions (429 rate-limited, 5xx, network) which the resume loop
-    // re-attempts. `poolSignal` is deployPartial's internal first-200-wins controller signal.
-    const sendRequest = async (fileHashes: string[], poolSignal?: AbortSignal): Promise<BatchOutcome> => {
+    // re-attempts. `signal` is already combined by the caller (caller cancellation + pool abort) — it
+    // is combined once per session rather than per request so a large upload doesn't accumulate one
+    // abort listener on the caller's signal per batch.
+    const sendRequest = async (fileHashes: string[], signal?: AbortSignal): Promise<BatchOutcome> => {
       const form = buildDeploymentForm(deployData, fileHashes, true)
-      const signal = combineSignals([callerSignal, poolSignal])
       const requestOptions = mergeRequestOptions(requestBase, { body: form as any, method: 'POST', signal })
       const response: FetchResponse = await fetcher.fetch(`${contentUrl}/entities`, requestOptions)
       if (response.status === 200) {
@@ -328,8 +341,13 @@ export function createContentClient(options: ClientOptions): ContentClient {
     }
 
     const runSession = async (): Promise<PartialDeploymentResult> => {
+      if (callerSignal?.aborted) {
+        throw new Error('The partial deployment was aborted by the caller.')
+      }
       const alreadyOnServer =
-        allContentHashes.length > 0 ? await hashesAlreadyOnServer(allContentHashes, requestBase) : new Set<string>()
+        allContentHashes.length > 0
+          ? await hashesAlreadyOnServer(allContentHashes, { ...requestBase, signal: callerSignal })
+          : new Set<string>()
       const missingFiles = new Map<string, Uint8Array>()
       for (const hash of allContentHashes) {
         if (!alreadyOnServer.has(hash)) {
@@ -344,7 +362,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
       const reportProgress = () => onProgress?.({ uploadedBytes, totalBytes, completedBatches, totalBatches })
 
       // First request carries the entity file (the server needs the manifest before parallel batches).
-      const first = await sendRequest([entityId, ...(batches[0]?.hashes ?? [])])
+      const first = await sendRequest([entityId, ...(batches[0]?.hashes ?? [])], callerSignal)
       if (first.kind === 'deployed') {
         return first.result
       }
@@ -357,6 +375,8 @@ export function createContentClient(options: ClientOptions): ContentClient {
       // Remaining batches through a bounded worker pool. First 200 wins; a terminal error aborts the rest.
       const remaining = batches.slice(1)
       const controller = new AbortController()
+      // Combined once per session: aborts when the caller cancels or when the pool wins/fails.
+      const sessionSignal = combineSignals([callerSignal, controller.signal])
       let deployed: PartialDeploymentResult | undefined
       let terminalError: DeploymentError | undefined
       let nextIndex = 0
@@ -369,7 +389,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
           }
           const batch = remaining[index]
           try {
-            const outcome = await sendRequest(batch.hashes, controller.signal)
+            const outcome = await sendRequest(batch.hashes, sessionSignal)
             if (outcome.kind === 'deployed') {
               deployed = outcome.result
               controller.abort()
@@ -419,9 +439,16 @@ export function createContentClient(options: ClientOptions): ContentClient {
         if (error instanceof DeploymentError) {
           throw error
         }
+        // The caller cancelled: the failed request is the abort taking effect, not a transient error —
+        // surface it instead of burning resume attempts uploading after cancellation.
+        if (callerSignal?.aborted) {
+          throw error
+        }
         lastError = error
         if (attempt < maxResumeAttempts) {
-          await delay(resumeDelay)
+          // Exponential backoff: transient conditions (429 rate limits, 5xx blips) rarely clear within
+          // a fixed short delay, and hammering a rate limiter only extends the window.
+          await delay(resumeDelay * 2 ** attempt)
         }
       }
     }

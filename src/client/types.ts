@@ -91,13 +91,16 @@ export type PartialDeploymentProgress = {
 }
 
 export type PartialDeploymentOptions = {
-  /** Max summed file bytes per request. Default {@link DEFAULT_MAX_BATCH_SIZE_BYTES} (50 MiB). */
+  /**
+   * Max summed file bytes per request. Default {@link DEFAULT_MAX_BATCH_SIZE_BYTES} (100 MiB — safely
+   * under the ~200MB request ceiling of the infrastructure in front of the content servers).
+   */
   maxBatchSizeBytes?: number
   /** Concurrent batch uploads after the first (entity-carrying) request. Default 2. */
   concurrency?: number
-  /** Resume cycles (re-query available content + re-upload) on network/5xx failures. Default 3. */
+  /** Resume cycles (re-query available content + re-upload) on network/429/5xx failures. Default 3. */
   maxResumeAttempts?: number
-  /** Delay between resume cycles in ms. Default 1000. */
+  /** Base delay between resume cycles in ms, doubled on each attempt (exponential backoff). Default 1000. */
   resumeDelay?: number
   /** Invoked after each staged batch with cumulative progress. */
   onProgress?: (progress: PartialDeploymentProgress) => void

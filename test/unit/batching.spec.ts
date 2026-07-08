@@ -63,8 +63,8 @@ describe('splitIntoBatches', () => {
   })
 
   describe('when using the default cap', () => {
-    it('should be 50 MiB', () => {
-      expect(DEFAULT_MAX_BATCH_SIZE_BYTES).toBe(50 * 1024 * 1024)
+    it('should be 100 MiB (safely under the ~200MB infrastructure request ceiling)', () => {
+      expect(DEFAULT_MAX_BATCH_SIZE_BYTES).toBe(100 * 1024 * 1024)
     })
   })
 })

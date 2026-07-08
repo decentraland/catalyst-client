@@ -178,6 +178,18 @@ describe('deployPartial', () => {
     })
   })
 
+  describe('when a single file exceeds the request cap', () => {
+    it('should fail fast without uploading anything (files cannot be split across requests)', async () => {
+      deployData = makeDeployData({ hashHuge: 500 })
+
+      await expect(client.deployPartial(deployData, { maxBatchSizeBytes: 100 })).rejects.toBeInstanceOf(
+        PartialDeploymentValidationError
+      )
+      // No availability query and no upload was attempted.
+      expect(fetcher.fetch).not.toHaveBeenCalled()
+    })
+  })
+
   describe('when the server responds 429 (rate limited)', () => {
     it('should resume rather than fail terminally', async () => {
       deployData = makeDeployData({ hashA: 100 })
@@ -194,33 +206,51 @@ describe('deployPartial', () => {
   })
 
   describe('when the caller aborts via options.signal', () => {
-    let controller: AbortController
-    let sawAbortedSignal: boolean
+    describe('and the abort happens before the deployment starts', () => {
+      let controller: AbortController
 
-    beforeEach(async () => {
-      controller = new AbortController()
-      sawAbortedSignal = false
-      deployData = makeDeployData({ hashA: 100 })
-      // Abort before the request resolves; assert the request carried an already-aborted signal.
-      controller.abort()
-      entitiesResponses = [{ status: 200, body: { creationTimestamp: 1 } }]
-      const originalFetch = fetcher.fetch as jest.Mock
-      ;(fetcher.fetch as jest.Mock) = jest.fn(async (url: string, init?: any) => {
-        if (!url.includes('/available-content') && init?.signal?.aborted) {
-          sawAbortedSignal = true
-        }
-        return originalFetch(url, init)
+      beforeEach(() => {
+        controller = new AbortController()
+        controller.abort()
+        deployData = makeDeployData({ hashA: 100 })
       })
 
-      try {
-        await client.deployPartial(deployData, { signal: controller.signal })
-      } catch {
-        // May resolve or reject depending on timing; the assertion is about signal propagation.
-      }
+      it('should reject without performing any request', async () => {
+        await expect(client.deployPartial(deployData, { signal: controller.signal })).rejects.toThrow('aborted')
+        expect(fetcher.fetch).not.toHaveBeenCalled()
+      })
     })
 
-    it('should propagate the caller signal to the deployment request', () => {
-      expect(sawAbortedSignal).toBe(true)
+    describe('and the abort happens mid-upload', () => {
+      let controller: AbortController
+      let sawAbortedSignal: boolean
+
+      beforeEach(async () => {
+        controller = new AbortController()
+        sawAbortedSignal = false
+        deployData = makeDeployData({ hashA: 100 })
+        entitiesResponses = [{ status: 200, body: { creationTimestamp: 1 } }]
+        const originalFetch = fetcher.fetch as jest.Mock
+        ;(fetcher.fetch as jest.Mock) = jest.fn(async (url: string, init?: any) => {
+          if (!url.includes('/available-content')) {
+            // Abort while the deployment request is in flight; the request must carry a signal that
+            // observes it.
+            controller.abort()
+            sawAbortedSignal = !!init?.signal?.aborted
+          }
+          return originalFetch(url, init)
+        })
+
+        try {
+          await client.deployPartial(deployData, { signal: controller.signal })
+        } catch {
+          // May resolve or reject depending on timing; the assertion is about signal propagation.
+        }
+      })
+
+      it('should propagate the caller signal to the deployment request', () => {
+        expect(sawAbortedSignal).toBe(true)
+      })
     })
   })
 
@@ -258,9 +288,9 @@ describe('deployPartial', () => {
       // on its own and rejects when the pool aborts it after the win.
       const files = new Map<string, Uint8Array>()
       files.set(entityId, new Uint8Array([1, 2, 3]))
-      files.set('hashBig', new Uint8Array(300))
-      files.set('hashWin', new Uint8Array(240))
-      files.set('hashSlow', new Uint8Array(230))
+      files.set('hashBig', new Uint8Array(240))
+      files.set('hashWin', new Uint8Array(230))
+      files.set('hashSlow', new Uint8Array(220))
       const parallelDeployData: DeploymentData = { entityId, authChain: [], files }
 
       const ok200 = () => ({

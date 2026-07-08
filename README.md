@@ -26,7 +26,9 @@ live once the server has all of it (the server finalizes automatically on the co
 const result = await client.deployPartial(
   { entityId, authChain, files },
   {
-    maxBatchSizeBytes: 50 * 1024 * 1024, // default: 50 MiB per request
+    // default: 100 MiB per request — requests larger than ~200MB are timed out by the
+    // infrastructure in front of the content servers, so keep a margin under that.
+    maxBatchSizeBytes: 100 * 1024 * 1024,
     concurrency: 2, // default: 2 parallel batch uploads (after the first)
     maxResumeAttempts: 3, // default: 3 — resumes on network/5xx failures
     onProgress: ({ uploadedBytes, totalBytes }) => console.log(`${uploadedBytes}/${totalBytes}`)
@@ -43,5 +45,6 @@ Notes:
   `PartialDeploymentNotSupportedError` — fall back to `deploy()` in that case.
 - A validation failure on the finalizing request (e.g. exceeding the size budget) rejects with
   `PartialDeploymentValidationError`.
-- Per-file server caps still apply; a single file larger than a request cap is sent alone but may be
-  rejected by the server.
+- Files are never split across requests: a single file larger than the batch cap is sent alone in its
+  own request. Per-file server caps still apply to it, and a request beyond ~200MB may be timed out by
+  the infrastructure regardless of the configured cap.
