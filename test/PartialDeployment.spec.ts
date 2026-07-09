@@ -381,4 +381,82 @@ describe('deployPartial', () => {
       expect(availableContentCalls).toBe(1)
     })
   })
+
+  // Both concurrent finalizers get 200; the winner aborts the loser while the loser is still reading
+  // its body. The loser's aborted body read must NOT be turned into a fabricated success that
+  // overwrites the winner's real server timestamp.
+  describe('when two workers both finalize and the loser is aborted mid body-read', () => {
+    let parallelClient: ContentClient
+    let result: { creationTimestamp: number }
+
+    beforeEach(async () => {
+      const files = new Map<string, Uint8Array>()
+      files.set(entityId, new Uint8Array([1, 2, 3]))
+      files.set('hashBig', new Uint8Array(240)) // ships with entity in req 1 → 202
+      files.set('hashWin', new Uint8Array(230)) // 200, real body {creationTimestamp: 42}, wins
+      files.set('hashSlow', new Uint8Array(220)) // 200, but json() only settles when aborted → rejects
+      const parallelDeployData: DeploymentData = { entityId, authChain: [], files }
+
+      const parallelFetcher: IFetchComponent = {
+        fetch: jest.fn(async (url: string, init?: any) => {
+          if (url.includes('/available-content')) {
+            const cids = (url.split('?')[1] || '')
+              .split('&')
+              .filter((p) => p.startsWith('cid='))
+              .map((p) => decodeURIComponent(p.slice('cid='.length)))
+            return {
+              ok: true,
+              status: 200,
+              json: async () => cids.map((cid) => ({ cid, available: false })),
+              text: async () => '',
+              arrayBuffer: async () => new ArrayBuffer(0)
+            }
+          }
+          const form = init.body as FormData
+          const signal: AbortSignal | undefined = init.signal
+          if (form.has('hashBig')) {
+            return {
+              ok: true,
+              status: 202,
+              json: async () => ({ missing: ['hashWin', 'hashSlow'] }),
+              text: async () => '',
+              arrayBuffer: async () => new ArrayBuffer(0)
+            }
+          }
+          if (form.has('hashWin')) {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ creationTimestamp: 42 }),
+              text: async () => '',
+              arrayBuffer: async () => new ArrayBuffer(0)
+            }
+          }
+          // hashSlow: a 200 whose body read only settles on abort — and then rejects (cancelled read).
+          return {
+            ok: true,
+            status: 200,
+            json: () =>
+              new Promise((_resolve, reject) => {
+                if (signal?.aborted) return reject(new Error('AbortError'))
+                signal?.addEventListener('abort', () => reject(new Error('AbortError')))
+              }),
+            text: async () => '',
+            arrayBuffer: async () => new ArrayBuffer(0)
+          }
+        })
+      }
+
+      parallelClient = createContentClient({ url: URL, fetcher: parallelFetcher })
+      result = await parallelClient.deployPartial(parallelDeployData, {
+        maxBatchSizeBytes: 250,
+        concurrency: 2,
+        resumeDelay: 0
+      })
+    })
+
+    it("should return the winner's real server timestamp, not a fabricated one", () => {
+      expect(result).toEqual({ creationTimestamp: 42 })
+    })
+  })
 })

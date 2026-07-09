@@ -343,17 +343,29 @@ export function createContentClient(options: ClientOptions): ContentClient {
       const requestOptions = mergeRequestOptions(requestBase, { body: form as any, method: 'POST', signal })
       const response: FetchResponse = await fetcher.fetch(`${contentUrl}/entities`, requestOptions)
       if (response.status === 200) {
-        // A 200 means the server finalized the deployment; a body that fails to parse (empty, proxy
-        // rewrite) must not turn that success into a retry storm — every retry would re-observe the
-        // same deployed entity. Fall back to a response-time timestamp.
-        const result = await response.json().catch(() => ({ creationTimestamp: Date.now() } as PartialDeploymentResult))
-        return { kind: 'deployed', result: result as PartialDeploymentResult }
+        // A 200 means the server finalized the deployment.
+        let result: PartialDeploymentResult
+        try {
+          result = (await response.json()) as PartialDeploymentResult
+        } catch (error) {
+          // If the read was cancelled (a sibling worker already finalized and aborted the pool, or the
+          // caller aborted), this is not a successful-but-unparseable body — let the abort propagate so
+          // the winner's real result stands and cancellation isn't masked as success.
+          if (signal?.aborted) {
+            throw error
+          }
+          // A genuine unparseable body (empty, proxy rewrite) still means the server finalized; fall
+          // back to a response-time timestamp rather than triggering a retry storm in which every
+          // attempt re-observes the same already-deployed entity.
+          result = { creationTimestamp: Date.now() } as PartialDeploymentResult
+        }
+        return { kind: 'deployed', result }
       }
       if (response.status === 202) {
-        // Consume the body even though the outcome doesn't need it: with native fetch an unread
-        // response body pins the undici socket and buffered bytes, and a large upload produces one
-        // 202 per non-finalizing batch.
-        await response.json().catch(() => undefined)
+        // Drain the body even though the outcome doesn't need it: with native fetch an unread response
+        // body pins the undici socket and buffered bytes, and a large upload produces one 202 per
+        // non-finalizing batch. text() drains without the wasted JSON parse.
+        await response.text().catch(() => undefined)
         return { kind: 'incomplete' }
       }
       const body = await response.text().catch(() => '')
@@ -442,9 +454,17 @@ export function createContentClient(options: ClientOptions): ContentClient {
         }
       }
 
+      const workers = Array.from({ length: Math.min(concurrency, Math.max(1, remaining.length)) }, () => worker())
       try {
-        await Promise.all(Array.from({ length: Math.min(concurrency, Math.max(1, remaining.length)) }, () => worker()))
+        await Promise.all(workers)
       } finally {
+        // Whatever ended the session — a win, a terminal error, or a retryable throw that rejected
+        // Promise.all — cancel any still-in-flight sibling requests (a retryable throw does NOT abort
+        // the controller on its own, so without this the losers would keep uploading, uncancelable,
+        // while the resume loop starts a new session), then wait for them to unwind before disposing
+        // the signal and returning.
+        controller.abort()
+        await Promise.allSettled(workers)
         disposeSessionSignal()
       }
 
@@ -478,9 +498,11 @@ export function createContentClient(options: ClientOptions): ContentClient {
         lastError = error
         if (attempt < maxResumeAttempts) {
           // Exponential backoff: transient conditions (429 rate limits, 5xx blips) rarely clear within
-          // a fixed short delay, and hammering a rate limiter only extends the window. Capped so a
-          // large maxResumeAttempts can't grow 2^attempt into multi-hour/day sleeps.
-          await delay(Math.min(resumeDelay * 2 ** attempt, MAX_RESUME_BACKOFF_MS))
+          // a fixed short delay, and hammering a rate limiter only extends the window. The cap bounds
+          // 2^attempt growth, but never below the caller's configured resumeDelay — a caller that set a
+          // large base delay (e.g. to respect a strict upstream limiter) keeps it as the floor.
+          const backoff = Math.min(resumeDelay * 2 ** attempt, Math.max(resumeDelay, MAX_RESUME_BACKOFF_MS))
+          await delay(backoff)
         }
       }
     }
