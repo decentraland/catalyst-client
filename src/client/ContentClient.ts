@@ -12,7 +12,12 @@ import {
 } from './types'
 import { addModelToFormData, mergeRequestOptions, sanitizeUrl, splitAndFetch } from './utils/Helper'
 import { DEFAULT_MAX_BATCH_SIZE_BYTES, splitIntoBatches } from './utils/batching'
-import { DeploymentError, PartialDeploymentNotSupportedError, PartialDeploymentValidationError } from './utils/errors'
+import {
+  DeploymentError,
+  PartialDeploymentNotSupportedError,
+  PartialDeploymentValidationError,
+  RetryablePartialDeploymentError
+} from './utils/errors'
 import { retry } from './utils/retry'
 
 function delay(ms: number): Promise<void> {
@@ -55,6 +60,23 @@ function combineSignals(signals: Array<AbortSignal | undefined>): {
       }
     }
   }
+}
+
+// Parse an HTTP `Retry-After` value (delta-seconds, or an HTTP date) into milliseconds. Returns
+// undefined when absent or unparseable, so the caller falls back to its exponential backoff.
+function parseRetryAfterMs(headerValue: string | undefined): number | undefined {
+  if (!headerValue) {
+    return undefined
+  }
+  const seconds = Number(headerValue)
+  if (Number.isFinite(seconds)) {
+    return Math.max(0, seconds * 1000)
+  }
+  const dateMs = Date.parse(headerValue)
+  if (!Number.isNaN(dateMs)) {
+    return Math.max(0, dateMs - Date.now())
+  }
+  return undefined
 }
 
 export type AvailableContentResult = {
@@ -291,18 +313,6 @@ export function createContentClient(options: ClientOptions): ContentClient {
     const sizeOf = (hash: string) => deployData.files.get(hash)?.byteLength ?? 0
     const totalBytes = allContentHashes.reduce((acc, hash) => acc + sizeOf(hash), 0)
 
-    // Files are never split across requests, so a single file above the request cap would produce a
-    // request the infrastructure may time out — and the resume loop would re-upload it on every
-    // attempt. Fail fast with a clear message instead of uploading hundreds of MB that cannot succeed.
-    const oversized = allContentHashes.find((hash) => sizeOf(hash) > maxBatchSizeBytes)
-    if (oversized) {
-      throw new PartialDeploymentValidationError(
-        `The file '${oversized}' (${sizeOf(oversized)} bytes) exceeds the maximum request size of ` +
-          `${maxBatchSizeBytes} bytes and files cannot be split across requests. If your infrastructure ` +
-          `allows larger requests, raise options.maxBatchSizeBytes.`
-      )
-    }
-
     // Request-scoped options without the partial-specific keys or the abort signal (the caller signal
     // and the pool controller are combined once per session in runSession and threaded from there).
     const requestBase: RequestOptions = {
@@ -340,42 +350,76 @@ export function createContentClient(options: ClientOptions): ContentClient {
     // abort listener on the caller's signal per batch.
     const sendRequest = async (fileHashes: string[], signal?: AbortSignal): Promise<BatchOutcome> => {
       const form = buildDeploymentForm(deployData, fileHashes, true)
-      const requestOptions = mergeRequestOptions(requestBase, { body: form as any, method: 'POST', signal })
-      const response: FetchResponse = await fetcher.fetch(`${contentUrl}/entities`, requestOptions)
-      if (response.status === 200) {
-        // A 200 means the server finalized the deployment.
-        let result: PartialDeploymentResult
-        try {
-          result = (await response.json()) as PartialDeploymentResult
-        } catch (error) {
-          // If the read was cancelled (a sibling worker already finalized and aborted the pool, or the
-          // caller aborted), this is not a successful-but-unparseable body — let the abort propagate so
-          // the winner's real result stands and cancellation isn't masked as success.
-          if (signal?.aborted) {
-            throw error
+      // The default @dcl/fetch-component HONORS an `abortController` option but OVERWRITES a caller
+      // `signal`, so cancellation must be delivered via a controller. Use a per-request controller (not
+      // the shared session one) linked to the session signal, so the fetcher's timeout abort cancels
+      // only this request while a session abort (caller cancel or the pool's first-200-wins) still
+      // propagates here.
+      const abortController = new AbortController()
+      const onAbort = () => abortController.abort()
+      if (signal) {
+        if (signal.aborted) abortController.abort()
+        else signal.addEventListener('abort', onAbort, { once: true })
+      }
+      try {
+        const requestOptions = mergeRequestOptions(requestBase, { body: form as any, method: 'POST', abortController })
+        const response: FetchResponse = await fetcher.fetch(`${contentUrl}/entities`, requestOptions)
+        if (response.status === 200) {
+          // A 200 means the server finalized the deployment.
+          let result: PartialDeploymentResult
+          try {
+            result = (await response.json()) as PartialDeploymentResult
+          } catch (error) {
+            // If the read was cancelled (a sibling worker already finalized and aborted the pool, or the
+            // caller aborted), this is not a successful-but-unparseable body — let the abort propagate so
+            // the winner's real result stands and cancellation isn't masked as success.
+            if (signal?.aborted) {
+              throw error
+            }
+            // A genuine unparseable body (empty, proxy rewrite) still means the server finalized; fall
+            // back to a response-time timestamp rather than triggering a retry storm in which every
+            // attempt re-observes the same already-deployed entity.
+            result = { creationTimestamp: Date.now() } as PartialDeploymentResult
           }
-          // A genuine unparseable body (empty, proxy rewrite) still means the server finalized; fall
-          // back to a response-time timestamp rather than triggering a retry storm in which every
-          // attempt re-observes the same already-deployed entity.
-          result = { creationTimestamp: Date.now() } as PartialDeploymentResult
+          return { kind: 'deployed', result }
         }
-        return { kind: 'deployed', result }
+        if (response.status === 202) {
+          // Not finalized yet. Read the reported missing hashes: any hash the server still needs that the
+          // caller never provided locally can NEVER be uploaded, so fail fast with a clear, terminal
+          // diagnosis naming it — instead of looping through full re-upload sessions to the same dead end.
+          let missing: string[] = []
+          try {
+            missing = ((await response.json()) as { missing?: string[] })?.missing ?? []
+          } catch {
+            // A missing/unparseable body is fine — treat it as "no diagnosis available" and continue.
+          }
+          const undeliverable = missing.filter((hash) => !deployData.files.has(hash))
+          if (undeliverable.length > 0) {
+            throw new PartialDeploymentValidationError(
+              `The server is still missing content the deployment does not include: ${undeliverable.join(
+                ', '
+              )}. These hashes are referenced by the entity but absent from the provided files.`
+            )
+          }
+          return { kind: 'incomplete' }
+        }
+        const body = await response.text().catch(() => '')
+        // 429 (rate limited / other transient conditions the server surfaces as 429) and 5xx are
+        // retryable — the resume loop re-queries available content and re-uploads only what's missing.
+        // Carry any Retry-After so the resume backoff can wait out the server's window (a rate-limit
+        // window is typically far longer than the default backoff).
+        if (response.status === 429 || response.status >= 500) {
+          const retryAfterMs = parseRetryAfterMs(response.headers?.get('retry-after') ?? undefined)
+          throw new RetryablePartialDeploymentError(
+            `Server responded with status ${response.status}: ${body}`,
+            retryAfterMs
+          )
+        }
+        // Any other non-2xx (4xx) is a terminal validation or not-supported error.
+        throw classify4xx(response.status, body)
+      } finally {
+        if (signal) signal.removeEventListener('abort', onAbort)
       }
-      if (response.status === 202) {
-        // Drain the body even though the outcome doesn't need it: with native fetch an unread response
-        // body pins the undici socket and buffered bytes, and a large upload produces one 202 per
-        // non-finalizing batch. text() drains without the wasted JSON parse.
-        await response.text().catch(() => undefined)
-        return { kind: 'incomplete' }
-      }
-      const body = await response.text().catch(() => '')
-      // 429 (rate limited / other transient conditions the server surfaces as 429) and 5xx are
-      // retryable — the resume loop re-queries available content and re-uploads only what's missing.
-      if (response.status === 429 || response.status >= 500) {
-        throw new Error(`Server responded with status ${response.status}: ${body}`)
-      }
-      // Any other non-2xx (4xx) is a terminal validation or not-supported error.
-      throw classify4xx(response.status, body)
     }
 
     const runSession = async (): Promise<PartialDeploymentResult> => {
@@ -392,6 +436,21 @@ export function createContentClient(options: ClientOptions): ContentClient {
           missingFiles.set(hash, deployData.files.get(hash)!)
         }
       }
+
+      // Files are never split across a request, so a single file that must be UPLOADED and is above the
+      // request cap would produce a request the infrastructure may time out, re-uploaded on every resume.
+      // Fail fast — but only for files actually missing on the server: an already-stored oversized file
+      // (e.g. shared with a prior deploy) needs zero bytes uploaded, so it must not block the deployment.
+      for (const [hash, file] of missingFiles) {
+        if (file.byteLength > maxBatchSizeBytes) {
+          throw new PartialDeploymentValidationError(
+            `The file '${hash}' (${file.byteLength} bytes) exceeds the maximum request size of ` +
+              `${maxBatchSizeBytes} bytes and files cannot be split across requests. If your infrastructure ` +
+              `allows larger requests, raise options.maxBatchSizeBytes.`
+          )
+        }
+      }
+
       const batches = splitIntoBatches(missingFiles, maxBatchSizeBytes)
       const totalBatches = Math.max(1, batches.length)
 
@@ -455,24 +514,35 @@ export function createContentClient(options: ClientOptions): ContentClient {
       }
 
       const workers = Array.from({ length: Math.min(concurrency, Math.max(1, remaining.length)) }, () => worker())
+      let sessionError: unknown
       try {
         await Promise.all(workers)
+      } catch (error) {
+        // A worker threw a retryable error, rejecting Promise.all. Capture it rather than letting it
+        // propagate directly: a concurrent win (checked first below) must take precedence, so a sibling's
+        // retryable failure landing at the same instant as a win can't discard the win and trigger a
+        // spurious resume.
+        sessionError = error
       } finally {
-        // Whatever ended the session — a win, a terminal error, or a retryable throw that rejected
-        // Promise.all — cancel any still-in-flight sibling requests (a retryable throw does NOT abort
-        // the controller on its own, so without this the losers would keep uploading, uncancelable,
-        // while the resume loop starts a new session), then wait for them to unwind before disposing
-        // the signal and returning.
+        // Whatever ended the session — a win, a terminal error, or a retryable throw — cancel any
+        // still-in-flight sibling requests (a retryable throw does NOT abort the controller on its own,
+        // so without this the losers would keep uploading, uncancelable, while the resume loop starts a
+        // new session), then wait for them to unwind before disposing the signal and returning.
         controller.abort()
         await Promise.allSettled(workers)
         disposeSessionSignal()
       }
 
+      // A win wins, even if a sibling failed (retryably or terminally) in the same tick: the entity is
+      // deployed, so any concurrent rejection is moot.
+      if (deployed) {
+        return deployed
+      }
       if (terminalError) {
         throw terminalError
       }
-      if (deployed) {
-        return deployed
+      if (sessionError) {
+        throw sessionError
       }
 
       // Every batch returned 202 but the server never finalized: the pending upload's state must have
@@ -500,8 +570,14 @@ export function createContentClient(options: ClientOptions): ContentClient {
           // Exponential backoff: transient conditions (429 rate limits, 5xx blips) rarely clear within
           // a fixed short delay, and hammering a rate limiter only extends the window. The cap bounds
           // 2^attempt growth, but never below the caller's configured resumeDelay — a caller that set a
-          // large base delay (e.g. to respect a strict upstream limiter) keeps it as the floor.
-          const backoff = Math.min(resumeDelay * 2 ** attempt, Math.max(resumeDelay, MAX_RESUME_BACKOFF_MS))
+          // large base delay (e.g. to respect a strict upstream limiter) keeps it as the floor. When the
+          // server sent a Retry-After (e.g. a rate-limit window that outlasts the exponential backoff),
+          // honor it as a floor so we wait the window out instead of exhausting attempts inside it.
+          const retryAfterMs = error instanceof RetryablePartialDeploymentError ? error.retryAfterMs ?? 0 : 0
+          const backoff = Math.min(
+            Math.max(resumeDelay * 2 ** attempt, retryAfterMs),
+            Math.max(resumeDelay, MAX_RESUME_BACKOFF_MS)
+          )
           await delay(backoff)
         }
       }

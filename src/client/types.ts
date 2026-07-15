@@ -30,6 +30,9 @@ export type FetchResponse = {
   json(): Promise<any>
   text(): Promise<string>
   arrayBuffer(): Promise<ArrayBuffer>
+  // Optional: both the native-fetch and wkc responses expose a Headers-like object. Read defensively
+  // (it may be absent on a minimal mock) — used to honor a `Retry-After` on a rate-limited response.
+  headers?: { get(name: string): string | null }
 }
 
 /**

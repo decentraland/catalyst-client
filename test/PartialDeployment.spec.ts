@@ -183,15 +183,30 @@ describe('deployPartial', () => {
     })
   })
 
-  describe('when a single file exceeds the request cap', () => {
+  describe('when a single file that must be uploaded exceeds the request cap', () => {
     it('should fail fast without uploading anything (files cannot be split across requests)', async () => {
       deployData = makeDeployData({ hashHuge: 500 })
 
       await expect(client.deployPartial(deployData, { maxBatchSizeBytes: 100 })).rejects.toBeInstanceOf(
         PartialDeploymentValidationError
       )
-      // No availability query and no upload was attempted.
-      expect(fetcher.fetch).not.toHaveBeenCalled()
+      // Availability is queried first (an already-stored oversized file needs no upload), but no
+      // POST /entities upload is attempted for a genuinely-missing oversized file.
+      expect(entitiesCalls).toHaveLength(0)
+    })
+  })
+
+  describe('when an oversized file is already stored on the server', () => {
+    it('should deploy without rejecting (the oversized file needs zero bytes uploaded)', async () => {
+      deployData = makeDeployData({ hashHuge: 500, hashA: 50 })
+      available = new Set(['hashHuge'])
+      entitiesResponses = [{ status: 200, body: { creationTimestamp: 5 } }]
+
+      const result = await client.deployPartial(deployData, { maxBatchSizeBytes: 100 })
+
+      expect(result).toEqual({ creationTimestamp: 5 })
+      expect(entitiesCalls).toHaveLength(1)
+      expect(entitiesCalls[0].has('hashHuge')).toBe(false)
     })
   })
 
@@ -256,10 +271,11 @@ describe('deployPartial', () => {
         const originalFetch = fetcher.fetch as jest.Mock
         ;(fetcher.fetch as jest.Mock) = jest.fn(async (url: string, init?: any) => {
           if (!url.includes('/available-content')) {
-            // Abort while the deployment request is in flight; the request must carry a signal that
-            // observes it.
+            // Abort while the deployment request is in flight. The stock @dcl/fetch-component honors an
+            // `abortController` option (not a `signal`), so the request must carry a controller whose
+            // signal observes the caller's abort.
             controller.abort()
-            sawAbortedSignal = !!init?.signal?.aborted
+            sawAbortedSignal = !!init?.abortController?.signal?.aborted
           }
           return originalFetch(url, init)
         })
@@ -267,13 +283,26 @@ describe('deployPartial', () => {
         try {
           await client.deployPartial(deployData, { signal: controller.signal })
         } catch {
-          // May resolve or reject depending on timing; the assertion is about signal propagation.
+          // May resolve or reject depending on timing; the assertion is about abort propagation.
         }
       })
 
-      it('should propagate the caller signal to the deployment request', () => {
+      it('should propagate the caller abort to the deployment request via an abortController', () => {
         expect(sawAbortedSignal).toBe(true)
       })
+    })
+  })
+
+  describe('when the entity references a content file the caller did not provide', () => {
+    it('should fail fast with a terminal error naming the undeliverable hash', async () => {
+      deployData = makeDeployData({ hashA: 80 })
+      // The server keeps reporting a hash missing that is NOT in deployData.files — no amount of
+      // resuming can ever deliver it, so the client must fail fast instead of looping.
+      entitiesResponses = [{ status: 202, body: { missing: ['hashGhost'] } }]
+
+      await expect(client.deployPartial(deployData, { resumeDelay: 0 })).rejects.toThrow(/hashGhost/)
+      // Only the first session's single request was sent — no resume sessions were burned.
+      expect(entitiesCalls).toHaveLength(1)
     })
   })
 
@@ -343,7 +372,7 @@ describe('deployPartial', () => {
           const form = init.body as FormData
           if (form.has('hashSlow')) {
             return await new Promise((_resolve, reject) => {
-              const signal: AbortSignal | undefined = init.signal
+              const signal: AbortSignal | undefined = init.abortController?.signal ?? init.signal
               if (signal?.aborted) return reject(new Error('AbortError'))
               signal?.addEventListener('abort', () => reject(new Error('AbortError')))
             })
@@ -413,7 +442,7 @@ describe('deployPartial', () => {
             }
           }
           const form = init.body as FormData
-          const signal: AbortSignal | undefined = init.signal
+          const signal: AbortSignal | undefined = init.abortController?.signal ?? init.signal
           if (form.has('hashBig')) {
             return {
               ok: true,

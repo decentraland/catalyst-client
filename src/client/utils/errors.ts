@@ -28,3 +28,16 @@ export class PartialDeploymentNotSupportedError extends DeploymentError {
     this.name = 'PartialDeploymentNotSupportedError'
   }
 }
+
+/**
+ * A transient failure the resume loop should retry (429 rate-limited, 5xx, network). Deliberately NOT a
+ * {@link DeploymentError} (those are terminal). `retryAfterMs`, when set from a server `Retry-After`
+ * header, is used as the backoff floor so the client waits out the server's window instead of exhausting
+ * its attempts inside it.
+ */
+export class RetryablePartialDeploymentError extends Error {
+  constructor(message: string, public readonly retryAfterMs?: number) {
+    super(message)
+    this.name = 'RetryablePartialDeploymentError'
+  }
+}
