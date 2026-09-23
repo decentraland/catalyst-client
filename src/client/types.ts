@@ -89,7 +89,7 @@ export type PartialDeploymentProgress = {
   totalBytes: number
   /** Number of batches confirmed staged so far. */
   completedBatches: number
-  /** Total number of batches to upload this session. */
+  /** Total number of batches known so far; grows if the server reports more content missing. */
   totalBatches: number
 }
 
@@ -101,9 +101,12 @@ export type PartialDeploymentOptions = {
   maxBatchSizeBytes?: number
   /** Concurrent batch uploads after the first (entity-carrying) request. Default 2. */
   concurrency?: number
-  /** Resume cycles (re-query available content + re-upload) on network/429/5xx failures. Default 3. */
+  /**
+   * Retries after retryable failures (408, 409, 429, 5xx, network), and rounds allowed without progress
+   * when the server keeps reporting the same content missing. Default 3.
+   */
   maxResumeAttempts?: number
-  /** Base delay between resume cycles in ms, doubled on each attempt (exponential backoff). Default 1000. */
+  /** Base retry delay in ms, doubled on each retry (exponential backoff), never below `Retry-After`. Default 1000. */
   resumeDelay?: number
   /** Invoked after each staged batch with cumulative progress. */
   onProgress?: (progress: PartialDeploymentProgress) => void

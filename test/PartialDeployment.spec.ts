@@ -1,9 +1,20 @@
 import { createContentClient, ContentClient, IFetchComponent, DeploymentData } from '../src'
-import { PartialDeploymentNotSupportedError, PartialDeploymentValidationError } from '../src/client/utils/errors'
+import {
+  DeploymentError,
+  PartialDeploymentNotSupportedError,
+  PartialDeploymentValidationError
+} from '../src/client/utils/errors'
 
 const URL = 'https://content.example.com'
 
-type EntitiesResponse = { status: number; body?: any; text?: string; throwNetwork?: boolean; jsonThrows?: boolean }
+type EntitiesResponse = {
+  status: number
+  body?: any
+  text?: string
+  headers?: Record<string, string>
+  throwNetwork?: boolean
+  jsonThrows?: boolean
+}
 
 describe('deployPartial', () => {
   const entityId = 'bafyEntity'
@@ -11,6 +22,7 @@ describe('deployPartial', () => {
   let entitiesResponses: EntitiesResponse[]
   let available: Set<string>
   let entitiesCalls: FormData[]
+  let availableContentCalls: number
   let fetcher: IFetchComponent
   let client: ContentClient
 
@@ -27,10 +39,12 @@ describe('deployPartial', () => {
     entitiesResponses = []
     available = new Set<string>()
     entitiesCalls = []
+    availableContentCalls = 0
 
     fetcher = {
       fetch: jest.fn(async (url: string, init?: any) => {
         if (url.includes('/available-content')) {
+          availableContentCalls++
           const cids = (url.split('?')[1] || '')
             .split('&')
             .filter((p) => p.startsWith('cid='))
@@ -55,6 +69,7 @@ describe('deployPartial', () => {
         return {
           ok: next.status >= 200 && next.status < 300,
           status: next.status,
+          headers: { get: (name: string) => next.headers?.[name.toLowerCase()] ?? null },
           json: async () => {
             if (next.jsonThrows) {
               throw new SyntaxError('Unexpected end of JSON input')
@@ -67,6 +82,10 @@ describe('deployPartial', () => {
       })
     }
     client = createContentClient({ url: URL, fetcher })
+  })
+
+  afterEach(() => {
+    jest.resetAllMocks()
   })
 
   function entityFileIncluded(form: FormData): boolean {
@@ -121,22 +140,183 @@ describe('deployPartial', () => {
   })
 
   describe('when a batch fails with a network error', () => {
-    it('should resume by re-querying available content and re-uploading the missing hashes', async () => {
+    let result: { creationTimestamp: number }
+
+    beforeEach(async () => {
       deployData = makeDeployData({ hashA: 80, hashB: 80 })
       entitiesResponses = [
         { status: 202, body: { missing: ['hashB'] } },
         { throwNetwork: true, status: 0 },
-        // resume: hashA now on server, only hashB re-uploaded → finalize
         { status: 200, body: { creationTimestamp: 5 } }
       ]
 
-      const result = await client.deployPartial(deployData, {
-        maxBatchSizeBytes: 100,
-        concurrency: 1,
-        resumeDelay: 0
+      result = await client.deployPartial(deployData, { maxBatchSizeBytes: 100, concurrency: 1, resumeDelay: 0 })
+    })
+
+    it('should resolve with the creationTimestamp of the retried request', () => {
+      expect(result).toEqual({ creationTimestamp: 5 })
+    })
+
+    it('should retry with only the hashes from the latest missing list, without the entity file', () => {
+      expect({
+        hashB: entitiesCalls[2].has('hashB'),
+        hashA: entitiesCalls[2].has('hashA'),
+        entity: entityFileIncluded(entitiesCalls[2])
+      }).toEqual({
+        hashB: true,
+        hashA: false,
+        entity: false
+      })
+    })
+
+    it('should not query the available content again', () => {
+      expect(availableContentCalls).toBe(1)
+    })
+  })
+
+  describe('when every batch is accepted but none publishes the entity', () => {
+    describe('and the latest 202 lists a hash the available content reported as stored', () => {
+      let result: { creationTimestamp: number }
+
+      beforeEach(async () => {
+        deployData = makeDeployData({ hashA: 50, hashB: 50 })
+        available = new Set(['hashA'])
+        entitiesResponses = [
+          { status: 202, body: { missing: ['hashA'] } },
+          { status: 200, body: { creationTimestamp: 11 } }
+        ]
+
+        result = await client.deployPartial(deployData, { resumeDelay: 0 })
       })
 
-      expect(result).toEqual({ creationTimestamp: 5 })
+      it('should resolve with the creationTimestamp of the follow-up request', () => {
+        expect(result).toEqual({ creationTimestamp: 11 })
+      })
+
+      it('should send the listed hash in a follow-up request without the entity file', () => {
+        expect({ hashA: entitiesCalls[1].has('hashA'), entity: entityFileIncluded(entitiesCalls[1]) }).toEqual({
+          hashA: true,
+          entity: false
+        })
+      })
+
+      it('should trust the missing list instead of querying the available content again', () => {
+        expect(availableContentCalls).toBe(1)
+      })
+    })
+
+    describe('and the latest 202 lists nothing missing', () => {
+      let result: { creationTimestamp: number }
+
+      beforeEach(async () => {
+        deployData = makeDeployData({ hashA: 50 })
+        entitiesResponses = [
+          { status: 202, body: { missing: [] } },
+          { status: 200, body: { creationTimestamp: 12 } }
+        ]
+
+        result = await client.deployPartial(deployData, { resumeDelay: 0 })
+      })
+
+      it('should resolve with the creationTimestamp of the follow-up request', () => {
+        expect(result).toEqual({ creationTimestamp: 12 })
+      })
+
+      it('should send a follow-up request with no files so the server can publish', () => {
+        expect({ hashA: entitiesCalls[1].has('hashA'), entity: entityFileIncluded(entitiesCalls[1]) }).toEqual({
+          hashA: false,
+          entity: false
+        })
+      })
+    })
+
+    describe('and the server keeps reporting the same hash missing', () => {
+      let caughtError: unknown
+
+      beforeEach(async () => {
+        deployData = makeDeployData({ hashA: 50 })
+        entitiesResponses = [
+          { status: 202, body: { missing: ['hashA'] } },
+          { status: 202, body: { missing: ['hashA'] } }
+        ]
+
+        caughtError = await client
+          .deployPartial(deployData, { maxResumeAttempts: 1, resumeDelay: 0 })
+          .catch((error) => error)
+      })
+
+      it('should reject with a terminal DeploymentError explaining the upload did not finalize', () => {
+        expect({
+          isDeploymentError: caughtError instanceof DeploymentError,
+          message: (caughtError as Error).message
+        }).toEqual({
+          isDeploymentError: true,
+          message: expect.stringMatching(/did not finalize/)
+        })
+      })
+
+      it('should stop after the rounds allowed without progress', () => {
+        expect(entitiesCalls).toHaveLength(2)
+      })
+    })
+  })
+
+  describe.each([408, 409])('when the server responds %s', (status) => {
+    let result: { creationTimestamp: number }
+
+    beforeEach(async () => {
+      deployData = makeDeployData({ hashA: 100 })
+      entitiesResponses = [
+        { status, text: 'transient' },
+        { status: 200, body: { creationTimestamp: 21 } }
+      ]
+
+      result = await client.deployPartial(deployData, { resumeDelay: 0 })
+    })
+
+    it('should retry and resolve with the creationTimestamp instead of failing terminally', () => {
+      expect(result).toEqual({ creationTimestamp: 21 })
+    })
+  })
+
+  describe('when a 429 carries a Retry-After header', () => {
+    let elapsedMs: number
+
+    beforeEach(async () => {
+      deployData = makeDeployData({ hashA: 100 })
+      entitiesResponses = [
+        { status: 429, text: 'Entity rate limited', headers: { 'retry-after': '0.2' } },
+        { status: 200, body: { creationTimestamp: 22 } }
+      ]
+      const startedAt = Date.now()
+
+      await client.deployPartial(deployData, { resumeDelay: 0 })
+      elapsedMs = Date.now() - startedAt
+    })
+
+    it('should wait at least the Retry-After delay before retrying', () => {
+      expect(elapsedMs).toBeGreaterThanOrEqual(190)
+    })
+  })
+
+  describe('when a quota rejection answers 400', () => {
+    let caughtError: unknown
+
+    beforeEach(async () => {
+      deployData = makeDeployData({ hashA: 100 })
+      entitiesResponses = [{ status: 400, text: 'Partial upload byte rate exceeded. Retry after one minute.' }]
+
+      caughtError = await client.deployPartial(deployData, { resumeDelay: 0 }).catch((error) => error)
+    })
+
+    it('should reject with a PartialDeploymentValidationError without retrying', () => {
+      expect({
+        isValidationError: caughtError instanceof PartialDeploymentValidationError,
+        calls: entitiesCalls.length
+      }).toEqual({
+        isValidationError: true,
+        calls: 1
+      })
     })
   })
 

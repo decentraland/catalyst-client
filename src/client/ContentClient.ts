@@ -28,6 +28,9 @@ function delay(ms: number): Promise<void> {
 // 2^attempt into effectively-hung multi-hour sleeps.
 const MAX_RESUME_BACKOFF_MS = 60_000
 
+// Retryable per ADR-325 besides 5xx: processing deadline, replacement conflict, throttling.
+const RETRYABLE_STATUSES = new Set([408, 409, 429])
+
 // Combines several abort signals into one that aborts as soon as any of them does. Used so a request
 // honors both the caller's cancellation signal and deployPartial's internal first-200-wins controller.
 // (Hand-rolled rather than AbortSignal.any, which is only available on Node >= 20.3.)
@@ -101,7 +104,7 @@ export type ContentClient = {
   deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown>
 
   /**
-   * Deploys an entity across multiple requests (partial deployment): content files are split into
+   * Deploys an entity across multiple requests (partial deployment, ADR-325): content files are split into
    * size-bounded batches and uploaded in several `POST /entities` requests, and the entity only becomes
    * live once the server has all of it. Useful for scenes too large for a single request. The server
    * must support the partial-deployment protocol; against one that doesn't, if everything fits in a
@@ -313,8 +316,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
     const sizeOf = (hash: string) => deployData.files.get(hash)?.byteLength ?? 0
     const totalBytes = allContentHashes.reduce((acc, hash) => acc + sizeOf(hash), 0)
 
-    // Request-scoped options without the partial-specific keys or the abort signal (the caller signal
-    // and the pool controller are combined once per session in runSession and threaded from there).
+    // Request options without the partial-specific keys or the abort signal (combined per round).
     const requestBase: RequestOptions = {
       headers: options?.headers,
       timeout: options?.timeout,
@@ -343,18 +345,26 @@ export function createContentClient(options: ClientOptions): ContentClient {
 
     type BatchOutcome = { kind: 'deployed'; result: PartialDeploymentResult } | { kind: 'incomplete' }
 
-    // Sends one request. Throws a terminal DeploymentError for a 4xx validation/not-supported failure,
-    // and a plain Error for retryable conditions (429 rate-limited, 5xx, network) which the resume loop
-    // re-attempts. `signal` is already combined by the caller (caller cancellation + pool abort) — it
-    // is combined once per session rather than per request so a large upload doesn't accumulate one
-    // abort listener on the caller's signal per batch.
+    // Upload state shared across rounds. The latest 202 `missing` list is authoritative (ADR-325).
+    let entityStaged = false
+    let latestMissing: string[] | undefined
+    let missingUpdatedThisRound = false
+    let uploadedBytes = 0
+    let completedBatches = 0
+    let totalBatches = 1
+    const bytesOf = (hashes: Iterable<string>) => {
+      let total = 0
+      for (const hash of hashes) total += sizeOf(hash)
+      return total
+    }
+    const reportProgress = () => onProgress?.({ uploadedBytes, totalBytes, completedBatches, totalBatches })
+
+    // Sends one request. Throws a terminal DeploymentError for a non-retryable 4xx, and a
+    // RetryablePartialDeploymentError for 408, 409, 429 and 5xx; network errors propagate as-is.
     const sendRequest = async (fileHashes: string[], signal?: AbortSignal): Promise<BatchOutcome> => {
       const form = buildDeploymentForm(deployData, fileHashes, true)
-      // The default @dcl/fetch-component HONORS an `abortController` option but OVERWRITES a caller
-      // `signal`, so cancellation must be delivered via a controller. Use a per-request controller (not
-      // the shared session one) linked to the session signal, so the fetcher's timeout abort cancels
-      // only this request while a session abort (caller cancel or the pool's first-200-wins) still
-      // propagates here.
+      // The default @dcl/fetch-component honors `abortController` but overwrites `signal`, so link a
+      // per-request controller to the session signal.
       const abortController = new AbortController()
       const onAbort = () => abortController.abort()
       if (signal) {
@@ -365,116 +375,112 @@ export function createContentClient(options: ClientOptions): ContentClient {
         const requestOptions = mergeRequestOptions(requestBase, { body: form as any, method: 'POST', abortController })
         const response: FetchResponse = await fetcher.fetch(`${contentUrl}/entities`, requestOptions)
         if (response.status === 200) {
-          // A 200 means the server finalized the deployment.
           let result: PartialDeploymentResult
           try {
             result = (await response.json()) as PartialDeploymentResult
           } catch (error) {
-            // If the read was cancelled (a sibling worker already finalized and aborted the pool, or the
-            // caller aborted), this is not a successful-but-unparseable body — let the abort propagate so
-            // the winner's real result stands and cancellation isn't masked as success.
+            // A cancelled read (a sibling won, or the caller aborted) must not be mistaken for success.
             if (signal?.aborted) {
               throw error
             }
-            // A genuine unparseable body (empty, proxy rewrite) still means the server finalized; fall
-            // back to a response-time timestamp rather than triggering a retry storm in which every
-            // attempt re-observes the same already-deployed entity.
+            // The server did publish; an unparseable body must not trigger a retry storm.
             result = { creationTimestamp: Date.now() } as PartialDeploymentResult
           }
           return { kind: 'deployed', result }
         }
         if (response.status === 202) {
-          // Not finalized yet. Read the reported missing hashes: any hash the server still needs that the
-          // caller never provided locally can NEVER be uploaded, so fail fast with a clear, terminal
-          // diagnosis naming it — instead of looping through full re-upload sessions to the same dead end.
-          let missing: string[] = []
-          try {
-            missing = ((await response.json()) as { missing?: string[] })?.missing ?? []
-          } catch {
-            // A missing/unparseable body is fine — treat it as "no diagnosis available" and continue.
+          if (fileHashes.includes(entityId)) {
+            entityStaged = true
           }
-          const undeliverable = missing.filter((hash) => !deployData.files.has(hash))
-          if (undeliverable.length > 0) {
-            throw new PartialDeploymentValidationError(
-              `The server is still missing content the deployment does not include: ${undeliverable.join(
-                ', '
-              )}. These hashes are referenced by the entity but absent from the provided files.`
+          let missing: string[] | undefined
+          try {
+            const parsed = ((await response.json()) as { missing?: unknown })?.missing
+            missing = Array.isArray(parsed)
+              ? parsed.filter((hash): hash is string => typeof hash === 'string')
+              : undefined
+          } catch {
+            // No diagnosis available; the round falls back to re-sending what it sent.
+          }
+          if (missing) {
+            // A hash the caller never provided can never be uploaded.
+            const undeliverable = missing.filter((hash) => !deployData.files.has(hash))
+            if (undeliverable.length > 0) {
+              throw new PartialDeploymentValidationError(
+                `The server is still missing content the deployment does not include: ${undeliverable.join(
+                  ', '
+                )}. These hashes are referenced by the entity but absent from the provided files.`
+              )
+            }
+            latestMissing = missing
+            missingUpdatedThisRound = true
+            uploadedBytes = Math.max(uploadedBytes, totalBytes - bytesOf(missing))
+          } else {
+            uploadedBytes = Math.min(
+              totalBytes,
+              uploadedBytes + bytesOf(fileHashes.filter((hash) => hash !== entityId))
             )
           }
+          completedBatches++
+          reportProgress()
           return { kind: 'incomplete' }
         }
         const body = await response.text().catch(() => '')
-        // 429 (rate limited / other transient conditions the server surfaces as 429) and 5xx are
-        // retryable — the resume loop re-queries available content and re-uploads only what's missing.
-        // Carry any Retry-After so the resume backoff can wait out the server's window (a rate-limit
-        // window is typically far longer than the default backoff).
-        if (response.status === 429 || response.status >= 500) {
+        if (RETRYABLE_STATUSES.has(response.status) || response.status >= 500) {
           const retryAfterMs = parseRetryAfterMs(response.headers?.get('retry-after') ?? undefined)
           throw new RetryablePartialDeploymentError(
             `Server responded with status ${response.status}: ${body}`,
             retryAfterMs
           )
         }
-        // Any other non-2xx (4xx) is a terminal validation or not-supported error.
         throw classify4xx(response.status, body)
       } finally {
         if (signal) signal.removeEventListener('abort', onAbort)
       }
     }
 
-    const runSession = async (): Promise<PartialDeploymentResult> => {
-      if (callerSignal?.aborted) {
-        throw new Error('The partial deployment was aborted by the caller.')
-      }
-      const alreadyOnServer =
-        allContentHashes.length > 0
-          ? await hashesAlreadyOnServer(allContentHashes, { ...requestBase, signal: callerSignal })
-          : new Set<string>()
-      const missingFiles = new Map<string, Uint8Array>()
-      for (const hash of allContentHashes) {
-        if (!alreadyOnServer.has(hash)) {
-          missingFiles.set(hash, deployData.files.get(hash)!)
-        }
-      }
-
-      // Files are never split across a request, so a single file that must be UPLOADED and is above the
-      // request cap would produce a request the infrastructure may time out, re-uploaded on every resume.
-      // Fail fast — but only for files actually missing on the server: an already-stored oversized file
-      // (e.g. shared with a prior deploy) needs zero bytes uploaded, so it must not block the deployment.
-      for (const [hash, file] of missingFiles) {
-        if (file.byteLength > maxBatchSizeBytes) {
+    // Files are never split, so a file above the request cap can't be delivered.
+    const assertDeliverable = (hashes: string[]) => {
+      for (const hash of hashes) {
+        const size = sizeOf(hash)
+        if (size > maxBatchSizeBytes) {
           throw new PartialDeploymentValidationError(
-            `The file '${hash}' (${file.byteLength} bytes) exceeds the maximum request size of ` +
+            `The file '${hash}' (${size} bytes) exceeds the maximum request size of ` +
               `${maxBatchSizeBytes} bytes and files cannot be split across requests. If your infrastructure ` +
               `allows larger requests, raise options.maxBatchSizeBytes.`
           )
         }
       }
+    }
 
-      const batches = splitIntoBatches(missingFiles, maxBatchSizeBytes)
-      const totalBatches = Math.max(1, batches.length)
-
-      let uploadedBytes = totalBytes - Array.from(missingFiles.values()).reduce((acc, f) => acc + f.byteLength, 0)
-      let completedBatches = 0
-      const reportProgress = () => onProgress?.({ uploadedBytes, totalBytes, completedBatches, totalBatches })
-
-      // First request carries the entity file (the server needs the manifest before parallel batches).
-      const first = await sendRequest([entityId, ...(batches[0]?.hashes ?? [])], callerSignal)
-      if (first.kind === 'deployed') {
-        return first.result
+    // Uploads `hashes` once: the entity file rides the first request until the server has staged it, then
+    // the rest go through a bounded worker pool. First 200 wins; a terminal error aborts the rest.
+    const runRound = async (hashes: string[]): Promise<BatchOutcome> => {
+      if (callerSignal?.aborted) {
+        throw new Error('The partial deployment was aborted by the caller.')
       }
-      if (batches[0]) {
-        uploadedBytes += batches[0].sizeBytes
-        completedBatches++
-        reportProgress()
+      missingUpdatedThisRound = false
+      const files = new Map<string, Uint8Array>()
+      for (const hash of hashes) files.set(hash, deployData.files.get(hash)!)
+      const batches = splitIntoBatches(files, maxBatchSizeBytes)
+      totalBatches = Math.max(1, completedBatches + batches.length)
+
+      let remaining = batches
+      if (!entityStaged) {
+        const first = await sendRequest([entityId, ...(batches[0]?.hashes ?? [])], callerSignal)
+        if (first.kind === 'deployed') {
+          return first
+        }
+        remaining = batches.slice(1)
+      } else if (batches.length === 0) {
+        // Nothing left to send but not published yet: an empty batch lets the server re-check and publish.
+        remaining = [{ hashes: [], sizeBytes: 0 }]
+        totalBatches = completedBatches + 1
       }
 
-      // Remaining batches through a bounded worker pool. First 200 wins; a terminal error aborts the rest.
-      const remaining = batches.slice(1)
       const controller = new AbortController()
-      // Combined once per session: aborts when the caller cancels or when the pool wins/fails. Disposed
-      // after the pool drains so a long-lived caller signal doesn't accumulate one listener per session.
-      const { signal: sessionSignal, dispose: disposeSessionSignal } = combineSignals([callerSignal, controller.signal])
+      // Combined once per round and disposed after the pool drains, so a long-lived caller signal doesn't
+      // accumulate listeners.
+      const { signal: roundSignal, dispose: disposeRoundSignal } = combineSignals([callerSignal, controller.signal])
       let deployed: PartialDeploymentResult | undefined
       let terminalError: DeploymentError | undefined
       let nextIndex = 0
@@ -485,26 +491,20 @@ export function createContentClient(options: ClientOptions): ContentClient {
           if (index >= remaining.length) {
             return
           }
-          const batch = remaining[index]
           try {
-            const outcome = await sendRequest(batch.hashes, sessionSignal)
+            const outcome = await sendRequest(remaining[index].hashes, roundSignal)
             if (outcome.kind === 'deployed') {
               deployed = outcome.result
               controller.abort()
               return
             }
-            uploadedBytes += batch.sizeBytes
-            completedBatches++
-            reportProgress()
           } catch (error) {
             if (error instanceof DeploymentError) {
               terminalError = error
               controller.abort()
               return
             }
-            // A sibling worker already finalized (or the pool was aborted), so this request was
-            // cancelled on purpose — swallow its abort/network error instead of failing the session
-            // (which would trigger a spurious resume). Genuine failures still propagate.
+            // A sibling won or the round was aborted: this request was cancelled on purpose.
             if (deployed || controller.signal.aborted) {
               return
             }
@@ -514,77 +514,89 @@ export function createContentClient(options: ClientOptions): ContentClient {
       }
 
       const workers = Array.from({ length: Math.min(concurrency, Math.max(1, remaining.length)) }, () => worker())
-      let sessionError: unknown
+      let roundError: unknown
       try {
         await Promise.all(workers)
       } catch (error) {
-        // A worker threw a retryable error, rejecting Promise.all. Capture it rather than letting it
-        // propagate directly: a concurrent win (checked first below) must take precedence, so a sibling's
-        // retryable failure landing at the same instant as a win can't discard the win and trigger a
-        // spurious resume.
-        sessionError = error
+        // Captured so a concurrent win still takes precedence over a sibling's retryable failure.
+        roundError = error
       } finally {
-        // Whatever ended the session — a win, a terminal error, or a retryable throw — cancel any
-        // still-in-flight sibling requests (a retryable throw does NOT abort the controller on its own,
-        // so without this the losers would keep uploading, uncancelable, while the resume loop starts a
-        // new session), then wait for them to unwind before disposing the signal and returning.
+        // Cancel in-flight siblings and let them unwind before the next round starts.
         controller.abort()
         await Promise.allSettled(workers)
-        disposeSessionSignal()
+        disposeRoundSignal()
       }
 
-      // A win wins, even if a sibling failed (retryably or terminally) in the same tick: the entity is
-      // deployed, so any concurrent rejection is moot.
       if (deployed) {
-        return deployed
+        return { kind: 'deployed', result: deployed }
       }
       if (terminalError) {
         throw terminalError
       }
-      if (sessionError) {
-        throw sessionError
+      if (roundError) {
+        throw roundError
       }
-
-      // Every batch returned 202 but the server never finalized: the pending upload's state must have
-      // changed under us (expired or replaced by an overlapping deployment). Signal a resume.
-      throw new Error('The partial deployment did not finalize; the pending upload may have expired or been replaced.')
+      return { kind: 'incomplete' }
     }
 
+    if (callerSignal?.aborted) {
+      throw new Error('The partial deployment was aborted by the caller.')
+    }
+    // /available-content only plans the first round; afterwards the server's `missing` list drives uploads.
+    const alreadyOnServer =
+      allContentHashes.length > 0
+        ? await hashesAlreadyOnServer(allContentHashes, { ...requestBase, signal: callerSignal })
+        : new Set<string>()
+    let toSend = allContentHashes.filter((hash) => !alreadyOnServer.has(hash))
+    uploadedBytes = totalBytes - bytesOf(toSend)
+
+    let failures = 0
+    let stalledRounds = 0
     let lastError: unknown
-    for (let attempt = 0; attempt <= maxResumeAttempts; attempt++) {
+    for (;;) {
       try {
-        return await runSession()
+        assertDeliverable(toSend)
+        const outcome = await runRound(toSend)
+        if (outcome.kind === 'deployed') {
+          return outcome.result
+        }
+        const next = missingUpdatedThisRound && latestMissing ? latestMissing : toSend
+        stalledRounds = missingUpdatedThisRound && next.length < toSend.length ? 0 : stalledRounds + 1
+        if (stalledRounds > maxResumeAttempts) {
+          throw new DeploymentError(
+            `The partial deployment did not finalize: the server still reports ${next.length} missing file(s) after ` +
+              `${stalledRounds} round(s) without progress.`
+          )
+        }
+        toSend = next
       } catch (error) {
-        // 4xx validation / not-supported errors are terminal; anything else (5xx, network, non-finalize)
-        // is retried by re-querying available content and re-uploading only what's still missing.
         if (error instanceof DeploymentError) {
           throw error
         }
-        // The caller cancelled: the failed request is the abort taking effect, not a transient error —
-        // surface it instead of burning resume attempts uploading after cancellation.
+        // A caller abort takes effect as a failed request; surface it instead of retrying.
         if (callerSignal?.aborted) {
           throw error
         }
         lastError = error
-        if (attempt < maxResumeAttempts) {
-          // Exponential backoff: transient conditions (429 rate limits, 5xx blips) rarely clear within
-          // a fixed short delay, and hammering a rate limiter only extends the window. The cap bounds
-          // 2^attempt growth, but never below the caller's configured resumeDelay — a caller that set a
-          // large base delay (e.g. to respect a strict upstream limiter) keeps it as the floor. When the
-          // server sent a Retry-After (e.g. a rate-limit window that outlasts the exponential backoff),
-          // honor it as a floor so we wait the window out instead of exhausting attempts inside it.
-          const retryAfterMs = error instanceof RetryablePartialDeploymentError ? error.retryAfterMs ?? 0 : 0
-          const backoff = Math.min(
-            Math.max(resumeDelay * 2 ** attempt, retryAfterMs),
-            Math.max(resumeDelay, MAX_RESUME_BACKOFF_MS)
-          )
-          await delay(backoff)
+        if (failures >= maxResumeAttempts) {
+          break
+        }
+        // Exponential backoff with a Retry-After floor, capped but never below the caller's resumeDelay.
+        const retryAfterMs = error instanceof RetryablePartialDeploymentError ? error.retryAfterMs ?? 0 : 0
+        const backoff = Math.min(
+          Math.max(resumeDelay * 2 ** failures, retryAfterMs),
+          Math.max(resumeDelay, MAX_RESUME_BACKOFF_MS)
+        )
+        failures++
+        await delay(backoff)
+        if (latestMissing) {
+          toSend = latestMissing
         }
       }
     }
 
     throw new DeploymentError(
-      `The partial deployment failed after ${maxResumeAttempts + 1} attempt(s): ${
+      `The partial deployment failed after ${failures + 1} attempt(s): ${
         lastError instanceof Error ? lastError.message : String(lastError)
       }`
     )
