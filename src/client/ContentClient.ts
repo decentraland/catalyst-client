@@ -373,7 +373,8 @@ export function createContentClient(options: ClientOptions): ContentClient {
       }
       try {
         const requestOptions = mergeRequestOptions(requestBase, { body: form as any, method: 'POST', abortController })
-        const response: FetchResponse = await fetcher.fetch(`${contentUrl}/entities`, requestOptions)
+        // The query flag lets the server tell a batch from a regular deployment before reading the body.
+        const response: FetchResponse = await fetcher.fetch(`${contentUrl}/entities?partial=true`, requestOptions)
         if (response.status === 200) {
           let result: PartialDeploymentResult
           try {

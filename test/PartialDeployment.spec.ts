@@ -22,6 +22,7 @@ describe('deployPartial', () => {
   let entitiesResponses: EntitiesResponse[]
   let available: Set<string>
   let entitiesCalls: FormData[]
+  let entitiesUrls: string[]
   let availableContentCalls: number
   let fetcher: IFetchComponent
   let client: ContentClient
@@ -39,6 +40,7 @@ describe('deployPartial', () => {
     entitiesResponses = []
     available = new Set<string>()
     entitiesCalls = []
+    entitiesUrls = []
     availableContentCalls = 0
 
     fetcher = {
@@ -59,6 +61,7 @@ describe('deployPartial', () => {
         }
         // POST /entities
         entitiesCalls.push(init.body as FormData)
+        entitiesUrls.push(url)
         const next = entitiesResponses.shift()
         if (!next) {
           throw new Error('Unexpected extra POST /entities call')
@@ -104,6 +107,31 @@ describe('deployPartial', () => {
       expect(entitiesCalls[0].get('partial')).toBe('true')
       expect(entityFileIncluded(entitiesCalls[0])).toBe(true)
       expect(entitiesCalls[0].has('hashA')).toBe(true)
+    })
+  })
+
+  describe('when sending the batches of a multi-batch upload', () => {
+    let result: unknown
+
+    beforeEach(async () => {
+      deployData = makeDeployData({ hashA: 80, hashB: 80 })
+      entitiesResponses = [
+        { status: 202, body: { missing: ['hashB'] } },
+        { status: 200, body: { creationTimestamp: 5 } }
+      ]
+      result = await client.deployPartial(deployData, { maxBatchSizeBytes: 100, concurrency: 1 })
+    })
+
+    it('should resolve with the creationTimestamp', () => {
+      expect(result).toEqual({ creationTimestamp: 5 })
+    })
+
+    it('should declare every batch as partial with the query parameter', () => {
+      expect(entitiesUrls).toEqual([`${URL}/entities?partial=true`, `${URL}/entities?partial=true`])
+    })
+
+    it('should also send the partial form field on every batch', () => {
+      expect(entitiesCalls.map((form) => form.get('partial'))).toEqual(['true', 'true'])
     })
   })
 
