@@ -2,6 +2,7 @@ import { createContentClient, ContentClient, IFetchComponent, DeploymentData } f
 import {
   DeploymentError,
   PartialDeploymentNotSupportedError,
+  PartialDeploymentRetryLaterError,
   PartialDeploymentValidationError
 } from '../src/client/utils/errors'
 
@@ -324,6 +325,46 @@ describe('deployPartial', () => {
 
     it('should wait at least the Retry-After delay before retrying', () => {
       expect(elapsedMs).toBeGreaterThanOrEqual(190)
+    })
+  })
+
+  describe('when a 429 asks to retry later than the client waits', () => {
+    let caughtError: unknown
+    let requestsSent: number
+    let elapsedMs: number
+
+    beforeEach(async () => {
+      deployData = makeDeployData({ hashA: 100 })
+      entitiesResponses = [
+        {
+          status: 429,
+          text: 'Too many partial uploads in progress for this account (max 10).',
+          headers: { 'retry-after': '3600' }
+        },
+        { status: 200, body: { creationTimestamp: 23 } }
+      ]
+      const startedAt = Date.now()
+
+      caughtError = await client.deployPartial(deployData, { resumeDelay: 0 }).catch((error) => error)
+      requestsSent = entitiesCalls.length
+      elapsedMs = Date.now() - startedAt
+    })
+
+    it('should stop without retrying and report the server reason and when to retry', () => {
+      expect({
+        name: (caughtError as Error).name,
+        message: (caughtError as Error).message,
+        retryAfterMs: (caughtError as PartialDeploymentRetryLaterError).retryAfterMs,
+        requestsSent,
+        waited: elapsedMs >= 1000
+      }).toEqual({
+        name: 'PartialDeploymentRetryLaterError',
+        message:
+          'Server responded with status 429: Too many partial uploads in progress for this account (max 10). Retry in 3600 s.',
+        retryAfterMs: 3_600_000,
+        requestsSent: 1,
+        waited: false
+      })
     })
   })
 

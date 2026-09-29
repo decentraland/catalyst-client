@@ -41,3 +41,15 @@ export class RetryablePartialDeploymentError extends Error {
     this.name = 'RetryablePartialDeploymentError'
   }
 }
+
+/**
+ * The server asked to retry later than the client is willing to wait (e.g. a partial-upload quota that
+ * frees up only when older uploads expire). Terminal for this call; `retryAfterMs` says when a new
+ * attempt may succeed, and the message carries the server's explanation.
+ */
+export class PartialDeploymentRetryLaterError extends DeploymentError {
+  constructor(message: string, public readonly retryAfterMs: number, status?: number, responseBody?: string) {
+    super(message, status, responseBody)
+    this.name = 'PartialDeploymentRetryLaterError'
+  }
+}

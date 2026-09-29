@@ -15,6 +15,7 @@ import { DEFAULT_MAX_BATCH_SIZE_BYTES, splitIntoBatches } from './utils/batching
 import {
   DeploymentError,
   PartialDeploymentNotSupportedError,
+  PartialDeploymentRetryLaterError,
   PartialDeploymentValidationError,
   RetryablePartialDeploymentError
 } from './utils/errors'
@@ -584,10 +585,15 @@ export function createContentClient(options: ClientOptions): ContentClient {
         }
         // Exponential backoff with a Retry-After floor, capped but never below the caller's resumeDelay.
         const retryAfterMs = error instanceof RetryablePartialDeploymentError ? error.retryAfterMs ?? 0 : 0
-        const backoff = Math.min(
-          Math.max(resumeDelay * 2 ** failures, retryAfterMs),
-          Math.max(resumeDelay, MAX_RESUME_BACKOFF_MS)
-        )
+        const maxBackoffMs = Math.max(resumeDelay, MAX_RESUME_BACKOFF_MS)
+        // Retrying before Retry-After can't succeed, so a longer wait ends the call with the server's reason.
+        if (retryAfterMs > maxBackoffMs) {
+          throw new PartialDeploymentRetryLaterError(
+            `${error instanceof Error ? error.message : String(error)} Retry in ${Math.ceil(retryAfterMs / 1000)} s.`,
+            retryAfterMs
+          )
+        }
+        const backoff = Math.min(Math.max(resumeDelay * 2 ** failures, retryAfterMs), maxBackoffMs)
         failures++
         await delay(backoff)
         if (latestMissing) {
