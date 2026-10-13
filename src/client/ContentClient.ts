@@ -560,6 +560,11 @@ export function createContentClient(options: ClientOptions): ContentClient {
         assertDeliverable(toSend)
         const outcome = await runRound(toSend)
         if (outcome.kind === 'deployed') {
+          // The publishing 200 carries no progress of its own, and siblings it cancelled were no longer needed.
+          totalBatches = Math.max(totalBatches, completedBatches + 1)
+          completedBatches = totalBatches
+          uploadedBytes = totalBytes
+          reportProgress()
           return outcome.result
         }
         const next = missingUpdatedThisRound && latestMissing ? latestMissing : toSend

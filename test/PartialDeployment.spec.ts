@@ -1,4 +1,4 @@
-import { createContentClient, ContentClient, IFetchComponent, DeploymentData } from '../src'
+import { createContentClient, ContentClient, IFetchComponent, DeploymentData, PartialDeploymentProgress } from '../src'
 import {
   DeploymentError,
   PartialDeploymentNotSupportedError,
@@ -556,21 +556,44 @@ describe('deployPartial', () => {
   })
 
   describe('when an onProgress callback is provided', () => {
-    it('should report cumulative progress after each staged batch', async () => {
-      deployData = makeDeployData({ hashA: 80, hashB: 80 })
-      entitiesResponses = [
-        { status: 202, body: { missing: ['hashB'] } },
-        { status: 200, body: { creationTimestamp: 1 } }
-      ]
-      const progress: number[] = []
+    let progress: PartialDeploymentProgress[]
 
-      await client.deployPartial(deployData, {
-        maxBatchSizeBytes: 100,
-        concurrency: 1,
-        onProgress: (p) => progress.push(p.completedBatches)
+    beforeEach(() => {
+      progress = []
+    })
+
+    describe('and a batch is staged before the one that publishes', () => {
+      beforeEach(async () => {
+        deployData = makeDeployData({ hashA: 80, hashB: 80 })
+        entitiesResponses = [
+          { status: 202, body: { missing: ['hashB'] } },
+          { status: 200, body: { creationTimestamp: 1 } }
+        ]
+        await client.deployPartial(deployData, {
+          maxBatchSizeBytes: 100,
+          concurrency: 1,
+          onProgress: (p) => progress.push(p)
+        })
       })
 
-      expect(progress[progress.length - 1]).toBeGreaterThanOrEqual(1)
+      it('should report the staged batch and then the publishing batch', () => {
+        expect(progress).toEqual([
+          { uploadedBytes: 80, totalBytes: 160, completedBatches: 1, totalBatches: 2 },
+          { uploadedBytes: 160, totalBytes: 160, completedBatches: 2, totalBatches: 2 }
+        ])
+      })
+    })
+
+    describe('and the first batch publishes the deployment', () => {
+      beforeEach(async () => {
+        deployData = makeDeployData({ hashA: 80 })
+        entitiesResponses = [{ status: 200, body: { creationTimestamp: 1 } }]
+        await client.deployPartial(deployData, { onProgress: (p) => progress.push(p) })
+      })
+
+      it('should report the publishing batch as complete', () => {
+        expect(progress).toEqual([{ uploadedBytes: 80, totalBytes: 80, completedBatches: 1, totalBatches: 1 }])
+      })
     })
   })
 
