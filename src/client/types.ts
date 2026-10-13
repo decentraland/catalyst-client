@@ -119,9 +119,9 @@ export type UploadProgress = {
 
 export type UploadProgressOptions = {
   /**
-   * Invoked with byte-level upload progress, at most every 200 ms plus on every phase change. On Node the
-   * request body is streamed and counted as it is handed to the HTTP client; elsewhere (or when the
-   * fetcher doesn't support streamed bodies) a request's bytes count as sent when its response arrives.
+   * Invoked with byte-level upload progress, at most every 200 ms plus on every phase change. With
+   * {@link ClientOptions.streamingUploads} on Node, the request body is streamed and counted as it is
+   * handed to the HTTP client; otherwise a request's bytes count as sent when its response arrives.
    */
   onUploadProgress?: (progress: UploadProgress) => void
 }
@@ -159,4 +159,13 @@ export type ClientOptions = {
    * @type {ParallelConfig}
    */
   parallelConfig?: ParallelConfig
+  /**
+   * Declares that `fetcher` can send a streamed deployment body, so `onUploadProgress` counts bytes as
+   * they go out instead of per request. Default false. Only enable it when the fetcher:
+   * - passes `body` to the global (undici) `fetch` of Node >= 18, which accepts a web `ReadableStream`;
+   * - forwards the `duplex: 'half'` option and the `content-length` header unchanged;
+   * - never retries a POST with the same options, since the stream can only be read once.
+   * `@dcl/fetch-component` meets this. node-fetch does not (it would send the stream as a string).
+   */
+  streamingUploads?: boolean
 }

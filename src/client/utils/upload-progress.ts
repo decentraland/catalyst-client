@@ -102,25 +102,37 @@ export function withBodyHeaders(
 export type UploadRequestProgress = {
   /** Body bytes streamed so far; converted to file bytes proportionally. */
   streamed(streamedBytes: number, bodyBytes: number): void
-  /** The body won't be streamed (coarse progress): wait for the response with the `processing` phase. */
+  /** The body won't be streamed after all: its bytes count when the response arrives. */
   unstreamed(): void
   /** A response arrived for an unstreamed body: all its file bytes count as sent. */
   delivered(): void
-  /** The request ended; file bytes it never sent leave the total. */
+  /** The request ended. Bytes it never sent leave the total only once a retry or success follows. */
   end(): void
 }
 
 export type UploadProgressTracker = {
   /** Reports the `/available-content` check, with every candidate file as the provisional total. */
   checking(candidateBytes: number): void
-  /** Adds the file bytes a round of requests is about to send. */
+  /** Adds the file bytes a round of requests is about to send, dropping what earlier rounds never sent. */
   plan(fileBytes: number): void
   /** Starts a request carrying `fileBytes` of the planned bytes; `streaming` when its body is counted. */
   request(fileBytes: number, streaming: boolean): UploadRequestProgress
-  /** Drops planned bytes whose requests never started. */
-  settle(): void
-  /** Emits any throttled event. */
-  flush(): void
+  /** The deployment succeeded: emits `processing` with every byte sent, then stops. */
+  complete(): void
+  /** The deployment failed: stops without emitting. */
+  close(): void
+}
+
+/** Runs `upload`, completing the tracker when it resolves and closing it silently when it rejects. */
+export async function trackUpload<T>(tracker: UploadProgressTracker | undefined, upload: () => Promise<T>): Promise<T> {
+  try {
+    const result = await upload()
+    tracker?.complete()
+    return result
+  } catch (error) {
+    tracker?.close()
+    throw error
+  }
 }
 
 /** Tracks byte-level upload progress across requests, throttling events to `onUploadProgress`. */
@@ -132,24 +144,27 @@ export function createUploadProgressTracker(
   let phase: UploadPhase | undefined
   let sentBytes = 0
   let totalBytes = 0
+  // Planned bytes no request has taken yet, and bytes of ended requests that were never sent.
   let unstartedBytes = 0
-  let streaming = 0
+  let unsentBytes = 0
   let inFlight = 0
   let lastEmitAt = -Infinity
   let pending = false
+  let closed = false
+  let trailing: ReturnType<typeof setTimeout> | undefined
   let last: UploadProgress | undefined
 
-  const snapshot = (): UploadProgress => ({
-    phase: phase!,
-    sentBytes: Math.min(sentBytes, totalBytes),
-    totalBytes
-  })
+  const clearTrailing = () => {
+    if (trailing !== undefined) clearTimeout(trailing)
+    trailing = undefined
+  }
 
   const emit = () => {
-    if (!phase) return
-    const progress = snapshot()
+    clearTrailing()
     pending = false
+    if (!phase || closed) return
     lastEmitAt = now()
+    const progress = { phase, sentBytes: Math.min(sentBytes, totalBytes), totalBytes }
     if (
       last &&
       last.phase === progress.phase &&
@@ -163,8 +178,14 @@ export function createUploadProgressTracker(
   }
 
   const update = () => {
-    if (now() - lastEmitAt >= intervalMs) emit()
-    else pending = true
+    const elapsed = now() - lastEmitAt
+    if (elapsed >= intervalMs) return emit()
+    pending = true
+    // Trailing edge, so a stalled upload still reports its latest count.
+    if (trailing === undefined && !closed) {
+      trailing = setTimeout(emit, intervalMs - elapsed)
+      ;(trailing as { unref?: () => void }).unref?.()
+    }
   }
 
   const setPhase = (next: UploadPhase) => {
@@ -175,10 +196,17 @@ export function createUploadProgressTracker(
     emit()
   }
 
+  // `processing` only once every scheduled byte is sent and responses are pending.
   const refreshPhase = () => {
-    if (streaming > 0) setPhase('uploading')
-    else if (inFlight > 0) setPhase('processing')
-    else update()
+    if (inFlight === 0) return
+    const next = sentBytes >= totalBytes ? 'processing' : 'uploading'
+    if (next !== phase) setPhase(next)
+  }
+
+  const dropUnsent = () => {
+    totalBytes -= unstartedBytes + unsentBytes
+    unstartedBytes = 0
+    unsentBytes = 0
   }
 
   return {
@@ -188,6 +216,7 @@ export function createUploadProgressTracker(
     },
     plan(fileBytes) {
       if (phase === 'checking') totalBytes = 0
+      dropUnsent()
       totalBytes += fileBytes
       unstartedBytes += fileBytes
     },
@@ -196,18 +225,12 @@ export function createUploadProgressTracker(
       let isStreaming = streamingBody
       let ended = false
       unstartedBytes = Math.max(0, unstartedBytes - fileBytes)
-      if (isStreaming) streaming++
       inFlight++
       refreshPhase()
 
       const count = (bytes: number) => {
         sentBytes += bytes - counted
         counted = bytes
-      }
-      const stopStreaming = () => {
-        if (!isStreaming) return
-        isStreaming = false
-        streaming--
       }
 
       return {
@@ -216,38 +239,37 @@ export function createUploadProgressTracker(
           const done = streamedBytes >= bodyBytes
           count(done ? fileBytes : Math.floor((fileBytes * streamedBytes) / bodyBytes))
           update()
-          if (done) {
-            stopStreaming()
-            refreshPhase()
-          }
+          refreshPhase()
         },
         unstreamed() {
           if (ended) return
-          stopStreaming()
+          isStreaming = false
           refreshPhase()
         },
         delivered() {
           if (ended || isStreaming) return
           count(fileBytes)
           update()
+          refreshPhase()
         },
         end() {
           if (ended) return
           ended = true
-          stopStreaming()
           inFlight--
-          totalBytes -= fileBytes - counted
-          refreshPhase()
+          unsentBytes += fileBytes - counted
         }
       }
     },
-    settle() {
-      totalBytes -= unstartedBytes
-      unstartedBytes = 0
-      update()
-    },
-    flush() {
+    complete() {
+      dropUnsent()
       if (pending) emit()
+      phase = 'processing'
+      emit()
+      closed = true
+    },
+    close() {
+      clearTrailing()
+      closed = true
     }
   }
 }

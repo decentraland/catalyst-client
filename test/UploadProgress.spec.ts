@@ -17,6 +17,8 @@ type EntitiesReply = {
   error?: Error
   // Stops reading after this many chunks and fails like a dropped connection.
   failAfterChunks?: number
+  // Stops reading after this many chunks and waits for the request to be aborted.
+  hangAfterChunks?: number
 }
 
 type EntitiesCall = { url: string; init: any; received?: Uint8Array }
@@ -30,7 +32,20 @@ function makeDeployData(fileSizes: Record<string, number>): DeploymentData {
   return { entityId: ENTITY_ID, authChain: AUTH_CHAIN, files }
 }
 
-async function readStream(stream: ReadableStream<Uint8Array>, reply: EntitiesReply, onChunk: () => void) {
+function abortedBy(signal: AbortSignal): Promise<never> {
+  return new Promise((_, reject) => {
+    const fail = () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))
+    if (signal.aborted) fail()
+    else signal.addEventListener('abort', fail, { once: true })
+  })
+}
+
+async function readStream(
+  stream: ReadableStream<Uint8Array>,
+  reply: EntitiesReply,
+  onChunk: () => void,
+  signal: AbortSignal
+) {
   const reader = stream.getReader()
   const chunks: Uint8Array[] = []
   for (;;) {
@@ -41,6 +56,9 @@ async function readStream(stream: ReadableStream<Uint8Array>, reply: EntitiesRep
     if (reply.failAfterChunks !== undefined && chunks.length >= reply.failAfterChunks) {
       await reader.cancel()
       throw new Error('network failure')
+    }
+    if (reply.hangAfterChunks !== undefined && chunks.length >= reply.hangAfterChunks) {
+      await abortedBy(signal)
     }
   }
   return new Uint8Array(Buffer.concat(chunks))
@@ -103,7 +121,8 @@ describe('upload progress', () => {
         if (!reply) throw new Error('Unexpected extra POST /entities call')
         if (reply.error) throw reply.error
         if (init.body instanceof ReadableStream) {
-          call.received = await readStream(init.body, reply, () => onChunk())
+          const signal = init.abortController?.signal ?? init.signal
+          call.received = await readStream(init.body, reply, () => onChunk(), signal)
         } else if (reply.failAfterChunks !== undefined) {
           throw new Error('network failure')
         }
@@ -117,7 +136,7 @@ describe('upload progress', () => {
         }
       })
     }
-    client = createContentClient({ url: URL, fetcher })
+    client = createContentClient({ url: URL, fetcher, streamingUploads: true })
   })
 
   afterEach(() => {
@@ -224,6 +243,31 @@ describe('upload progress', () => {
     })
   })
 
+  describe('when deploying with a fetcher that did not opt in to streaming uploads', () => {
+    beforeEach(async () => {
+      client = createContentClient({ url: URL, fetcher })
+      replies = [{ status: 200 }]
+      await client.deploy(makeDeployData({ hashA: 1000 }), { onUploadProgress })
+    })
+
+    it('should send the plain FormData body', () => {
+      expect(calls[0].init.body).toBeInstanceOf(FormData)
+    })
+
+    it('should not send the duplex option', () => {
+      expect(calls[0].init).not.toHaveProperty('duplex')
+    })
+
+    it('should report the bytes per request', () => {
+      expect(events).toEqual([
+        { phase: 'checking', sentBytes: 0, totalBytes: 1003 },
+        { phase: 'uploading', sentBytes: 0, totalBytes: 1003 },
+        { phase: 'uploading', sentBytes: 1003, totalBytes: 1003 },
+        { phase: 'processing', sentBytes: 1003, totalBytes: 1003 }
+      ])
+    })
+  })
+
   describe('when deploying partially across several batches with concurrency', () => {
     beforeEach(async () => {
       replies = [{ status: 202 }, { status: 202 }, { status: 202 }, { status: 200, body: { creationTimestamp: 1 } }]
@@ -244,6 +288,36 @@ describe('upload progress', () => {
 
     it('should report monotonic sent bytes', () => {
       expect(isMonotonic(events)).toBe(true)
+    })
+
+    it('should only report processing once every scheduled byte is sent', () => {
+      expect(events.filter(({ phase, sentBytes }) => phase === 'processing' && sentBytes < 403)).toEqual([])
+    })
+  })
+
+  describe('when a sibling batch publishes while another streams and one never starts', () => {
+    const batchBytes = 600 * 1024
+    let result: unknown
+
+    beforeEach(async () => {
+      replies = [{ status: 202 }, { status: 202, hangAfterChunks: 1 }, { status: 200, body: { creationTimestamp: 7 } }]
+      result = await client.deployPartial(
+        makeDeployData({ hashA: batchBytes, hashB: batchBytes, hashC: batchBytes, hashD: batchBytes }),
+        { maxBatchSizeBytes: batchBytes, concurrency: 2, resumeDelay: 0, onUploadProgress }
+      )
+    })
+
+    it('should resolve with the published result', () => {
+      expect(result).toEqual({ creationTimestamp: 7 })
+    })
+
+    it('should end with processing and every counted byte sent', () => {
+      const last = events[events.length - 1]
+      expect(last).toEqual({ phase: 'processing', sentBytes: last.totalBytes, totalBytes: last.totalBytes })
+    })
+
+    it('should drop the bytes the cancelled and never-started batches did not send', () => {
+      expect(events[events.length - 1].totalBytes).toBeLessThan(3 + 3 * batchBytes)
     })
   })
 
@@ -266,17 +340,8 @@ describe('upload progress', () => {
       expect(events[events.length - 1]).toEqual({ phase: 'processing', sentBytes: 303, totalBytes: 303 })
     })
 
-    it('should go back to uploading for each request of the resume round', () => {
-      // Round 1 sends the entity batch, then hashB; round 2 re-sends hashA.
-      expect(phasesOf(events)).toEqual([
-        'checking',
-        'uploading',
-        'processing',
-        'uploading',
-        'processing',
-        'uploading',
-        'processing'
-      ])
+    it('should go back to uploading for the resume round', () => {
+      expect(phasesOf(events)).toEqual(['checking', 'uploading', 'processing', 'uploading', 'processing'])
     })
   })
 
@@ -284,6 +349,10 @@ describe('upload progress', () => {
     const fileBytes = ENTITY_FILE.byteLength + 600 * 1024
 
     beforeEach(async () => {
+      // Every slice lands in a new throttle window, so each one is reported.
+      let clock = 0
+      jest.spyOn(Date, 'now').mockImplementation(() => clock)
+      onChunk = () => (clock += uploadProgress.UPLOAD_PROGRESS_INTERVAL_MS)
       replies = [
         { status: 200, failAfterChunks: 1 },
         { status: 200, body: { creationTimestamp: 1 } }
@@ -299,13 +368,65 @@ describe('upload progress', () => {
       expect(events.every(({ sentBytes, totalBytes }) => sentBytes <= totalBytes)).toBe(true)
     })
 
-    it('should grow the total by the bytes the failed attempt sent and end at 100%', () => {
+    it('should grow the total by the bytes the failed attempt sent', () => {
+      const { totalBytes } = events[events.length - 1]
+      expect(totalBytes > fileBytes && totalBytes < 2 * fileBytes).toBe(true)
+    })
+
+    it('should end with every byte sent', () => {
       const last = events[events.length - 1]
-      expect([last.totalBytes > fileBytes, last.totalBytes < 2 * fileBytes, last.sentBytes]).toEqual([
-        true,
-        true,
-        last.totalBytes
-      ])
+      expect(last.sentBytes).toBe(last.totalBytes)
+    })
+
+    it('should drop the bytes the failed attempt never sent before retrying', () => {
+      expect(Math.max(...events.map(({ totalBytes }) => totalBytes))).toBe(events[events.length - 1].totalBytes)
+    })
+  })
+
+  describe('when a deploy fails mid-stream', () => {
+    const fileBytes = ENTITY_FILE.byteLength + 4 * UPLOAD_SLICE_BYTES
+    let error: unknown
+
+    beforeEach(async () => {
+      replies = [{ status: 200, failAfterChunks: 2 }]
+      error = await client
+        .deploy(makeDeployData({ hashA: 4 * UPLOAD_SLICE_BYTES }), { onUploadProgress })
+        .catch((e) => e)
+    })
+
+    it('should reject with the failure', () => {
+      expect((error as Error).message).toBe('network failure')
+    })
+
+    it('should keep the full total in the last event', () => {
+      expect(events[events.length - 1].totalBytes).toBe(fileBytes)
+    })
+
+    it('should not report every byte as sent', () => {
+      expect(events[events.length - 1].sentBytes).toBeLessThan(fileBytes)
+    })
+
+    it('should not report the processing phase', () => {
+      expect(events.some(({ phase }) => phase === 'processing')).toBe(false)
+    })
+  })
+
+  describe('when a partial deploy fails with a terminal error', () => {
+    let error: unknown
+
+    beforeEach(async () => {
+      replies = [{ status: 400, body: 'invalid' }]
+      error = await client
+        .deployPartial(makeDeployData({ hashA: 1000 }), { resumeDelay: 0, onUploadProgress })
+        .catch((e) => e)
+    })
+
+    it('should reject', () => {
+      expect(error).toBeInstanceOf(Error)
+    })
+
+    it('should not shrink the total after the failure', () => {
+      expect(events[events.length - 1].totalBytes).toBe(1003)
     })
   })
 
@@ -319,25 +440,74 @@ describe('upload progress', () => {
       slices = calls[0].received!.byteLength / UPLOAD_SLICE_BYTES
     })
 
-    it('should emit far fewer events than slices', () => {
-      expect([slices > 16, events.length]).toEqual([true, 4])
+    it('should stream more than 16 slices', () => {
+      expect(slices).toBeGreaterThan(16)
+    })
+
+    it('should emit only the phase changes and the final count', () => {
+      expect(events).toHaveLength(4)
     })
 
     it('should still emit every phase change', () => {
       expect(phasesOf(events)).toEqual(['checking', 'uploading', 'processing'])
+    })
+
+    it('should leave no timer behind', () => {
+      expect(jest.getTimerCount()).toBe(0)
     })
   })
 
   describe('when progress events are spaced beyond the throttle interval', () => {
     beforeEach(async () => {
       jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] })
-      onChunk = () => jest.advanceTimersByTime(uploadProgress.UPLOAD_PROGRESS_INTERVAL_MS)
+      onChunk = () => jest.setSystemTime(Date.now() + uploadProgress.UPLOAD_PROGRESS_INTERVAL_MS)
       replies = [{ status: 200 }]
       await client.deploy(makeDeployData({ hashA: 4 * UPLOAD_SLICE_BYTES }), { onUploadProgress })
     })
 
     it('should emit one uploading event per slice', () => {
       expect(events.filter(({ phase }) => phase === 'uploading')).toHaveLength(5)
+    })
+  })
+
+  describe('when the upload stalls inside a throttle window', () => {
+    let stalledEvent: UploadProgress | undefined
+
+    beforeEach(async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] })
+      let chunks = 0
+      onChunk = () => {
+        chunks++
+        if (chunks !== 2) return
+        jest.advanceTimersByTime(uploadProgress.UPLOAD_PROGRESS_INTERVAL_MS)
+        stalledEvent = events[events.length - 1]
+      }
+      replies = [{ status: 200 }]
+      await client.deploy(makeDeployData({ hashA: 4 * UPLOAD_SLICE_BYTES }), { onUploadProgress })
+    })
+
+    it('should emit the latest count at the end of the window', () => {
+      expect(stalledEvent).toEqual({
+        phase: 'uploading',
+        sentBytes: expect.any(Number),
+        totalBytes: 3 + 4 * UPLOAD_SLICE_BYTES
+      })
+    })
+
+    it('should report the bytes pulled within the window', () => {
+      expect(stalledEvent!.sentBytes).toBeGreaterThan(UPLOAD_SLICE_BYTES)
+    })
+  })
+
+  describe('when a deploy fails with a throttled event pending', () => {
+    beforeEach(async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] })
+      replies = [{ status: 200, failAfterChunks: 2 }]
+      await client.deploy(makeDeployData({ hashA: 4 * UPLOAD_SLICE_BYTES }), { onUploadProgress }).catch(() => {})
+    })
+
+    it('should leave no timer behind', () => {
+      expect(jest.getTimerCount()).toBe(0)
     })
   })
 
@@ -384,12 +554,20 @@ describe('upload progress', () => {
         .catch((e) => e)
     })
 
-    it('should reject without retrying', () => {
-      expect([error, calls.length]).toEqual([expect.objectContaining({ name: 'AbortError' }), 1])
+    it('should reject with the abort error', () => {
+      expect(error).toEqual(expect.objectContaining({ name: 'AbortError' }))
     })
 
-    it('should stop the stream through the per-request abort controller', () => {
-      expect([calls[0].init.abortController.signal.aborted, calls[0].received]).toEqual([true, undefined])
+    it('should not retry', () => {
+      expect(calls).toHaveLength(1)
+    })
+
+    it('should abort the per-request abort controller', () => {
+      expect(calls[0].init.abortController.signal.aborted).toBe(true)
+    })
+
+    it('should stop the stream', () => {
+      expect(calls[0].received).toBeUndefined()
     })
   })
 
@@ -428,15 +606,19 @@ describe('upload progress', () => {
       error = await client.deploy(makeDeployData({ hashA: 1000 }), { onUploadProgress }).catch((e) => e)
     })
 
-    it('should propagate the error without resending', () => {
-      expect([(error as Error).message, calls.length]).toEqual(['fetch failed', 1])
+    it('should propagate the error', () => {
+      expect((error as Error).message).toBe('fetch failed')
+    })
+
+    it('should not resend the request', () => {
+      expect(calls).toHaveLength(1)
     })
   })
 
   describe('when request bodies cannot be streamed', () => {
     beforeEach(async () => {
       jest.spyOn(uploadProgress, 'supportsStreamingUpload').mockReturnValue(false)
-      client = createContentClient({ url: URL, fetcher })
+      client = createContentClient({ url: URL, fetcher, streamingUploads: true })
       replies = [{ status: 200 }]
       await client.deploy(makeDeployData({ hashA: 1000 }), { onUploadProgress })
     })
@@ -445,10 +627,11 @@ describe('upload progress', () => {
       expect(calls[0].init.body).toBeInstanceOf(FormData)
     })
 
-    it('should report processing while waiting and count the bytes when the response arrives', () => {
+    it('should count the bytes when the response arrives', () => {
       expect(events).toEqual([
         { phase: 'checking', sentBytes: 0, totalBytes: 1003 },
-        { phase: 'processing', sentBytes: 0, totalBytes: 1003 },
+        { phase: 'uploading', sentBytes: 0, totalBytes: 1003 },
+        { phase: 'uploading', sentBytes: 1003, totalBytes: 1003 },
         { phase: 'processing', sentBytes: 1003, totalBytes: 1003 }
       ])
     })
@@ -478,7 +661,11 @@ describe('upload progress', () => {
       })
       await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
       const { port } = server.address() as AddressInfo
-      client = createContentClient({ url: `http://127.0.0.1:${port}`, fetcher: createFetchComponent() })
+      client = createContentClient({
+        url: `http://127.0.0.1:${port}`,
+        fetcher: createFetchComponent(),
+        streamingUploads: true
+      })
       deployData = makeDeployData({ hashA: 3 * UPLOAD_SLICE_BYTES })
       await client.deploy(deployData, { onUploadProgress })
       receivedForm = await describeForm(
@@ -489,6 +676,10 @@ describe('upload progress', () => {
 
     afterEach(async () => {
       await new Promise((resolve) => server.close(resolve))
+    })
+
+    it('should stream the body', () => {
+      expect(phasesOf(events)).toEqual(['checking', 'uploading', 'processing'])
     })
 
     it('should receive the exact content-length', () => {

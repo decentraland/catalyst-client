@@ -26,6 +26,7 @@ import {
   createUploadProgressTracker,
   isDuplexUnsupportedError,
   supportsStreamingUpload,
+  trackUpload,
   UploadProgressTracker,
   withBodyHeaders
 } from './utils/upload-progress'
@@ -173,7 +174,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
   const contentUrl = sanitizeUrl(options.url)
   const defaultParallelConfig = options?.parallelConfig
   // Off once the fetcher rejects a streamed body, so later uploads send the plain form.
-  let streamingUploads = supportsStreamingUpload()
+  let streamingUploads = !!options.streamingUploads && supportsStreamingUpload()
 
   async function fetchFromMultipleServersRace(
     urls: string[],
@@ -356,35 +357,41 @@ export function createContentClient(options: ClientOptions): ContentClient {
     options?: RequestOptions & UploadProgressOptions
   ): Promise<unknown> {
     const { onUploadProgress, ...requestOptions } = options ?? {}
-    const tracker = onUploadProgress && createUploadProgressTracker(onUploadProgress)
-    tracker?.checking(fileBytesOf(deployData, deployData.files.keys()))
-    const fileHashes = await hashesToDeploy(deployData, requestOptions)
-    const form = buildDeploymentForm(deployData, fileHashes, false)
-    if (!tracker) {
+    if (!onUploadProgress) {
+      const form = buildDeploymentForm(deployData, await hashesToDeploy(deployData, requestOptions), false)
       return postDeploymentForm(`${contentUrl}/entities`, form, requestOptions)
     }
 
-    const fileBytes = fileBytesOf(deployData, fileHashes)
-    tracker.plan(fileBytes)
-    const signal = requestOptions.signal ?? requestOptions.abortController?.signal
-    try {
-      return await postDeploymentForm(`${contentUrl}/entities`, form, requestOptions, { tracker, fileBytes, signal })
-    } finally {
-      tracker.settle()
-      tracker.flush()
-    }
+    const tracker = createUploadProgressTracker(onUploadProgress)
+    return trackUpload(tracker, async () => {
+      tracker.checking(fileBytesOf(deployData, deployData.files.keys()))
+      const fileHashes = await hashesToDeploy(deployData, requestOptions)
+      const form = buildDeploymentForm(deployData, fileHashes, false)
+      const fileBytes = fileBytesOf(deployData, fileHashes)
+      tracker.plan(fileBytes)
+      const signal = requestOptions.signal ?? requestOptions.abortController?.signal
+      return postDeploymentForm(`${contentUrl}/entities`, form, requestOptions, { tracker, fileBytes, signal })
+    })
   }
 
   async function deployPartial(
     deployData: DeploymentData,
     options?: RequestOptions & PartialDeploymentOptions
   ): Promise<PartialDeploymentResult> {
+    const tracker = options?.onUploadProgress && createUploadProgressTracker(options.onUploadProgress)
+    return trackUpload(tracker, () => uploadPartial(deployData, options, tracker))
+  }
+
+  async function uploadPartial(
+    deployData: DeploymentData,
+    options: (RequestOptions & PartialDeploymentOptions) | undefined,
+    tracker: UploadProgressTracker | undefined
+  ): Promise<PartialDeploymentResult> {
     const maxBatchSizeBytes = options?.maxBatchSizeBytes ?? DEFAULT_MAX_BATCH_SIZE_BYTES
     const concurrency = Math.max(1, options?.concurrency ?? 2)
     const maxResumeAttempts = options?.maxResumeAttempts ?? 3
     const resumeDelay = options?.resumeDelay ?? 1000
     const onProgress = options?.onProgress
-    const tracker = options?.onUploadProgress && createUploadProgressTracker(options.onUploadProgress)
 
     const entityId = deployData.entityId
     const allContentHashes = Array.from(deployData.files.keys()).filter((hash) => hash !== entityId)
@@ -632,14 +639,13 @@ export function createContentClient(options: ClientOptions): ContentClient {
         assertDeliverable(toSend)
         // Every round adds what it sends, so re-sent content grows the upload total.
         tracker?.plan(bytesOf(toSend) + (entityStaged ? 0 : sizeOf(entityId)))
-        const outcome = await runRound(toSend).finally(() => tracker?.settle())
+        const outcome = await runRound(toSend)
         if (outcome.kind === 'deployed') {
           // The publishing 200 carries no progress of its own, and siblings it cancelled were no longer needed.
           totalBatches = Math.max(totalBatches, completedBatches + 1)
           completedBatches = totalBatches
           uploadedBytes = totalBytes
           reportProgress()
-          tracker?.flush()
           return outcome.result
         }
         const next = missingUpdatedThisRound && latestMissing ? latestMissing : toSend
