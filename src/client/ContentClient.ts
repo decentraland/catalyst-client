@@ -363,15 +363,20 @@ export function createContentClient(options: ClientOptions): ContentClient {
     }
 
     const tracker = createUploadProgressTracker(onUploadProgress)
-    return trackUpload(tracker, async () => {
-      tracker.checking(fileBytesOf(deployData, deployData.files.keys()))
-      const fileHashes = await hashesToDeploy(deployData, requestOptions)
-      const form = buildDeploymentForm(deployData, fileHashes, false)
-      const fileBytes = fileBytesOf(deployData, fileHashes)
-      tracker.plan(fileBytes)
-      const signal = requestOptions.signal ?? requestOptions.abortController?.signal
-      return postDeploymentForm(`${contentUrl}/entities`, form, requestOptions, { tracker, fileBytes, signal })
-    })
+    return trackUpload(
+      tracker,
+      async () => {
+        tracker.checking(fileBytesOf(deployData, deployData.files.keys()))
+        const fileHashes = await hashesToDeploy(deployData, requestOptions)
+        const form = buildDeploymentForm(deployData, fileHashes, false)
+        const fileBytes = fileBytesOf(deployData, fileHashes)
+        tracker.plan(fileBytes)
+        const signal = requestOptions.signal ?? requestOptions.abortController?.signal
+        return postDeploymentForm(`${contentUrl}/entities`, form, requestOptions, { tracker, fileBytes, signal })
+      },
+      // An error response (e.g. an early 413) resolves too, but must not report the upload as complete.
+      (response) => (response as { ok?: boolean } | undefined)?.ok !== false
+    )
   }
 
   async function deployPartial(

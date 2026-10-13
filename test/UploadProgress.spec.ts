@@ -19,6 +19,8 @@ type EntitiesReply = {
   failAfterChunks?: number
   // Stops reading after this many chunks and waits for the request to be aborted.
   hangAfterChunks?: number
+  // Stops reading after this many chunks and answers right away, like an early 413.
+  respondAfterChunks?: number
 }
 
 type EntitiesCall = { url: string; init: any; received?: Uint8Array }
@@ -59,6 +61,10 @@ async function readStream(
     }
     if (reply.hangAfterChunks !== undefined && chunks.length >= reply.hangAfterChunks) {
       await abortedBy(signal)
+    }
+    if (reply.respondAfterChunks !== undefined && chunks.length >= reply.respondAfterChunks) {
+      await reader.cancel()
+      break
     }
   }
   return new Uint8Array(Buffer.concat(chunks))
@@ -400,6 +406,30 @@ describe('upload progress', () => {
 
     it('should keep the full total in the last event', () => {
       expect(events[events.length - 1].totalBytes).toBe(fileBytes)
+    })
+
+    it('should not report every byte as sent', () => {
+      expect(events[events.length - 1].sentBytes).toBeLessThan(fileBytes)
+    })
+
+    it('should not report the processing phase', () => {
+      expect(events.some(({ phase }) => phase === 'processing')).toBe(false)
+    })
+  })
+
+  describe('when the server rejects a deploy before reading the whole body', () => {
+    const fileBytes = ENTITY_FILE.byteLength + 4 * UPLOAD_SLICE_BYTES
+    let response: { status: number }
+
+    beforeEach(async () => {
+      replies = [{ status: 413, respondAfterChunks: 2 }]
+      response = (await client.deploy(makeDeployData({ hashA: 4 * UPLOAD_SLICE_BYTES }), {
+        onUploadProgress
+      })) as { status: number }
+    })
+
+    it('should resolve with the error response', () => {
+      expect(response.status).toBe(413)
     })
 
     it('should not report every byte as sent', () => {

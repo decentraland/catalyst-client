@@ -123,11 +123,19 @@ export type UploadProgressTracker = {
   close(): void
 }
 
-/** Runs `upload`, completing the tracker when it resolves and closing it silently when it rejects. */
-export async function trackUpload<T>(tracker: UploadProgressTracker | undefined, upload: () => Promise<T>): Promise<T> {
+/**
+ * Runs `upload`, completing the tracker when it succeeds and closing it silently when it rejects or
+ * `succeeded` rejects its result (e.g. an error response the caller still receives).
+ */
+export async function trackUpload<T>(
+  tracker: UploadProgressTracker | undefined,
+  upload: () => Promise<T>,
+  succeeded: (result: T) => boolean = () => true
+): Promise<T> {
   try {
     const result = await upload()
-    tracker?.complete()
+    if (succeeded(result)) tracker?.complete()
+    else tracker?.close()
     return result
   } catch (error) {
     tracker?.close()
