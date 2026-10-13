@@ -9,6 +9,7 @@ import {
   PartialDeploymentOptions,
   PartialDeploymentResult,
   RequestOptions,
+  UploadProgress,
   UploadProgressOptions
 } from './types'
 import { addModelToFormData, mergeRequestOptions, sanitizeUrl, splitAndFetch } from './utils/Helper'
@@ -202,6 +203,16 @@ export async function downloadContent(
 export function createContentClient(options: ClientOptions): ContentClient {
   const { fetcher, logger } = options
 
+  // A throwing progress callback must not fail a deployment or, from the throttle timer, crash the process.
+  function guardProgress(onUploadProgress: (progress: UploadProgress) => void): (progress: UploadProgress) => void {
+    return (progress) => {
+      try {
+        onUploadProgress(progress)
+      } catch (error) {
+        logger?.warn('The onUploadProgress callback threw:', error)
+      }
+    }
+  }
   const contentUrl = sanitizeUrl(options.url)
   const defaultParallelConfig = options?.parallelConfig
   // Off once the fetcher rejects a streamed body, so later uploads send the plain form.
@@ -393,7 +404,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
       return postDeploymentForm(`${contentUrl}/entities`, form, requestOptions)
     }
 
-    const tracker = createUploadProgressTracker(onUploadProgress)
+    const tracker = createUploadProgressTracker(guardProgress(onUploadProgress))
     return trackUpload(
       tracker,
       async () => {
@@ -414,7 +425,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
     deployData: DeploymentData,
     options?: RequestOptions & PartialDeploymentOptions
   ): Promise<PartialDeploymentResult> {
-    const tracker = options?.onUploadProgress && createUploadProgressTracker(options.onUploadProgress)
+    const tracker = options?.onUploadProgress && createUploadProgressTracker(guardProgress(options.onUploadProgress))
     return trackUpload(tracker, () => uploadPartial(deployData, options, tracker))
   }
 

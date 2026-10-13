@@ -49,7 +49,9 @@ Notes:
   Re-sent content (retries, the server's missing list) grows `totalBytes`.
 - By default a request's bytes count when its response arrives. For live progress, create the client with
   `streamingUploads: true`: on Node the body is then streamed with an exact `Content-Length`, at the cost of
-  one encoded copy of each request in memory. Only set it when the fetcher passes the body to the global
+  memory: each request in flight holds its form plus an encoded copy of it, about twice the batch size, so
+  `deployPartial` with the default `concurrency` (2) and 100 MiB batches holds up to ~400 MiB on top of the
+  scene's files. Only set it when the fetcher passes the body to the global
   (undici) `fetch`, forwards the `duplex` option and headers unchanged, and never retries a POST with the
   same options (the stream can only be read once). `@dcl/fetch-component` qualifies; node-fetch does not.
 - The target server must support partial deployments. Against an older server that does not, a

@@ -167,6 +167,7 @@ export type ClientOptions = {
    * - forwards the `duplex: 'half'` option and the `content-length` header unchanged;
    * - never retries a POST with the same options, since the stream can only be read once.
    * `@dcl/fetch-component` meets this. node-fetch does not (it would send the stream as a string).
+   * Each request in flight then also holds an encoded copy of its body, about the batch size.
    */
   streamingUploads?: boolean
 }

@@ -541,6 +541,85 @@ describe('upload progress', () => {
     })
   })
 
+  describe('when the onUploadProgress callback throws during a deploy', () => {
+    let warn: jest.Mock
+    let result: unknown
+
+    beforeEach(async () => {
+      warn = jest.fn()
+      client = createContentClient({
+        url: URL,
+        fetcher,
+        streamingUploads: true,
+        logger: { log: jest.fn(), debug: jest.fn(), info: jest.fn(), warn, error: jest.fn() }
+      })
+      replies = [{ status: 200, body: { creationTimestamp: 1 } }]
+      result = await client.deploy(makeDeployData({ hashA: 4 * UPLOAD_SLICE_BYTES }), {
+        onUploadProgress: () => {
+          throw new Error('callback failure')
+        }
+      })
+    })
+
+    it('should resolve with the response', () => {
+      expect(result).toEqual(expect.objectContaining({ status: 200 }))
+    })
+
+    it('should send the whole body', () => {
+      expect(calls).toHaveLength(1)
+    })
+
+    it('should log the callback error', () => {
+      expect(warn).toHaveBeenCalledWith('The onUploadProgress callback threw:', expect.any(Error))
+    })
+  })
+
+  describe('when the onUploadProgress callback throws from the trailing throttle timer', () => {
+    let result: unknown
+
+    beforeEach(async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] })
+      let chunks = 0
+      onChunk = () => {
+        chunks++
+        if (chunks === 2) jest.advanceTimersByTime(uploadProgress.UPLOAD_PROGRESS_INTERVAL_MS)
+      }
+      replies = [{ status: 200, body: { creationTimestamp: 1 } }]
+      result = await client.deploy(makeDeployData({ hashA: 4 * UPLOAD_SLICE_BYTES }), {
+        onUploadProgress: (progress) => {
+          if (progress.phase === 'uploading') throw new Error('callback failure')
+        }
+      })
+    })
+
+    it('should resolve with the response', () => {
+      expect(result).toEqual(expect.objectContaining({ status: 200 }))
+    })
+  })
+
+  describe('when the onUploadProgress callback throws during a partial deploy', () => {
+    let result: unknown
+
+    beforeEach(async () => {
+      replies = [{ status: 202 }, { status: 200, body: { creationTimestamp: 1 } }]
+      result = await client.deployPartial(makeDeployData({ hashA: 100, hashB: 100 }), {
+        maxBatchSizeBytes: 100,
+        concurrency: 1,
+        onUploadProgress: () => {
+          throw new Error('callback failure')
+        }
+      })
+    })
+
+    it('should resolve with the published result', () => {
+      expect(result).toEqual({ creationTimestamp: 1 })
+    })
+
+    it('should send every batch once', () => {
+      expect(calls).toHaveLength(2)
+    })
+  })
+
   describe('when the caller aborts a deploy mid-stream', () => {
     let controller: AbortController
     let error: unknown

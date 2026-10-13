@@ -11,7 +11,10 @@ export function supportsStreamingUpload(): boolean {
   return typeof process !== 'undefined' && !!process.versions?.node
 }
 
-/** Whether `error` is the rejection of a fetcher that dropped the `duplex` option of a streamed body. */
+/**
+ * Whether `error` is the rejection of a fetcher that dropped the `duplex` option of a streamed body.
+ * Targets undici's "TypeError: RequestInit: duplex option is required when sending a body."
+ */
 export function isDuplexUnsupportedError(error: unknown): boolean {
   return error instanceof TypeError && /duplex/i.test(error.message)
 }
