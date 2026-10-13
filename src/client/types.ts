@@ -136,7 +136,8 @@ export type PartialDeploymentOptions = UploadProgressOptions & {
   concurrency?: number
   /**
    * Retries after retryable failures (408, 409, 429, 5xx, network), and rounds allowed without progress
-   * when the server keeps reporting the same content missing. Default 3.
+   * when the server keeps reporting content missing. Both budgets reset whenever the server's missing
+   * list shrinks below its lowest count so far. Default 3.
    */
   maxResumeAttempts?: number
   /** Base retry delay in ms, doubled on each retry (exponential backoff), never below `Retry-After`. Default 1000. */

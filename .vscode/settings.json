@@ -14,8 +14,8 @@
     120
   ],
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit",
-    "source.organizeImports": "explicit"
+    "source.fixAll.eslint": true,
+    "source.organizeImports": true
   },
   "eslint.validate": [
     "typescript"

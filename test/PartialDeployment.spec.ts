@@ -355,6 +355,8 @@ describe('deployPartial', () => {
         name: (caughtError as Error).name,
         message: (caughtError as Error).message,
         retryAfterMs: (caughtError as PartialDeploymentRetryLaterError).retryAfterMs,
+        status: (caughtError as PartialDeploymentRetryLaterError).status,
+        responseBody: (caughtError as PartialDeploymentRetryLaterError).responseBody,
         requestsSent,
         waited: elapsedMs >= 1000
       }).toEqual({
@@ -362,6 +364,8 @@ describe('deployPartial', () => {
         message:
           'Server responded with status 429: Too many partial uploads in progress for this account (max 10). Retry in 3600 s.',
         retryAfterMs: 3_600_000,
+        status: 429,
+        responseBody: 'Too many partial uploads in progress for this account (max 10).',
         requestsSent: 1,
         waited: false
       })
@@ -758,6 +762,353 @@ describe('deployPartial', () => {
 
     it("should return the winner's real server timestamp, not a fabricated one", () => {
       expect(result).toEqual({ creationTimestamp: 42 })
+    })
+  })
+
+  describe('when a 429 carries a Retry-After HTTP date', () => {
+    let elapsedMs: number
+
+    beforeEach(async () => {
+      deployData = makeDeployData({ hashA: 100 })
+      // HTTP dates have second resolution, so the effective wait lands between 1 and 2 seconds.
+      entitiesResponses = [
+        {
+          status: 429,
+          text: 'Entity rate limited',
+          headers: { 'retry-after': new Date(Date.now() + 2000).toUTCString() }
+        },
+        { status: 200, body: { creationTimestamp: 24 } }
+      ]
+      const startedAt = Date.now()
+
+      await client.deployPartial(deployData, { resumeDelay: 0 })
+      elapsedMs = Date.now() - startedAt
+    })
+
+    it('should wait until the Retry-After date before retrying', () => {
+      expect(elapsedMs).toBeGreaterThanOrEqual(900)
+    })
+  })
+
+  describe('when retryable failures exhaust the retry budget', () => {
+    let caughtError: unknown
+
+    beforeEach(async () => {
+      deployData = makeDeployData({ hashA: 100 })
+      entitiesResponses = [
+        { status: 503, text: 'unavailable' },
+        { status: 503, text: 'unavailable' },
+        { status: 503, text: 'still unavailable' }
+      ]
+
+      caughtError = await client
+        .deployPartial(deployData, { maxResumeAttempts: 2, resumeDelay: 0 })
+        .catch((error) => error)
+    })
+
+    it('should reject with a DeploymentError carrying the last status and body after every attempt', () => {
+      expect({
+        isDeploymentError: caughtError instanceof DeploymentError,
+        message: (caughtError as Error).message,
+        status: (caughtError as DeploymentError).status,
+        responseBody: (caughtError as DeploymentError).responseBody,
+        calls: entitiesCalls.length
+      }).toEqual({
+        isDeploymentError: true,
+        message: expect.stringMatching(/failed after 3 attempt\(s\)/),
+        status: 503,
+        responseBody: 'still unavailable',
+        calls: 3
+      })
+    })
+  })
+
+  describe('when retryable failures are interleaved with progress', () => {
+    let result: { creationTimestamp: number }
+
+    beforeEach(async () => {
+      // One file per batch (largest first); each round stages a batch, then the next request fails.
+      deployData = makeDeployData({ hashC: 90, hashB: 80, hashA: 70 })
+      entitiesResponses = [
+        { status: 202, body: { missing: ['hashA', 'hashB'] } },
+        { status: 503, text: 'unavailable' },
+        { status: 202, body: { missing: ['hashA'] } },
+        { status: 503, text: 'unavailable' },
+        { status: 200, body: { creationTimestamp: 9 } }
+      ]
+
+      result = await client.deployPartial(deployData, {
+        maxBatchSizeBytes: 100,
+        concurrency: 1,
+        maxResumeAttempts: 1,
+        resumeDelay: 0
+      })
+    })
+
+    it('should refill the retry budget after each round that shrinks the missing list', () => {
+      expect(result).toEqual({ creationTimestamp: 9 })
+    })
+  })
+
+  describe('when a 202 carries no missing list', () => {
+    let result: { creationTimestamp: number }
+
+    beforeEach(async () => {
+      deployData = makeDeployData({ hashA: 50 })
+      entitiesResponses = [
+        { status: 202, body: {} },
+        { status: 200, body: { creationTimestamp: 13 } }
+      ]
+
+      result = await client.deployPartial(deployData, { resumeDelay: 0 })
+    })
+
+    it('should resolve with the creationTimestamp of the follow-up request', () => {
+      expect(result).toEqual({ creationTimestamp: 13 })
+    })
+
+    it('should re-send what it sent without the already staged entity file', () => {
+      expect({ hashA: entitiesCalls[1].has('hashA'), entity: entityFileIncluded(entitiesCalls[1]) }).toEqual({
+        hashA: true,
+        entity: false
+      })
+    })
+  })
+
+  describe('when the missing list oscillates without reaching a new low', () => {
+    let caughtError: unknown
+
+    beforeEach(async () => {
+      deployData = makeDeployData({ hashA: 10, hashB: 10, hashC: 10, hashD: 10 })
+      entitiesResponses = [{ status: 202, body: { missing: ['hashA', 'hashB'] } }]
+      for (let i = 0; i < 10; i++) {
+        entitiesResponses.push({ status: 202, body: { missing: ['hashA'] } })
+        entitiesResponses.push({ status: 202, body: { missing: ['hashA', 'hashB'] } })
+      }
+
+      caughtError = await client
+        .deployPartial(deployData, { maxResumeAttempts: 2, resumeDelay: 0 })
+        .catch((error) => error)
+    })
+
+    it('should reject with a terminal DeploymentError explaining the upload did not finalize', () => {
+      expect({
+        isDeploymentError: caughtError instanceof DeploymentError,
+        message: (caughtError as Error).message
+      }).toEqual({
+        isDeploymentError: true,
+        message: expect.stringMatching(/did not finalize/)
+      })
+    })
+
+    it('should stop once the rounds without a new low exceed the allowed attempts', () => {
+      expect(entitiesCalls).toHaveLength(5)
+    })
+  })
+
+  describe('when the options are invalid', () => {
+    describe.each([
+      ['concurrency', { concurrency: NaN }],
+      ['concurrency', { concurrency: 0 }],
+      ['concurrency', { concurrency: 1.5 }],
+      ['maxBatchSizeBytes', { maxBatchSizeBytes: 0 }],
+      ['maxBatchSizeBytes', { maxBatchSizeBytes: NaN }],
+      ['maxResumeAttempts', { maxResumeAttempts: -1 }],
+      ['resumeDelay', { resumeDelay: -1 }]
+    ])('and %s is %o', (name, invalidOptions) => {
+      let caughtError: unknown
+
+      beforeEach(async () => {
+        deployData = makeDeployData({ hashA: 100 })
+        caughtError = await client.deployPartial(deployData, invalidOptions).catch((error) => error)
+      })
+
+      it('should reject with a RangeError naming the option', () => {
+        expect({
+          isRangeError: caughtError instanceof RangeError,
+          message: (caughtError as Error).message
+        }).toEqual({
+          isRangeError: true,
+          message: expect.stringContaining(`options.${name}`)
+        })
+      })
+
+      it('should not perform any request', () => {
+        expect(fetcher.fetch).not.toHaveBeenCalled()
+      })
+    })
+  })
+
+  describe('when the onProgress callback throws', () => {
+    let result: { creationTimestamp: number }
+
+    beforeEach(async () => {
+      deployData = makeDeployData({ hashA: 80, hashB: 80 })
+      entitiesResponses = [
+        { status: 202, body: { missing: ['hashB'] } },
+        { status: 200, body: { creationTimestamp: 14 } }
+      ]
+
+      result = await client.deployPartial(deployData, {
+        maxBatchSizeBytes: 100,
+        concurrency: 1,
+        onProgress: () => {
+          throw new Error('broken progress bar')
+        }
+      })
+    })
+
+    it('should still resolve with the creationTimestamp', () => {
+      expect(result).toEqual({ creationTimestamp: 14 })
+    })
+  })
+
+  describe('when the caller aborts during the backoff before a retry', () => {
+    let caughtError: unknown
+    let elapsedMs: number
+
+    beforeEach(async () => {
+      const controller = new AbortController()
+      deployData = makeDeployData({ hashA: 100 })
+      entitiesResponses = [{ status: 503, text: 'unavailable' }]
+      const originalFetch = fetcher.fetch as jest.Mock
+      ;(fetcher.fetch as jest.Mock) = jest.fn(async (url: string, init?: any) => {
+        if (!url.includes('/available-content')) {
+          setTimeout(() => controller.abort(), 20)
+        }
+        return originalFetch(url, init)
+      })
+      const startedAt = Date.now()
+
+      caughtError = await client
+        .deployPartial(deployData, { signal: controller.signal, resumeDelay: 10_000 })
+        .catch((error) => error)
+      elapsedMs = Date.now() - startedAt
+    })
+
+    it('should reject as aborted without waiting out the backoff or retrying', () => {
+      expect({
+        message: (caughtError as Error).message,
+        waitedOutBackoff: elapsedMs >= 1000,
+        calls: entitiesCalls.length
+      }).toEqual({
+        message: expect.stringMatching(/aborted/),
+        waitedOutBackoff: false,
+        calls: 1
+      })
+    })
+  })
+
+  describe('when the caller aborts while the available content is being queried', () => {
+    let caughtError: unknown
+
+    beforeEach(async () => {
+      const controller = new AbortController()
+      deployData = makeDeployData({ hashA: 100 })
+      ;(fetcher.fetch as jest.Mock) = jest.fn(
+        (_url: string, init?: any) =>
+          new Promise((_resolve, reject) => {
+            // Like @dcl/fetch-component: only the abortController option can cancel the request.
+            init?.abortController?.signal?.addEventListener('abort', () => reject(new Error('Request aborted')))
+          })
+      )
+      setTimeout(() => controller.abort(), 20)
+
+      caughtError = await client.deployPartial(deployData, { signal: controller.signal }).catch((error) => error)
+    })
+
+    it('should cancel the query and reject as aborted', () => {
+      expect((caughtError as Error).message).toMatch(/aborted by the caller/)
+    })
+  })
+
+  // Content-routed fetchers for parallel workers, whose request order is not deterministic.
+  describe('when parallel workers race against a sibling failure', () => {
+    let routedClient: ContentClient
+    let routedCalls: string[]
+    let route: (form: FormData, signal?: AbortSignal) => Promise<any>
+
+    const response = (status: number, body: any = {}, json?: () => Promise<any>) => ({
+      ok: status >= 200 && status < 300,
+      status,
+      json: json ?? (async () => body),
+      text: async () => (typeof body === 'string' ? body : ''),
+      arrayBuffer: async () => new ArrayBuffer(0)
+    })
+    const rejectOnAbort = (signal?: AbortSignal) =>
+      new Promise<never>((_resolve, reject) => {
+        if (signal?.aborted) return reject(new Error('AbortError'))
+        signal?.addEventListener('abort', () => reject(new Error('AbortError')))
+      })
+
+    beforeEach(() => {
+      routedCalls = []
+      const files = new Map<string, Uint8Array>()
+      files.set(entityId, new Uint8Array([1, 2, 3]))
+      files.set('hashBig', new Uint8Array(240))
+      files.set('hashFirst', new Uint8Array(230))
+      files.set('hashSecond', new Uint8Array(220))
+      deployData = { entityId, authChain: [], files }
+      const routedFetcher: IFetchComponent = {
+        fetch: jest.fn(async (url: string, init?: any) => {
+          if (url.includes('/available-content')) {
+            return response(200, [])
+          }
+          const form = init.body as FormData
+          routedCalls.push(['hashBig', 'hashFirst', 'hashSecond'].find((hash) => form.has(hash)) ?? 'none')
+          if (form.has('hashBig')) {
+            return response(202, { missing: ['hashFirst', 'hashSecond'] })
+          }
+          return route(form, init.abortController?.signal)
+        })
+      }
+      routedClient = createContentClient({ url: URL, fetcher: routedFetcher })
+    })
+
+    describe('and a worker gets a 400 while its sibling is still uploading', () => {
+      let caughtError: unknown
+
+      beforeEach(async () => {
+        route = async (form, signal) => (form.has('hashSecond') ? response(400, 'bad file') : rejectOnAbort(signal))
+
+        caughtError = await routedClient
+          .deployPartial(deployData, { maxBatchSizeBytes: 250, concurrency: 2, resumeDelay: 0 })
+          .catch((error) => error)
+      })
+
+      it('should reject with the terminal validation error without sending anything else', () => {
+        expect({
+          isValidationError: caughtError instanceof PartialDeploymentValidationError,
+          status: (caughtError as PartialDeploymentValidationError).status,
+          calls: routedCalls
+        }).toEqual({
+          isValidationError: true,
+          status: 400,
+          calls: ['hashBig', 'hashFirst', 'hashSecond']
+        })
+      })
+    })
+
+    describe('and a worker gets a 200 but its body read is aborted by a sibling 400', () => {
+      let result: unknown
+
+      beforeEach(async () => {
+        route = async (form, signal) => {
+          if (form.has('hashFirst')) {
+            return response(200, undefined, () => rejectOnAbort(signal))
+          }
+          await new Promise((resolve) => setTimeout(resolve, 10))
+          return response(400, 'bad file')
+        }
+
+        result = await routedClient
+          .deployPartial(deployData, { maxBatchSizeBytes: 250, concurrency: 2, resumeDelay: 0 })
+          .catch((error) => error)
+      })
+
+      it('should resolve as published instead of reporting the sibling failure', () => {
+        expect(result).toEqual({ creationTimestamp: expect.any(Number) })
+      })
     })
   })
 })
