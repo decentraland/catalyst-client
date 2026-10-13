@@ -36,7 +36,12 @@ export class PartialDeploymentNotSupportedError extends DeploymentError {
  * its attempts inside it.
  */
 export class RetryablePartialDeploymentError extends Error {
-  constructor(message: string, public readonly retryAfterMs?: number) {
+  constructor(
+    message: string,
+    public readonly retryAfterMs?: number,
+    public readonly status?: number,
+    public readonly responseBody?: string
+  ) {
     super(message)
     this.name = 'RetryablePartialDeploymentError'
   }

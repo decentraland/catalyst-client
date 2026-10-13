@@ -21,8 +21,38 @@ import {
 } from './utils/errors'
 import { retry } from './utils/retry'
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+// Resolves after `ms`, or early once `signal` aborts.
+function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal?.aborted) return resolve()
+    const done = () => {
+      clearTimeout(timer)
+      signal?.removeEventListener('abort', done)
+      resolve()
+    }
+    const timer = setTimeout(done, ms)
+    signal?.addEventListener('abort', done, { once: true })
+  })
+}
+
+// The default @dcl/fetch-component honors `abortController` but overwrites `signal`, so requests get
+// a per-request controller linked to `signal`. Call `dispose` once the request settles.
+function linkAbortController(signal?: AbortSignal): { abortController: AbortController; dispose: () => void } {
+  const abortController = new AbortController()
+  const onAbort = () => abortController.abort()
+  if (signal?.aborted) abortController.abort()
+  else signal?.addEventListener('abort', onAbort, { once: true })
+  return { abortController, dispose: () => signal?.removeEventListener('abort', onAbort) }
+}
+
+function assertOption(name: string, value: number, min: number): void {
+  if (!Number.isInteger(value) || value < min) {
+    throw new RangeError(`options.${name} must be an integer >= ${min}, got ${value}.`)
+  }
+}
+
+function abortedByCaller(): Error {
+  return new Error('The partial deployment was aborted by the caller.')
 }
 
 // Ceiling for the exponential resume backoff, so a caller-tuned maxResumeAttempts can't grow
@@ -307,10 +337,16 @@ export function createContentClient(options: ClientOptions): ContentClient {
     options?: RequestOptions & PartialDeploymentOptions
   ): Promise<PartialDeploymentResult> {
     const maxBatchSizeBytes = options?.maxBatchSizeBytes ?? DEFAULT_MAX_BATCH_SIZE_BYTES
-    const concurrency = Math.max(1, options?.concurrency ?? 2)
+    const concurrency = options?.concurrency ?? 2
     const maxResumeAttempts = options?.maxResumeAttempts ?? 3
     const resumeDelay = options?.resumeDelay ?? 1000
     const onProgress = options?.onProgress
+    assertOption('maxBatchSizeBytes', maxBatchSizeBytes, 1)
+    assertOption('concurrency', concurrency, 1)
+    assertOption('maxResumeAttempts', maxResumeAttempts, 0)
+    if (!Number.isFinite(resumeDelay) || resumeDelay < 0) {
+      throw new RangeError(`options.resumeDelay must be a finite number >= 0, got ${resumeDelay}.`)
+    }
 
     const entityId = deployData.entityId
     const allContentHashes = Array.from(deployData.files.keys()).filter((hash) => hash !== entityId)
@@ -358,35 +394,31 @@ export function createContentClient(options: ClientOptions): ContentClient {
       for (const hash of hashes) total += sizeOf(hash)
       return total
     }
-    const reportProgress = () => onProgress?.({ uploadedBytes, totalBytes, completedBatches, totalBatches })
+    const reportProgress = () => {
+      try {
+        onProgress?.({ uploadedBytes, totalBytes, completedBatches, totalBatches })
+      } catch (error) {
+        // A faulty progress callback must not break the deployment.
+        logger?.warn('The partial deployment onProgress callback threw:', error)
+      }
+    }
 
     // Sends one request. Throws a terminal DeploymentError for a non-retryable 4xx, and a
     // RetryablePartialDeploymentError for 408, 409, 429 and 5xx; network errors propagate as-is.
     const sendRequest = async (fileHashes: string[], signal?: AbortSignal): Promise<BatchOutcome> => {
       const form = buildDeploymentForm(deployData, fileHashes, true)
-      // The default @dcl/fetch-component honors `abortController` but overwrites `signal`, so link a
-      // per-request controller to the session signal.
-      const abortController = new AbortController()
-      const onAbort = () => abortController.abort()
-      if (signal) {
-        if (signal.aborted) abortController.abort()
-        else signal.addEventListener('abort', onAbort, { once: true })
-      }
+      const { abortController, dispose } = linkAbortController(signal)
       try {
         const requestOptions = mergeRequestOptions(requestBase, { body: form as any, method: 'POST', abortController })
         // The query flag lets the server tell a batch from a regular deployment before reading the body.
         const response: FetchResponse = await fetcher.fetch(`${contentUrl}/entities?partial=true`, requestOptions)
         if (response.status === 200) {
+          // The server published: an unreadable or aborted body read still means success.
           let result: PartialDeploymentResult
           try {
             result = (await response.json()) as PartialDeploymentResult
-          } catch (error) {
-            // A cancelled read (a sibling won, or the caller aborted) must not be mistaken for success.
-            if (signal?.aborted) {
-              throw error
-            }
-            // The server did publish; an unparseable body must not trigger a retry storm.
-            result = { creationTimestamp: Date.now() } as PartialDeploymentResult
+          } catch {
+            result = { creationTimestamp: Date.now() }
           }
           return { kind: 'deployed', result }
         }
@@ -431,12 +463,14 @@ export function createContentClient(options: ClientOptions): ContentClient {
           const retryAfterMs = parseRetryAfterMs(response.headers?.get('retry-after') ?? undefined)
           throw new RetryablePartialDeploymentError(
             `Server responded with status ${response.status}: ${body}`,
-            retryAfterMs
+            retryAfterMs,
+            response.status,
+            body
           )
         }
         throw classify4xx(response.status, body)
       } finally {
-        if (signal) signal.removeEventListener('abort', onAbort)
+        dispose()
       }
     }
 
@@ -458,7 +492,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
     // the rest go through a bounded worker pool. First 200 wins; a terminal error aborts the rest.
     const runRound = async (hashes: string[]): Promise<BatchOutcome> => {
       if (callerSignal?.aborted) {
-        throw new Error('The partial deployment was aborted by the caller.')
+        throw abortedByCaller()
       }
       missingUpdatedThisRound = false
       const files = new Map<string, Uint8Array>()
@@ -496,7 +530,8 @@ export function createContentClient(options: ClientOptions): ContentClient {
           try {
             const outcome = await sendRequest(remaining[index].hashes, roundSignal)
             if (outcome.kind === 'deployed') {
-              deployed = outcome.result
+              // The first 200 wins; a sibling's body read cut short by the abort keeps it.
+              deployed ??= outcome.result
               controller.abort()
               return
             }
@@ -542,19 +577,40 @@ export function createContentClient(options: ClientOptions): ContentClient {
     }
 
     if (callerSignal?.aborted) {
-      throw new Error('The partial deployment was aborted by the caller.')
+      throw abortedByCaller()
     }
     // /available-content only plans the first round; afterwards the server's `missing` list drives uploads.
-    const alreadyOnServer =
-      allContentHashes.length > 0
-        ? await hashesAlreadyOnServer(allContentHashes, { ...requestBase, signal: callerSignal })
-        : new Set<string>()
+    let alreadyOnServer = new Set<string>()
+    if (allContentHashes.length > 0) {
+      const { abortController, dispose } = linkAbortController(callerSignal)
+      try {
+        alreadyOnServer = await hashesAlreadyOnServer(allContentHashes, { ...requestBase, abortController })
+      } catch (error) {
+        throw callerSignal?.aborted ? abortedByCaller() : error
+      } finally {
+        dispose()
+      }
+      if (callerSignal?.aborted) {
+        throw abortedByCaller()
+      }
+    }
     let toSend = allContentHashes.filter((hash) => !alreadyOnServer.has(hash))
     uploadedBytes = totalBytes - bytesOf(toSend)
 
     let failures = 0
     let stalledRounds = 0
     let lastError: unknown
+    // Progress means a new low in the server's missing count, so an oscillating list can't loop forever.
+    let fewestMissing = toSend.length
+    const madeProgress = (): boolean => {
+      if (!missingUpdatedThisRound || !latestMissing || latestMissing.length >= fewestMissing) {
+        return false
+      }
+      fewestMissing = latestMissing.length
+      failures = 0
+      stalledRounds = 0
+      return true
+    }
     for (;;) {
       try {
         assertDeliverable(toSend)
@@ -568,7 +624,9 @@ export function createContentClient(options: ClientOptions): ContentClient {
           return outcome.result
         }
         const next = missingUpdatedThisRound && latestMissing ? latestMissing : toSend
-        stalledRounds = missingUpdatedThisRound && next.length < toSend.length ? 0 : stalledRounds + 1
+        if (!madeProgress()) {
+          stalledRounds++
+        }
         if (stalledRounds > maxResumeAttempts) {
           throw new DeploymentError(
             `The partial deployment did not finalize: the server still reports ${next.length} missing file(s) after ` +
@@ -585,6 +643,8 @@ export function createContentClient(options: ClientOptions): ContentClient {
           throw error
         }
         lastError = error
+        // Batches staged before the failure count as progress and refill the retry budget.
+        madeProgress()
         if (failures >= maxResumeAttempts) {
           break
         }
@@ -595,22 +655,30 @@ export function createContentClient(options: ClientOptions): ContentClient {
         if (retryAfterMs > maxBackoffMs) {
           throw new PartialDeploymentRetryLaterError(
             `${error instanceof Error ? error.message : String(error)} Retry in ${Math.ceil(retryAfterMs / 1000)} s.`,
-            retryAfterMs
+            retryAfterMs,
+            (error as RetryablePartialDeploymentError).status,
+            (error as RetryablePartialDeploymentError).responseBody
           )
         }
         const backoff = Math.min(Math.max(resumeDelay * 2 ** failures, retryAfterMs), maxBackoffMs)
         failures++
-        await delay(backoff)
+        await delay(backoff, callerSignal)
+        if (callerSignal?.aborted) {
+          throw abortedByCaller()
+        }
         if (latestMissing) {
           toSend = latestMissing
         }
       }
     }
 
+    const lastRetryable = lastError instanceof RetryablePartialDeploymentError ? lastError : undefined
     throw new DeploymentError(
       `The partial deployment failed after ${failures + 1} attempt(s): ${
         lastError instanceof Error ? lastError.message : String(lastError)
-      }`
+      }`,
+      lastRetryable?.status,
+      lastRetryable?.responseBody
     )
   }
 

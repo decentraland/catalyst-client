@@ -14,9 +14,9 @@ export type FileBatch = {
 
 /**
  * Splits files into batches whose summed byte size stays at or below `maxBatchSizeBytes`, using
- * first-fit-decreasing bin packing. A single file larger than the cap gets its own batch — files are
- * never split across requests, so such a request exceeds the cap and may hit the servers' per-file
- * limits or the ~200MB infrastructure timeout. Deterministic given the same input.
+ * first-fit-decreasing bin packing. Files are never split, so a file larger than the cap still lands
+ * alone in an over-cap batch; deployPartial rejects such files before uploading. Deterministic given the
+ * same input.
  */
 export function splitIntoBatches(files: Map<string, Uint8Array>, maxBatchSizeBytes: number): FileBatch[] {
   const entries = Array.from(files.entries()).sort((a, b) => b[1].byteLength - a[1].byteLength)
