@@ -31,7 +31,9 @@ const result = await client.deployPartial(
     maxBatchSizeBytes: 100 * 1024 * 1024,
     concurrency: 2, // default: 2 parallel batch uploads (after the first)
     maxResumeAttempts: 3, // default: 3 — resumes on network/5xx failures
-    onProgress: ({ uploadedBytes, totalBytes }) => console.log(`${uploadedBytes}/${totalBytes}`)
+    onProgress: ({ uploadedBytes, totalBytes }) => console.log(`${uploadedBytes}/${totalBytes}`),
+    // byte-level progress, also accepted by deploy()
+    onUploadProgress: ({ phase, sentBytes, totalBytes }) => console.log(phase, `${sentBytes}/${totalBytes}`)
   }
 )
 console.log(result.creationTimestamp)
@@ -39,7 +41,19 @@ console.log(result.creationTimestamp)
 
 Notes:
 
-- The regular `deploy()` is unchanged; use it for normal-sized deployments.
+- Use the regular `deploy()` for normal-sized deployments; it accepts `onUploadProgress` too.
+- `onUploadProgress` reports file bytes handed to the HTTP client across every request, in the phases
+  `checking` (asking the server which files it has), `uploading` and `processing` (every scheduled byte
+  sent, waiting for the server). Events are throttled to one every 200 ms, plus every phase change and the
+  latest count at the end of each window. A resolved deployment ends with `processing` and every byte sent.
+  Re-sent content (retries, the server's missing list) grows `totalBytes`.
+- By default a request's bytes count when its response arrives. For live progress, create the client with
+  `streamingUploads: true`: on Node the body is then streamed with an exact `Content-Length`, at the cost of
+  memory: each request in flight holds its form plus an encoded copy of it, about twice the batch size, so
+  `deployPartial` with the default `concurrency` (2) and 100 MiB batches holds up to ~400 MiB on top of the
+  scene's files. Only set it when the fetcher passes the body to the global
+  (undici) `fetch`, forwards the `duplex` option and headers unchanged, and never retries a POST with the
+  same options (the stream can only be read once). `@dcl/fetch-component` qualifies; node-fetch does not.
 - The target server must support partial deployments. Against an older server that does not, a
   single-batch deployment still succeeds, but a multi-batch one rejects with
   `PartialDeploymentNotSupportedError` — fall back to `deploy()` in that case.

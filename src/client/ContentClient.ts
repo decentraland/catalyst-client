@@ -8,7 +8,9 @@ import {
   ParallelConfig,
   PartialDeploymentOptions,
   PartialDeploymentResult,
-  RequestOptions
+  RequestOptions,
+  UploadProgress,
+  UploadProgressOptions
 } from './types'
 import { addModelToFormData, mergeRequestOptions, sanitizeUrl, splitAndFetch } from './utils/Helper'
 import { DEFAULT_MAX_BATCH_SIZE_BYTES, splitIntoBatches } from './utils/batching'
@@ -20,6 +22,15 @@ import {
   RetryablePartialDeploymentError
 } from './utils/errors'
 import { retry } from './utils/retry'
+import {
+  createCountingBody,
+  createUploadProgressTracker,
+  isDuplexUnsupportedError,
+  supportsStreamingUpload,
+  trackUpload,
+  UploadProgressTracker,
+  withBodyHeaders
+} from './utils/upload-progress'
 
 // Resolves after `ms`, or early once `signal` aborts.
 function delay(ms: number, signal?: AbortSignal): Promise<void> {
@@ -132,7 +143,7 @@ export type ContentClient = {
   /**
    * Deploys an entity to the content server.
    */
-  deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown>
+  deploy(deployData: DeploymentData, options?: RequestOptions & UploadProgressOptions): Promise<unknown>
 
   /**
    * Deploys an entity across multiple requests (partial deployment, ADR-325): content files are split into
@@ -191,8 +202,21 @@ export async function downloadContent(
 
 export function createContentClient(options: ClientOptions): ContentClient {
   const { fetcher, logger } = options
+
+  // A throwing progress callback must not fail a deployment or, from the throttle timer, crash the process.
+  function guardProgress(onUploadProgress: (progress: UploadProgress) => void): (progress: UploadProgress) => void {
+    return (progress) => {
+      try {
+        onUploadProgress(progress)
+      } catch (error) {
+        logger?.warn('The onUploadProgress callback threw:', error)
+      }
+    }
+  }
   const contentUrl = sanitizeUrl(options.url)
   const defaultParallelConfig = options?.parallelConfig
+  // Off once the fetcher rejects a streamed body, so later uploads send the plain form.
+  let streamingUploads = !!options.streamingUploads && supportsStreamingUpload()
 
   async function fetchFromMultipleServersRace(
     urls: string[],
@@ -310,31 +334,105 @@ export function createContentClient(options: ClientOptions): ContentClient {
     return form
   }
 
+  async function hashesToDeploy(deployData: DeploymentData, options?: RequestOptions): Promise<string[]> {
+    const alreadyUploadedHashes = await hashesAlreadyOnServer(Array.from(deployData.files.keys()), options)
+    return Array.from(deployData.files.keys()).filter(
+      (fileHash) => !alreadyUploadedHashes.has(fileHash) || fileHash === deployData.entityId
+    )
+  }
+
   async function buildEntityFormDataForDeployment(
     deployData: DeploymentData,
     options?: RequestOptions
   ): Promise<FormData> {
-    const alreadyUploadedHashes = await hashesAlreadyOnServer(Array.from(deployData.files.keys()), options)
-    const fileHashes = Array.from(deployData.files.keys()).filter(
-      (fileHash) => !alreadyUploadedHashes.has(fileHash) || fileHash === deployData.entityId
-    )
-    return buildDeploymentForm(deployData, fileHashes, false)
+    return buildDeploymentForm(deployData, await hashesToDeploy(deployData, options), false)
   }
 
-  async function deploy(deployData: DeploymentData, options?: RequestOptions): Promise<unknown> {
-    const form = await buildEntityFormDataForDeployment(deployData, options)
+  function fileBytesOf(deployData: DeploymentData, hashes: Iterable<string>): number {
+    let total = 0
+    for (const hash of hashes) total += deployData.files.get(hash)?.byteLength ?? 0
+    return total
+  }
 
-    const requestOptions = mergeRequestOptions(options ? options : {}, {
-      body: form as any,
-      method: 'POST'
-    })
+  // POSTs a deployment form. With an upload tracker, the body is streamed and counted where possible.
+  async function postDeploymentForm(
+    url: string,
+    form: FormData,
+    requestOptions: RequestOptions,
+    upload?: { tracker: UploadProgressTracker; fileBytes: number; signal?: AbortSignal }
+  ): Promise<FetchResponse> {
+    const plainOptions = mergeRequestOptions(requestOptions, { body: form as any, method: 'POST' })
+    if (!upload) {
+      return fetcher.fetch(url, plainOptions)
+    }
+    const progress = upload.tracker.request(upload.fileBytes, streamingUploads)
+    try {
+      if (streamingUploads) {
+        const counting = await createCountingBody(url, form, progress.streamed, upload.signal)
+        try {
+          return await fetcher.fetch(url, {
+            ...requestOptions,
+            headers: withBodyHeaders(requestOptions.headers, counting.headers),
+            body: counting.body,
+            method: 'POST',
+            duplex: 'half'
+          } as RequestOptions)
+        } catch (error) {
+          // A fetcher that drops `duplex` makes Node reject the stream before sending anything.
+          if (!isDuplexUnsupportedError(error)) throw error
+          streamingUploads = false
+          progress.unstreamed()
+        } finally {
+          counting.dispose()
+        }
+      }
+      const response = await fetcher.fetch(url, plainOptions)
+      progress.delivered()
+      return response
+    } finally {
+      progress.end()
+    }
+  }
 
-    return await fetcher.fetch(`${contentUrl}/entities`, requestOptions)
+  async function deploy(
+    deployData: DeploymentData,
+    options?: RequestOptions & UploadProgressOptions
+  ): Promise<unknown> {
+    const { onUploadProgress, ...requestOptions } = options ?? {}
+    if (!onUploadProgress) {
+      const form = buildDeploymentForm(deployData, await hashesToDeploy(deployData, requestOptions), false)
+      return postDeploymentForm(`${contentUrl}/entities`, form, requestOptions)
+    }
+
+    const tracker = createUploadProgressTracker(guardProgress(onUploadProgress))
+    return trackUpload(
+      tracker,
+      async () => {
+        tracker.checking(fileBytesOf(deployData, deployData.files.keys()))
+        const fileHashes = await hashesToDeploy(deployData, requestOptions)
+        const form = buildDeploymentForm(deployData, fileHashes, false)
+        const fileBytes = fileBytesOf(deployData, fileHashes)
+        tracker.plan(fileBytes)
+        const signal = requestOptions.signal ?? requestOptions.abortController?.signal
+        return postDeploymentForm(`${contentUrl}/entities`, form, requestOptions, { tracker, fileBytes, signal })
+      },
+      // An error response (e.g. an early 413) resolves too, but must not report the upload as complete.
+      (response) => (response as { ok?: boolean } | undefined)?.ok !== false
+    )
   }
 
   async function deployPartial(
     deployData: DeploymentData,
     options?: RequestOptions & PartialDeploymentOptions
+  ): Promise<PartialDeploymentResult> {
+    const tracker = options?.onUploadProgress && createUploadProgressTracker(guardProgress(options.onUploadProgress))
+    return trackUpload(tracker, () => uploadPartial(deployData, options, tracker))
+  }
+
+  async function uploadPartial(
+    deployData: DeploymentData,
+    options: (RequestOptions & PartialDeploymentOptions) | undefined,
+    tracker: UploadProgressTracker | undefined
   ): Promise<PartialDeploymentResult> {
     const maxBatchSizeBytes = options?.maxBatchSizeBytes ?? DEFAULT_MAX_BATCH_SIZE_BYTES
     const concurrency = options?.concurrency ?? 2
@@ -389,11 +487,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
     let uploadedBytes = 0
     let completedBatches = 0
     let totalBatches = 1
-    const bytesOf = (hashes: Iterable<string>) => {
-      let total = 0
-      for (const hash of hashes) total += sizeOf(hash)
-      return total
-    }
+    const bytesOf = (hashes: Iterable<string>) => fileBytesOf(deployData, hashes)
     const reportProgress = () => {
       try {
         onProgress?.({ uploadedBytes, totalBytes, completedBatches, totalBatches })
@@ -409,9 +503,10 @@ export function createContentClient(options: ClientOptions): ContentClient {
       const form = buildDeploymentForm(deployData, fileHashes, true)
       const { abortController, dispose } = linkAbortController(signal)
       try {
-        const requestOptions = mergeRequestOptions(requestBase, { body: form as any, method: 'POST', abortController })
+        const requestOptions = mergeRequestOptions(requestBase, { abortController })
+        const upload = tracker && { tracker, fileBytes: bytesOf(fileHashes), signal: abortController.signal }
         // The query flag lets the server tell a batch from a regular deployment before reading the body.
-        const response: FetchResponse = await fetcher.fetch(`${contentUrl}/entities?partial=true`, requestOptions)
+        const response = await postDeploymentForm(`${contentUrl}/entities?partial=true`, form, requestOptions, upload)
         if (response.status === 200) {
           // The server published: an unreadable or aborted body read still means success.
           let result: PartialDeploymentResult
@@ -580,6 +675,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
       throw abortedByCaller()
     }
     // /available-content only plans the first round; afterwards the server's `missing` list drives uploads.
+    if (allContentHashes.length > 0) tracker?.checking(bytesOf(deployData.files.keys()))
     let alreadyOnServer = new Set<string>()
     if (allContentHashes.length > 0) {
       const { abortController, dispose } = linkAbortController(callerSignal)
@@ -614,6 +710,8 @@ export function createContentClient(options: ClientOptions): ContentClient {
     for (;;) {
       try {
         assertDeliverable(toSend)
+        // Every round adds what it sends, so re-sent content grows the upload total.
+        tracker?.plan(bytesOf(toSend) + (entityStaged ? 0 : sizeOf(entityId)))
         const outcome = await runRound(toSend)
         if (outcome.kind === 'deployed') {
           // The publishing 200 carries no progress of its own, and siblings it cancelled were no longer needed.

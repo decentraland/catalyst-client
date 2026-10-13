@@ -16,5 +16,8 @@ export type {
   PartialDeploymentOptions,
   PartialDeploymentProgress,
   PartialDeploymentResult,
-  RequestOptions
+  RequestOptions,
+  UploadPhase,
+  UploadProgress,
+  UploadProgressOptions
 } from './client/types'

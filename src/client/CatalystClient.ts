@@ -42,7 +42,8 @@ export function createCatalystClient(options: ClientOptions): CatalystClient {
 
     contentClient = createContentClient({
       url: about.content!.publicUrl,
-      fetcher
+      fetcher,
+      streamingUploads: options.streamingUploads
     })
 
     return contentClient
