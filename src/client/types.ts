@@ -93,7 +93,40 @@ export type PartialDeploymentProgress = {
   totalBatches: number
 }
 
-export type PartialDeploymentOptions = {
+/**
+ * Stage of an upload reported by `onUploadProgress`:
+ * - `checking`: asking the server which files it already stores.
+ * - `uploading`: file bytes are going out.
+ * - `processing`: every scheduled byte was sent; waiting for the server's answer.
+ */
+export type UploadPhase = 'checking' | 'uploading' | 'processing'
+
+/** Byte-level progress of a deployment upload. */
+export type UploadProgress = {
+  phase: UploadPhase
+  /**
+   * File bytes handed to the HTTP client so far, summed across requests (multipart overhead excluded).
+   * Never decreases and never exceeds `totalBytes`.
+   */
+  sentBytes: number
+  /**
+   * File bytes the deployment must send: files the server already stores are excluded, and the entity
+   * file is included when sent. Grows when content is re-sent (retries, the server's `missing` list).
+   * While `checking`, it is every candidate file.
+   */
+  totalBytes: number
+}
+
+export type UploadProgressOptions = {
+  /**
+   * Invoked with byte-level upload progress, at most every 200 ms plus on every phase change. On Node the
+   * request body is streamed and counted as it is handed to the HTTP client; elsewhere (or when the
+   * fetcher doesn't support streamed bodies) a request's bytes count as sent when its response arrives.
+   */
+  onUploadProgress?: (progress: UploadProgress) => void
+}
+
+export type PartialDeploymentOptions = UploadProgressOptions & {
   /**
    * Max summed file bytes per request. Default {@link DEFAULT_MAX_BATCH_SIZE_BYTES} (100 MiB — safely
    * under the ~200MB request ceiling of the infrastructure in front of the content servers).

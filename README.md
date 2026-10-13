@@ -31,7 +31,9 @@ const result = await client.deployPartial(
     maxBatchSizeBytes: 100 * 1024 * 1024,
     concurrency: 2, // default: 2 parallel batch uploads (after the first)
     maxResumeAttempts: 3, // default: 3 — resumes on network/5xx failures
-    onProgress: ({ uploadedBytes, totalBytes }) => console.log(`${uploadedBytes}/${totalBytes}`)
+    onProgress: ({ uploadedBytes, totalBytes }) => console.log(`${uploadedBytes}/${totalBytes}`),
+    // byte-level progress, also accepted by deploy()
+    onUploadProgress: ({ phase, sentBytes, totalBytes }) => console.log(phase, `${sentBytes}/${totalBytes}`)
   }
 )
 console.log(result.creationTimestamp)
@@ -40,6 +42,12 @@ console.log(result.creationTimestamp)
 Notes:
 
 - The regular `deploy()` is unchanged; use it for normal-sized deployments.
+- `onUploadProgress` reports file bytes handed to the HTTP client across every request, in the phases
+  `checking` (asking the server which files it has), `uploading` and `processing` (all bytes sent, waiting
+  for the server). Events are throttled to one every 200 ms plus every phase change. On Node the body is
+  streamed with an exact `Content-Length`, which costs one encoded copy of each request in memory; in
+  browsers, or with a fetcher that drops the `duplex` option, a request's bytes count when its response
+  arrives. Re-sent content (retries, the server's missing list) grows `totalBytes`.
 - The target server must support partial deployments. Against an older server that does not, a
   single-batch deployment still succeeds, but a multi-batch one rejects with
   `PartialDeploymentNotSupportedError` — fall back to `deploy()` in that case.
