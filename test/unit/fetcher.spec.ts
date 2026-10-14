@@ -74,4 +74,28 @@ describe('when calling a lambdas operation through the custom client', () => {
       expect(result).toBeUndefined()
     })
   })
+
+  describe('and the operation is an upper-case HEAD as emitted by the generator', () => {
+    beforeEach(async () => {
+      result = await useCustomClient<void>({
+        url: '/lambdas/collections/contents/urn:decentraland:off-chain:base-avatars:eyebrows_00/image',
+        method: 'HEAD'
+      })('https://peer.example.org/lambdas', fetcher)
+    })
+
+    it('should send the method in lower case', () => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://peer.example.org/lambdas/collections/contents/urn:decentraland:off-chain:base-avatars:eyebrows_00/image?',
+        { method: 'head', headers: undefined }
+      )
+    })
+
+    it('should not parse the response body', () => {
+      expect(json).not.toHaveBeenCalled()
+    })
+
+    it('should resolve with undefined', () => {
+      expect(result).toBeUndefined()
+    })
+  })
 })

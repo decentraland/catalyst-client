@@ -52,7 +52,7 @@
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-prettier": "5.5.7",
     "eth-connect": "^6.1.0",
-    "orval": "6.20.0",
+    "orval": "8.42.0",
     "prettier": "3.9.10",
     "ts-node": "^10.4.0",
     "typescript": "6.0.3"
