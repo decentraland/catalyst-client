@@ -81,7 +81,7 @@ async function describeForm(form: FormData): Promise<Record<string, string>> {
 }
 
 function parseMultipart(bytes: Uint8Array, contentType: string): Promise<FormData> {
-  return new Response(bytes, { headers: { 'content-type': contentType } }).formData()
+  return new Response(bytes as Uint8Array<ArrayBuffer>, { headers: { 'content-type': contentType } }).formData()
 }
 
 function phasesOf(events: UploadProgress[]): string[] {

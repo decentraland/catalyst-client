@@ -2,7 +2,7 @@
   "compilerOptions": {
     "baseUrl": "src",
     "outDir": "dist",
-    "module": "commonjs",
+    "module": "node16",
     "target": "es2018",
     "lib": [
       "es2018",
