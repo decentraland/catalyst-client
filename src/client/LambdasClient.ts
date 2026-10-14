@@ -27,8 +27,6 @@ export function createLambdasClient(options: ClientOptions) {
     getLands: wrap(client.getLands),
     getThirdPartyWearables: wrap(client.getThirdPartyWearables),
     getThirdPartyCollection: wrap(client.getThirdPartyCollection),
-    getHotScenes: wrap(client.getHotScenes),
-    getRealms: wrap(client.getRealms),
     getAvatarsDetailsByPost: wrap(client.getAvatarsDetailsByPost),
     getAvatarDetails: wrap(client.getAvatarDetails),
     getThirdPartyIntegrations: wrap(client.getThirdPartyIntegrations)
