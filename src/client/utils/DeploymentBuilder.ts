@@ -122,7 +122,8 @@ export async function buildEntityWithoutNewFiles(
     timestamp?: number
   }
 ): Promise<DeploymentPreparationData> {
-  const givenFilesMaps: Map<string, string> | undefined = hashesByKey ?? metadata ? getHashesByKey(metadata) : undefined
+  const givenFilesMaps: Map<string, string> | undefined =
+    (hashesByKey ?? metadata) ? getHashesByKey(metadata) : undefined
   // When the old entity has the old hashing algorithm, then the full entity with new hash will need to be deployed.
   if (!!givenFilesMaps && isObsoleteProfile(type, givenFilesMaps)) {
     const files = await downloadAllFiles(fetcher, contentUrl, givenFilesMaps)

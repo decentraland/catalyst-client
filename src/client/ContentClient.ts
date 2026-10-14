@@ -748,7 +748,7 @@ export function createContentClient(options: ClientOptions): ContentClient {
           break
         }
         // Exponential backoff with a Retry-After floor, capped but never below the caller's resumeDelay.
-        const retryAfterMs = error instanceof RetryablePartialDeploymentError ? error.retryAfterMs ?? 0 : 0
+        const retryAfterMs = error instanceof RetryablePartialDeploymentError ? (error.retryAfterMs ?? 0) : 0
         const maxBackoffMs = Math.max(resumeDelay, MAX_RESUME_BACKOFF_MS)
         // Retrying before Retry-After can't succeed, so a longer wait ends the call with the server's reason.
         if (retryAfterMs > maxBackoffMs) {

@@ -11,7 +11,7 @@ function imageResponse(contentType?: string): FetchResponse {
     json: jest.fn().mockRejectedValue(new SyntaxError('Unexpected token in JSON')),
     text: jest.fn(),
     arrayBuffer: jest.fn().mockResolvedValue(PNG_BYTES.buffer.slice(0)),
-    headers: { get: (name: string) => (name.toLowerCase() === 'content-type' ? contentType ?? null : null) }
+    headers: { get: (name: string) => (name.toLowerCase() === 'content-type' ? (contentType ?? null) : null) }
   }
 }
 

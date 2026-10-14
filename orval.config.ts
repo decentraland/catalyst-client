@@ -8,7 +8,7 @@ export default defineConfig({
       target: './src/client/specs/catalyst.ts'
     },
     hooks: {
-      afterAllFilesWrite: 'prettier --write'
+      afterAllFilesWrite: 'prettier --write --ignore-path .prettierignore'
     }
   },
   lambdas: {
@@ -28,7 +28,7 @@ export default defineConfig({
       }
     },
     hooks: {
-      afterAllFilesWrite: 'prettier --write'
+      afterAllFilesWrite: 'prettier --write --ignore-path .prettierignore'
     }
   }
 })

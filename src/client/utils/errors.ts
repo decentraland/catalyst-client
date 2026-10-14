@@ -1,6 +1,10 @@
 /** Base error for a failed deployment. Carries the HTTP status and raw response body when available. */
 export class DeploymentError extends Error {
-  constructor(message: string, public readonly status?: number, public readonly responseBody?: string) {
+  constructor(
+    message: string,
+    public readonly status?: number,
+    public readonly responseBody?: string
+  ) {
     super(message)
     this.name = 'DeploymentError'
   }
@@ -53,7 +57,12 @@ export class RetryablePartialDeploymentError extends Error {
  * attempt may succeed, and the message carries the server's explanation.
  */
 export class PartialDeploymentRetryLaterError extends DeploymentError {
-  constructor(message: string, public readonly retryAfterMs: number, status?: number, responseBody?: string) {
+  constructor(
+    message: string,
+    public readonly retryAfterMs: number,
+    status?: number,
+    responseBody?: string
+  ) {
     super(message, status, responseBody)
     this.name = 'PartialDeploymentRetryLaterError'
   }
@@ -61,7 +70,11 @@ export class PartialDeploymentRetryLaterError extends DeploymentError {
 
 /** A binary download (an item image or thumbnail) answered with a non-2xx status instead of the file. */
 export class ContentDownloadError extends Error {
-  constructor(message: string, public readonly status: number, public readonly responseBody?: string) {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly responseBody?: string
+  ) {
     super(message)
     this.name = 'ContentDownloadError'
   }
