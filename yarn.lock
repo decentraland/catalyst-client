@@ -335,12 +335,12 @@
   dependencies:
     "@well-known-components/interfaces" "^1.5.2"
 
-"@dcl/crypto@^3.4.0":
-  version "3.7.0"
-  resolved "https://registry.yarnpkg.com/@dcl/crypto/-/crypto-3.7.0.tgz#2436370e591ea269da4806ee800e8eec21ff2168"
-  integrity sha512-8HSFLxnIHDeA8I/6yGAUwbCin2TX2oPn2uBLj5UmR0NFAyN5wYJCqbeolaJaIdmqN9RFjdb9ixKOY4uKF5Q2XA==
+"@dcl/crypto@^3.8.0":
+  version "3.8.0"
+  resolved "https://registry.yarnpkg.com/@dcl/crypto/-/crypto-3.8.0.tgz#188659b3c198a9f4f344c83cd73fcabb1427224e"
+  integrity sha512-GKUSP4UpxuTSnU+RVmUJhoIUIb+fGHhD7JeSZ4fLb/89l8SX5dwD4b//VDaQSa6IPek2GIRsjodfAaj2r5gK7A==
   dependencies:
-    "@dcl/schemas" "^25.2.0"
+    "@dcl/schemas" "^27.3.0"
     eth-connect "^6.0.3"
     ethereum-cryptography "^2.0.0"
 
@@ -372,16 +372,6 @@
   version "3.0.4"
   resolved "https://registry.yarnpkg.com/@dcl/hashing/-/hashing-3.0.4.tgz#4df2a4cb3a8114765aed34cb57b91c93bf33bfb3"
   integrity sha512-Cg+MoIOn+BYmQV2q8zSFnNYY+GldlnUazwBnfgrq3i66ZxOaZ65h01btd8OUtSAlfWG4VTNIOHDjtKqmuwJNBg==
-
-"@dcl/schemas@^25.2.0":
-  version "25.3.0"
-  resolved "https://registry.yarnpkg.com/@dcl/schemas/-/schemas-25.3.0.tgz#5ba7b53e902e9bf8fded3f6dfba1485b08dfe3ae"
-  integrity sha512-ChFW3jU3ELN6YsRvs8TZIueBR8/DDxFcWPOeCoPafjLzSRK4GX9wHYrD3Crent07C3i3tm1rX8L/2rw+S39bzQ==
-  dependencies:
-    ajv "^8.11.0"
-    ajv-errors "^3.0.0"
-    ajv-keywords "^5.1.0"
-    mitt "^3.0.1"
 
 "@dcl/schemas@^27.3.0":
   version "27.3.0"
