@@ -1,5 +1,6 @@
 export * from './utils/DeploymentBuilder'
 export {
+  ContentDownloadError,
   DeploymentError,
   PartialDeploymentNotSupportedError,
   PartialDeploymentRetryLaterError,
