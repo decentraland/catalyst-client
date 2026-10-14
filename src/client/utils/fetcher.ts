@@ -1,4 +1,5 @@
 import { IFetchComponent } from '../types'
+import { readJsonOrThrow } from './response'
 
 type Context = {
   url: string
@@ -21,7 +22,7 @@ export const useCustomClient = <T>({ url, method, params, data, headers }: Conte
       ...(data ? { body: JSON.stringify(data) } : {})
     })
 
-    return response.json()
+    return readJsonOrThrow<T>(response)
   }
 }
 
