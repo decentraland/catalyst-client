@@ -12,7 +12,7 @@ type Context = {
 export type CustomClient<T> = (baseUrl: string, fetch: IFetchComponent) => Promise<T>
 
 // NOTE: used by orval generator
-export const useCustomClient = <T>({ url, method, params, data, headers }: Context): CustomClient<T> => {
+export const useCustomClient = <T>({ url, method, params, data, responseType, headers }: Context): CustomClient<T> => {
   const relPath = url.substring('/lambdas'.length + 1)
   return async function (baseUrl: string, fetch: IFetchComponent): Promise<T> {
     const response = await fetch.fetch(`${baseUrl}/${relPath}?` + new URLSearchParams(params), {
@@ -20,6 +20,12 @@ export const useCustomClient = <T>({ url, method, params, data, headers }: Conte
       headers,
       ...(data ? { body: JSON.stringify(data) } : {})
     })
+
+    // Binary operations (images, thumbnails) aren't JSON
+    if (responseType === 'blob') {
+      const type = response.headers?.get('content-type') ?? undefined
+      return new Blob([await response.arrayBuffer()], type ? { type } : undefined) as T
+    }
 
     return response.json()
   }
