@@ -327,7 +327,8 @@ export function createContentClient(options: ClientOptions): ContentClient {
     for (const fileHash of fileHashes) {
       const file = deployData.files.get(fileHash)
       if (file) {
-        form.append(fileHash, new Blob([file]), fileHash)
+        // Blob copies the bytes; TS 5.7+ types only accept ArrayBuffer-backed views here
+        form.append(fileHash, new Blob([file as Uint8Array<ArrayBuffer>]), fileHash)
       }
     }
 
