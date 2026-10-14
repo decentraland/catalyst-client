@@ -11,12 +11,12 @@ type Context = {
 
 export type CustomClient<T> = (baseUrl: string, fetch: IFetchComponent) => Promise<T>
 
-// Arrays become repeated keys and undefined values are left out.
+// Arrays become repeated keys; null and undefined are left out (presence flags would read them as set).
 function toSearchParams(params?: Record<string, unknown>): URLSearchParams {
   const searchParams = new URLSearchParams()
   for (const [key, value] of Object.entries(params ?? {})) {
     for (const item of Array.isArray(value) ? value : [value]) {
-      if (item !== undefined) searchParams.append(key, String(item))
+      if (item !== undefined && item !== null) searchParams.append(key, String(item))
     }
   }
   return searchParams

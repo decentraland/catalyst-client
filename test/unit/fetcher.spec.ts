@@ -34,6 +34,23 @@ describe('when calling a lambdas operation through the custom client', () => {
     })
   })
 
+  describe('and the query params hold null, booleans, an empty array and reserved characters', () => {
+    beforeEach(async () => {
+      await useCustomClient<{ ok: boolean }>({
+        url: '/lambdas/users/0xabc/wearables',
+        method: 'get',
+        params: { includeDefinitions: null, includeEntities: true, category: [], name: 'a&b=c #d' }
+      })('https://peer.example.org/lambdas', fetcher)
+    })
+
+    it('should leave null and empty arrays out, stringify booleans and encode reserved characters', () => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://peer.example.org/lambdas/users/0xabc/wearables?includeEntities=true&name=a%26b%3Dc+%23d',
+        { method: 'get', headers: undefined }
+      )
+    })
+  })
+
   describe('and the operation is a HEAD', () => {
     beforeEach(async () => {
       result = await useCustomClient<void>({
