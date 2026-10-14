@@ -1,5 +1,6 @@
 import { createLambdasClient } from '../../src/client/LambdasClient'
 import { FetchResponse, IFetchComponent } from '../../src/client/types'
+import { ContentDownloadError } from '../../src/client/utils/errors'
 
 const PNG_BYTES = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 
@@ -48,6 +49,32 @@ describe('when downloading item images with the lambdas client', () => {
 
       it('should keep the content type of the response', () => {
         expect(blob.type).toBe('image/png')
+      })
+    })
+
+    describe('and the server answers with an error status', () => {
+      let error: unknown
+      let text: jest.Mock
+
+      beforeEach(async () => {
+        text = jest.fn().mockResolvedValue('{"error":"Not found"}')
+        response = { ...imageResponse('application/json'), ok: false, status: 404, text }
+        fetcher = { fetch: jest.fn().mockResolvedValue(response) }
+        error = await createLambdasClient({ url: 'https://peer.example.com/lambdas', fetcher })
+          [operation]('urn:x')
+          .catch((e) => e)
+      })
+
+      it('should reject with a download error carrying the status and body instead of a blob', () => {
+        expect({
+          isDownloadError: error instanceof ContentDownloadError,
+          status: (error as ContentDownloadError).status,
+          responseBody: (error as ContentDownloadError).responseBody
+        }).toEqual({ isDownloadError: true, status: 404, responseBody: '{"error":"Not found"}' })
+      })
+
+      it('should read the error body so the connection is released', () => {
+        expect(text).toHaveBeenCalledTimes(1)
       })
     })
 

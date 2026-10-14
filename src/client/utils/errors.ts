@@ -58,3 +58,11 @@ export class PartialDeploymentRetryLaterError extends DeploymentError {
     this.name = 'PartialDeploymentRetryLaterError'
   }
 }
+
+/** A binary download (an item image or thumbnail) answered with a non-2xx status instead of the file. */
+export class ContentDownloadError extends Error {
+  constructor(message: string, public readonly status: number, public readonly responseBody?: string) {
+    super(message)
+    this.name = 'ContentDownloadError'
+  }
+}
