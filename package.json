@@ -33,10 +33,10 @@
   "homepage": "https://github.com/decentraland/catalyst-client#readme",
   "dependencies": {
     "@dcl/catalyst-contracts": "^4.4.0",
-    "@dcl/crypto": "^3.4.0",
+    "@dcl/crypto": "^3.8.0",
     "@dcl/fetch-component": "^1.0.1",
     "@dcl/hashing": "^3.0.0",
-    "@dcl/schemas": "^23.0.0"
+    "@dcl/schemas": "^27.3.0"
   },
   "devDependencies": {
     "@dcl/catalyst-api-specs": "^4.0.0",
