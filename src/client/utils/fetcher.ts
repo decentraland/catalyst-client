@@ -1,9 +1,12 @@
 import { IFetchComponent } from '../types'
 import { ContentDownloadError } from './errors'
 
+type HttpMethod = 'get' | 'head' | 'post' | 'put' | 'delete' | 'patch'
+
 type Context = {
   url: string
-  method: 'get' | 'head' | 'post' | 'put' | 'delete' | 'patch'
+  // orval >= 6.31 emits upper-case methods
+  method: Uppercase<HttpMethod> | HttpMethod
   params?: any
   data?: any
   responseType?: 'blob' | 'json'
@@ -26,15 +29,16 @@ function toSearchParams(params?: Record<string, unknown>): URLSearchParams {
 // NOTE: used by orval generator
 export const useCustomClient = <T>({ url, method, params, data, responseType, headers }: Context): CustomClient<T> => {
   const relPath = url.substring('/lambdas'.length + 1)
+  const httpMethod = method.toLowerCase() as HttpMethod
   return async function (baseUrl: string, fetch: IFetchComponent): Promise<T> {
     const response = await fetch.fetch(`${baseUrl}/${relPath}?` + toSearchParams(params), {
-      method,
+      method: httpMethod,
       headers,
       ...(data ? { body: JSON.stringify(data) } : {})
     })
 
     // A HEAD response has no body to parse.
-    if (method === 'head') return undefined as T
+    if (httpMethod === 'head') return undefined as T
 
     // Binary operations (images, thumbnails) aren't JSON
     if (responseType === 'blob') {

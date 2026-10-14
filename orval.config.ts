@@ -15,7 +15,9 @@ export default defineConfig({
     input: {
       target: './node_modules/@dcl/catalyst-api-specs/lib/api.yaml',
       filters: {
-        tags: ['Lambdas']
+        tags: ['Lambdas'],
+        // orval >= 7 prunes schemas the filtered operations don't reference
+        includeUnreferencedSchemas: true
       }
     },
     output: {
