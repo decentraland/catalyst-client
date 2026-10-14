@@ -40,7 +40,7 @@
     "cookie": "^0.5.0"
   },
   "devDependencies": {
-    "@dcl/catalyst-api-specs": "^3.8.0",
+    "@dcl/catalyst-api-specs": "https://sdk-team-cdn.decentraland.org/@dcl/catalyst-api-specs/branch/feat/explorer-api/dcl-catalyst-api-specs-3.8.1-38590635367.commit-3115f31.tgz",
     "@dcl/eslint-config": "^1.1.9",
     "@well-known-components/env-config-provider": "^1.1.1",
     "@well-known-components/interfaces": "^1.4.0",

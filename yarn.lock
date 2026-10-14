@@ -348,10 +348,9 @@
   dependencies:
     "@jridgewell/trace-mapping" "0.3.9"
 
-"@dcl/catalyst-api-specs@^3.8.0":
-  version "3.8.0"
-  resolved "https://registry.yarnpkg.com/@dcl/catalyst-api-specs/-/catalyst-api-specs-3.8.0.tgz#7adf22113bb6f8d00ca78a421cabbdd484bd70e1"
-  integrity sha512-l0h3Q6O76bMH679FKeeIN3UWix+2D1tC2zSJAx7ROPZ42nZY3m4EGJIr5OI9aJAiYq0T/vTFNp7ypOnUOeBXiA==
+"@dcl/catalyst-api-specs@https://sdk-team-cdn.decentraland.org/@dcl/catalyst-api-specs/branch/feat/explorer-api/dcl-catalyst-api-specs-3.8.1-38590635367.commit-3115f31.tgz":
+  version "3.8.1-38590635367.commit-3115f31"
+  resolved "https://sdk-team-cdn.decentraland.org/@dcl/catalyst-api-specs/branch/feat/explorer-api/dcl-catalyst-api-specs-3.8.1-38590635367.commit-3115f31.tgz#49f8daed2bf30050e30dadf560af6f84f8750ed4"
   dependencies:
     yaml "^2.3.4"
 
